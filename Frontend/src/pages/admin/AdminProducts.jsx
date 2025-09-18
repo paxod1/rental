@@ -41,7 +41,7 @@ function AdminProducts() {
   const fetchProducts = async () => {
     try {
       setIsLoading(true);
-      const res = await axios.get("http://localhost:8000/api/products");
+      const res = await axiosInstance.get("/api/products");
       setProducts(res.data);
     } catch (error) {
       toast.error("Error fetching products");

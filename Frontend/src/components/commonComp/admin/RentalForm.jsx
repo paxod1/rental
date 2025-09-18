@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { FiX, FiChevronDown, FiDollarSign } from "react-icons/fi";
+import { FiX, FiChevronDown, FiDollarSign, FiPhone, FiMapPin } from "react-icons/fi";
 import LoadingSpinner from "../LoadingSpinner";
 
 const RentalForm = ({
@@ -14,8 +14,8 @@ const RentalForm = ({
 }) => {
   const [formData, setFormData] = useState({
     customerName: "",
-    customerEmail: "",
     customerPhone: "",
+    customerAddress: "",
     productId: "",
     quantity: 1,
     days: "",
@@ -30,8 +30,8 @@ const RentalForm = ({
     if (initialData) {
       setFormData({
         customerName: initialData.customerName || "",
-        customerEmail: initialData.customerEmail || "",
         customerPhone: initialData.customerPhone || "",
+        customerAddress: initialData.customerAddress || "",
         productId: initialData.productId || "",
         quantity: initialData.quantity || 1,
         days: initialData.days || "",
@@ -52,8 +52,8 @@ const RentalForm = ({
   const resetForm = () => {
     setFormData({
       customerName: "",
-      customerEmail: "",
       customerPhone: "",
+      customerAddress: "",
       productId: "",
       quantity: 1,
       days: "",
@@ -78,17 +78,23 @@ const RentalForm = ({
   const handleSubmit = (e) => {
     e.preventDefault();
     
+    // Validate required fields
+    if (!formData.customerPhone.trim()) {
+      alert("Phone number is required");
+      return;
+    }
+    
     // Prepare data according to new schema
     const submissionData = {
-      customerName: formData.customerName,
-      customerEmail: formData.customerEmail || undefined,
-      customerPhone: formData.customerPhone || undefined,
+      customerName: formData.customerName.trim(),
+      customerPhone: formData.customerPhone.trim(),
+      customerAddress: formData.customerAddress.trim() || undefined,
       productId: formData.productId,
       quantity: parseInt(formData.quantity),
       days: formData.days ? parseInt(formData.days) : undefined,
       startDate: formData.startDate,
       advancePayment: formData.advancePayment ? parseFloat(formData.advancePayment) : undefined,
-      notes: formData.notes || undefined
+      notes: formData.notes.trim() || undefined
     };
 
     onSubmit(submissionData);
@@ -127,7 +133,7 @@ const RentalForm = ({
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="bg-gradient-to-r from-rose-500 to-pink-500 text-white px-6 py-4 rounded-t-xl">
+        <div className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-6 py-4 rounded-t-xl">
           <div className="flex justify-between items-center">
             <h3 className="text-xl font-semibold">{title}</h3>
             <button
@@ -157,26 +163,13 @@ const RentalForm = ({
                   onChange={handleChange}
                   required
                   disabled={isSubmitting}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent transition-all disabled:bg-gray-100"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all disabled:bg-gray-100"
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  name="customerEmail"
-                  placeholder="Enter email address"
-                  value={formData.customerEmail}
-                  onChange={handleChange}
-                  disabled={isSubmitting}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent transition-all disabled:bg-gray-100"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Phone Number
+                  <FiPhone className="inline w-4 h-4 mr-1" />
+                  Phone Number *
                 </label>
                 <input
                   type="tel"
@@ -184,8 +177,24 @@ const RentalForm = ({
                   placeholder="Enter phone number"
                   value={formData.customerPhone}
                   onChange={handleChange}
+                  required
                   disabled={isSubmitting}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent transition-all disabled:bg-gray-100"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all disabled:bg-gray-100"
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <FiMapPin className="inline w-4 h-4 mr-1" />
+                  Address
+                </label>
+                <textarea
+                  name="customerAddress"
+                  placeholder="Enter customer address"
+                  value={formData.customerAddress}
+                  onChange={handleChange}
+                  rows="2"
+                  disabled={isSubmitting}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all disabled:bg-gray-100"
                 />
               </div>
             </div>
@@ -206,7 +215,7 @@ const RentalForm = ({
                     onChange={handleChange}
                     required
                     disabled={isSubmitting}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent transition-all appearance-none bg-white cursor-pointer disabled:bg-gray-100"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all appearance-none bg-white cursor-pointer disabled:bg-gray-100"
                   >
                     <option value="">Choose a product</option>
                     {products.map((product) => (
@@ -232,7 +241,7 @@ const RentalForm = ({
                   onChange={handleChange}
                   required
                   disabled={isSubmitting}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent transition-all disabled:bg-gray-100"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all disabled:bg-gray-100"
                 />
               </div>
 
@@ -250,7 +259,7 @@ const RentalForm = ({
                   min="1"
                   max={selectedProduct?.quantity || 999}
                   disabled={isSubmitting}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent transition-all disabled:bg-gray-100"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all disabled:bg-gray-100"
                 />
               </div>
 
@@ -266,7 +275,7 @@ const RentalForm = ({
                   onChange={handleChange}
                   min="1"
                   disabled={isSubmitting}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent transition-all disabled:bg-gray-100"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all disabled:bg-gray-100"
                 />
               </div>
 
@@ -285,7 +294,7 @@ const RentalForm = ({
                     step="0.01"
                     max={calculateTotal()}
                     disabled={isSubmitting}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent transition-all disabled:bg-gray-100"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all disabled:bg-gray-100"
                   />
                 </div>
               )}
@@ -301,7 +310,7 @@ const RentalForm = ({
                   onChange={handleChange}
                   rows="3"
                   disabled={isSubmitting}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent transition-all disabled:bg-gray-100"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all disabled:bg-gray-100"
                 />
               </div>
             </div>
@@ -309,7 +318,7 @@ const RentalForm = ({
 
           {/* Product Details & Calculation */}
           {selectedProduct && (
-            <div className="bg-gray-50 p-4 rounded-lg border">
+            <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
               <h5 className="font-medium text-gray-800 mb-3">Rental Summary</h5>
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
@@ -344,7 +353,7 @@ const RentalForm = ({
                         </div>
                         <div>
                           <span className="text-gray-600">Remaining Balance:</span>
-                          <span className="ml-2 font-bold text-rose-600">
+                          <span className="ml-2 font-bold text-orange-600">
                             ${getRemainingBalance()}
                           </span>
                         </div>
@@ -368,8 +377,8 @@ const RentalForm = ({
             </button>
             <button
               type="submit"
-              disabled={isSubmitting || !formData.customerName || !formData.productId || !formData.quantity || !formData.startDate}
-              className="flex-1 bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white px-4 py-2 rounded-lg transition-all shadow-md hover:shadow-lg disabled:opacity-50 flex items-center justify-center gap-2"
+              disabled={isSubmitting || !formData.customerName || !formData.customerPhone || !formData.productId || !formData.quantity || !formData.startDate}
+              className="flex-1 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white px-4 py-2 rounded-lg transition-all shadow-md hover:shadow-lg disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {isSubmitting && <LoadingSpinner size="sm" color="gray" />}
               Create Rental

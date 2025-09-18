@@ -1,4 +1,4 @@
-// models/Rental.js - Updated with dynamic balance calculation
+// models/Rental.js - Updated with dynamic balance calculation and customer contact changes
 const mongoose = require("mongoose");
 
 const rentalTransactionSchema = new mongoose.Schema({
@@ -28,8 +28,8 @@ const paymentSchema = new mongoose.Schema({
 const rentalSchema = new mongoose.Schema(
   {
     customerName: { type: String, required: true },
-    customerEmail: { type: String },
-    customerPhone: { type: String },
+    customerPhone: { type: String, required: true }, // Made required
+    customerAddress: { type: String }, // Added address field
     productId: { 
       type: mongoose.Schema.Types.ObjectId, 
       ref: 'Products1', 

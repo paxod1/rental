@@ -8,11 +8,16 @@ import {
     FiMinus,
     FiDollarSign,
     FiCalendar,
-    FiPackage
+    FiPackage,
+    FiArrowUpCircle,
+    FiArrowDownCircle,
+    FiCreditCard
 } from "react-icons/fi";
 import PageLoading from "../../components/commonComp/PageLoading";
 import EmptyState from "../../components/commonComp/EmptyState";
 import LoadingSpinner from "../../components/commonComp/LoadingSpinner";
+import axiosInstance from "../../../axiosCreate";
+
 
 function AdminRented() {
     const [rentals, setRentals] = useState([]);
@@ -23,29 +28,37 @@ function AdminRented() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [liveBalances, setLiveBalances] = useState({});
+    const [searchTerm, setSearchTerm] = useState('');
+
     const [formData, setFormData] = useState({
         returnQuantity: '',
         additionalQuantity: '',
         amount: '',
         paymentType: 'partial_payment',
-        notes: ''
+        notes: '',
+        paymentAmount: '',
+        paymentNotes: ''
     });
+
 
     useEffect(() => {
         fetchData();
     }, []);
 
+
     const fetchData = async () => {
         try {
             setIsLoading(true);
             const [rentalsRes, productsRes] = await Promise.all([
-                axios.get("http://localhost:8000/api/rentals"),
-                axios.get("http://localhost:8000/api/products")
+                axiosInstance.get("/api/rentals"),
+                axiosInstance.get("/api/products")
             ]);
+
 
             const activeRentals = rentalsRes.data.filter(rental =>
                 rental.status === 'active' || rental.status === 'partially_returned'
             );
+
 
             setRentals(activeRentals);
             setProducts(productsRes.data);
@@ -63,9 +76,11 @@ function AdminRented() {
         }
     };
 
+
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
+
 
     const resetForm = () => {
         setFormData({
@@ -73,9 +88,12 @@ function AdminRented() {
             additionalQuantity: '',
             amount: '',
             paymentType: 'partial_payment',
-            notes: ''
+            notes: '',
+            paymentAmount: '',
+            paymentNotes: ''
         });
     };
+
 
     const openModal = (rental, type) => {
         setSelectedRental(rental);
@@ -84,6 +102,7 @@ function AdminRented() {
         setIsModalOpen(true);
     };
 
+
     const closeModal = () => {
         setIsModalOpen(false);
         setSelectedRental(null);
@@ -91,13 +110,17 @@ function AdminRented() {
         resetForm();
     };
 
+
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setIsSubmitting(true);
 
+
         try {
             let endpoint = '';
             let payload = {};
+
 
             switch (modalType) {
                 case 'return':
@@ -127,16 +150,19 @@ function AdminRented() {
                     break;
             }
 
-            const response = await axios.put(`http://localhost:8000${endpoint}`, payload);
+
+            const response = await axiosInstance.put(`${endpoint}`, payload);
+
 
             if (modalType === 'return' && response.data.returnCalculation) {
                 toast.success(
                     `Return processed! Total charge: $${response.data.returnCalculation.total.toFixed(2)}`,
-                    { duration: 6000 }
+                    { duration: 3000 }
                 );
             } else {
                 toast.success(`${modalType.replace('-', ' ')} processed successfully!`);
             }
+
 
             closeModal();
             fetchData();
@@ -149,43 +175,195 @@ function AdminRented() {
     };
 
 
+
     const calculateDaysRented = (startDate) => {
         return Math.ceil((new Date() - new Date(startDate)) / (1000 * 60 * 60 * 24));
     };
+
+    // Enhanced function to get all activities (transactions + payments) in chronological order
+    const getAllActivities = (rental) => {
+        const activities = [];
+
+        // Add transactions
+        const transactions = getTransactions(rental);
+        transactions.forEach(transaction => {
+            activities.push({
+                ...transaction,
+                activityType: 'transaction',
+                date: transaction.date,
+                displayDate: new Date(transaction.date).toLocaleDateString(),
+                displayTime: new Date(transaction.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            });
+        });
+
+        // Add payments
+        const payments = getPayments(rental);
+        payments.forEach(payment => {
+            activities.push({
+                ...payment,
+                activityType: 'payment',
+                date: payment.date,
+                displayDate: new Date(payment.date).toLocaleDateString(),
+                displayTime: new Date(payment.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            });
+        });
+
+        // Sort by date (newest first)
+        return activities.sort((a, b) => new Date(b.date) - new Date(a.date));
+    };
+
+    // Enhanced function to render activity item
+    const renderActivityItem = (activity, index) => {
+        const isTransaction = activity.activityType === 'transaction';
+        const isPayment = activity.activityType === 'payment';
+
+        if (isTransaction) {
+            const isRental = activity.type === 'rental';
+            const isReturn = activity.type === 'return' || activity.type === 'partial_return';
+
+            return (
+                <div key={`transaction-${index}`} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center gap-3">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isRental ? 'bg-green-100' : 'bg-orange-100'
+                            }`}>
+                            {isRental ? (
+                                <FiArrowUpCircle className={`w-4 h-4 ${isRental ? 'text-green-600' : 'text-orange-600'}`} />
+                            ) : (
+                                <FiArrowDownCircle className="w-4 h-4 text-orange-600" />
+                            )}
+                        </div>
+                        <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                                <span className="text-sm font-medium">
+                                    {isRental ? 'Rented' : 'Returned'} {activity.quantity} units
+                                </span>
+                                <span className="text-xs text-gray-500 bg-gray-200 px-2 py-1 rounded-full">
+                                    {activity.displayTime}
+                                </span>
+                            </div>
+                            <div className="flex items-center gap-2 mt-1">
+                                <span className="text-xs text-gray-500">
+                                    {activity.displayDate}
+                                </span>
+                                {activity.notes && (
+                                    <span className="text-xs text-blue-600 italic">
+                                        • {activity.notes}
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                    <div className="text-right">
+                        {activity.amount > 0 && (
+                            <span className={`font-semibold text-sm ${isReturn ? 'text-red-600' : 'text-green-600'
+                                }`}>
+                                {isReturn ? '+' : ''}${activity.amount.toFixed(2)}
+                            </span>
+                        )}
+                        {activity.paymentAmount && activity.paymentAmount > 0 && (
+                            <div className="text-xs text-blue-600 mt-1">
+                                Paid: ${activity.paymentAmount.toFixed(2)}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        if (isPayment) {
+            const isRefund = activity.type === 'refund';
+
+            return (
+                <div key={`payment-${index}`} className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+                    <div className="flex items-center gap-3">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isRefund ? 'bg-red-100' : 'bg-blue-100'
+                            }`}>
+                            <FiCreditCard className={`w-4 h-4 ${isRefund ? 'text-red-600' : 'text-blue-600'
+                                }`} />
+                        </div>
+                        <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                                <span className="text-sm font-medium">
+                                    {isRefund ? 'Refund' : 'Payment'} received
+                                </span>
+                                <span className="text-xs text-gray-500 bg-white px-2 py-1 rounded-full">
+                                    {activity.displayTime}
+                                </span>
+                            </div>
+                            <div className="flex items-center gap-2 mt-1">
+                                <span className="text-xs text-gray-500">
+                                    {activity.displayDate}
+                                </span>
+                                <span className="text-xs text-blue-600 capitalize">
+                                    • {(activity.type || '').replace('_', ' ')}
+                                </span>
+                                {activity.notes && (
+                                    <span className="text-xs text-blue-600 italic">
+                                        • {activity.notes}
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                    <div className="text-right">
+                        <span className={`font-semibold text-sm ${isRefund ? 'text-red-600' : 'text-green-600'
+                            }`}>
+                            {isRefund ? '-' : '+'}${activity.amount.toFixed(2)}
+                        </span>
+                        <div className="text-xs text-gray-500 mt-1">
+                            {activity.method || 'Cash'}
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        return null;
+    };
+
 
     // Add this helper function in your AdminRented component
     const calculateLiveBalance = (rental) => {
         if (!rental || !rental.productId) return 0;
 
+
         const currentDate = new Date();
         let calculatedAmount = 0;
+
 
         // Get rental transactions (FIFO order)
         const rentalTransactions = (rental.transactions || [])
             .filter(t => t.type === 'rental')
             .sort((a, b) => new Date(a.date) - new Date(b.date));
 
+
         const returnTransactions = (rental.transactions || [])
             .filter(t => t.type === 'return' || t.type === 'partial_return');
 
+
         let remainingQuantity = rental.currentQuantity || 0;
+
 
         // Calculate for each active rental
         for (const transaction of rentalTransactions) {
             if (remainingQuantity <= 0) break;
 
+
             const quantityForThisTransaction = Math.min(remainingQuantity, transaction.quantity);
             const rentalStartDate = new Date(transaction.date);
             const daysRented = Math.ceil((currentDate - rentalStartDate) / (1000 * 60 * 60 * 24));
+
 
             // Calculate daily rate - handle both populated and unpopulated productId
             let dailyRate = 0;
             let productData = rental.productId;
 
+
             // If productId is a string, find the product from products array
             if (typeof rental.productId === 'string') {
                 productData = products.find(p => p._id === rental.productId);
             }
+
 
             if (productData) {
                 switch (productData.rateType) {
@@ -203,21 +381,26 @@ function AdminRented() {
                 }
             }
 
+
             calculatedAmount += quantityForThisTransaction * daysRented * dailyRate;
             remainingQuantity -= quantityForThisTransaction;
         }
 
+
         // Add return transaction amounts
         const returnAmount = returnTransactions.reduce((sum, t) => sum + (t.amount || 0), 0);
         calculatedAmount += returnAmount;
+
 
         // Calculate total paid (including refunds)
         const totalPaid = (rental.payments || []).reduce((sum, payment) => {
             return payment.type === 'refund' ? sum - payment.amount : sum + payment.amount;
         }, 0);
 
+
         return Math.max(0, calculatedAmount - totalPaid);
     };
+
 
 
     const getStatusColor = (status) => {
@@ -228,6 +411,7 @@ function AdminRented() {
             default: return 'bg-gray-100 text-gray-800';
         }
     };
+
 
     const getProductName = (rental) => {
         if (rental?.productId && typeof rental.productId === 'object' && rental.productId.name) {
@@ -240,17 +424,21 @@ function AdminRented() {
         return 'Unknown Product';
     };
 
+
     const getCurrentQuantity = (rental) => {
         return rental?.currentQuantity ?? rental?.quantity ?? 0;
     };
+
 
     const getTransactions = (rental) => {
         return Array.isArray(rental?.transactions) ? rental.transactions : [];
     };
 
+
     const getPayments = (rental) => {
         return Array.isArray(rental?.payments) ? rental.payments : [];
     };
+
 
     const getNetBalance = (rental) => {
         const totalAmount = rental?.totalAmount || 0;
@@ -258,9 +446,25 @@ function AdminRented() {
         return Math.max(0, totalAmount - totalPaid);
     };
 
+
     if (isLoading) {
         return <PageLoading message="Loading Rental Data..." />;
     }
+
+    const handleSearchChange = (e) => {
+        setSearchTerm(e.target.value);
+    };
+
+
+    const filteredRentals = rentals.filter(rental => {
+        const productName = getProductName(rental).toLowerCase();
+        const customerName = (rental.customerName || '').toLowerCase();
+        const term = searchTerm.toLowerCase();
+
+        return productName.includes(term) || customerName.includes(term);
+    });
+
+
 
     return (
         <div className="p-6 bg-gradient-to-br from-rose-50 to-pink-50 min-h-screen">
@@ -273,16 +477,29 @@ function AdminRented() {
                 }}
             />
 
+
             {/* Header */}
             <div className="mb-8">
                 <h2 className="text-3xl font-bold text-gray-800 bg-gradient-to-r from-rose-600 to-pink-600 bg-clip-text text-transparent">
                     Active Rentals Management
                 </h2>
-                <p className="text-gray-600 mt-2">Track returns, payments, and rental history</p>
+                <p className="text-gray-600 mt-2">Track returns, payments, and rental history with detailed activity timeline</p>
             </div>
 
+            <div className="mb-6">
+                <input
+                    type="text"
+                    placeholder="Search by product or customer name..."
+                    value={searchTerm}
+                    onChange={handleSearchChange}
+                    className="w-full md:w-1/2 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500"
+                />
+            </div>
+
+
+
             {/* Rentals List */}
-            {rentals.length === 0 ? (
+            {filteredRentals.length === 0 ? (
                 <div className="bg-white rounded-xl shadow-xl">
                     <EmptyState
                         icon={FiPackage}
@@ -293,7 +510,7 @@ function AdminRented() {
                 </div>
             ) : (
                 <div className="grid gap-6">
-                    {rentals.map((rental) => (
+                    {filteredRentals.map((rental) => (
                         <div key={rental._id} className="bg-white rounded-xl shadow-lg overflow-hidden">
                             {/* Rental Header */}
                             <div className="bg-gradient-to-r from-rose-500 to-pink-500 text-white p-4">
@@ -301,12 +518,19 @@ function AdminRented() {
                                     <div>
                                         <h3 className="text-lg font-semibold">{rental.customerName || 'Unknown Customer'}</h3>
                                         <p className="text-rose-100">{getProductName(rental)}</p>
+                                        <div className="flex flex-col gap-1 mt-2">
+                                            <p className="text-sm ">Phone: {rental.customerPhone || 'N/A'}</p>
+                                            <p className="text-sm ">Address: {rental.customerAddress || 'N/A'}</p>
+                                        </div>
                                     </div>
+
+
                                     <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(rental.status)}`}>
                                         {(rental.status || 'unknown').replace('_', ' ').toUpperCase()}
                                     </span>
                                 </div>
                             </div>
+
 
                             {/* Rental Details */}
                             <div className="p-6">
@@ -321,6 +545,7 @@ function AdminRented() {
                                         </div>
                                     </div>
 
+
                                     <div className="flex items-center gap-3">
                                         <div className="bg-green-100 p-2 rounded-full">
                                             <FiCalendar className="w-4 h-4 text-green-600" />
@@ -333,6 +558,7 @@ function AdminRented() {
                                         </div>
                                     </div>
 
+
                                     <div className="flex items-center gap-3">
                                         <div className="bg-purple-100 p-2 rounded-full">
                                             <FiDollarSign className="w-4 h-4 text-purple-600" />
@@ -342,6 +568,7 @@ function AdminRented() {
                                             <p className="font-semibold">${rental.totalAmount || 0}</p>
                                         </div>
                                     </div>
+
 
                                     <div className="flex items-center gap-3">
                                         <div className="bg-rose-100 p-2 rounded-full">
@@ -356,33 +583,41 @@ function AdminRented() {
                                     </div>
                                 </div>
 
-                                {/* Recent Activity */}
+
+                                {/* Enhanced Recent Activity with Payments */}
                                 <div className="mb-6">
-                                    <h4 className="font-medium text-gray-800 mb-3">Recent Activity</h4>
-                                    <div className="space-y-2">
-                                        {/* Show last 3 transactions */}
-                                        {getTransactions(rental).slice(-3).map((transaction, index) => (
-                                            <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                                                <div className="flex items-center gap-3">
-                                                    <div className={`w-2 h-2 rounded-full ${transaction.type === 'rental' ? 'bg-green-500' : 'bg-orange-500'
-                                                        }`}></div>
-                                                    <span className="text-sm font-medium">
-                                                        {transaction.type === 'rental' ? 'Added' : 'Returned'} {transaction.quantity} units
-                                                    </span>
-                                                    <span className="text-xs text-gray-500">
-                                                        {new Date(transaction.date).toLocaleDateString()}
-                                                    </span>
-                                                </div>
-                                                {transaction.amount > 0 && (
-                                                    <span className="font-semibold">${transaction.amount}</span>
-                                                )}
+                                    <div className="flex items-center justify-between mb-3">
+                                        <h4 className="font-medium text-gray-800">Recent Activity</h4>
+                                        <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                                            Last 5 activities
+                                        </span>
+                                    </div>
+                                    <div className="space-y-3">
+                                        {/* Show last 5 activities (transactions + payments combined) */}
+                                        {getAllActivities(rental).slice(0, 5).map((activity, index) =>
+                                            renderActivityItem(activity, index)
+                                        )}
+                                        {getAllActivities(rental).length === 0 && (
+                                            <div className="text-center py-6">
+                                                <FiPackage className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                                                <p className="text-sm text-gray-500 italic">No activity yet</p>
                                             </div>
-                                        ))}
-                                        {getTransactions(rental).length === 0 && (
-                                            <p className="text-sm text-gray-500 italic">No activity yet</p>
                                         )}
                                     </div>
+
+                                    {/* Show more activities link if there are more than 5 */}
+                                    {getAllActivities(rental).length > 5 && (
+                                        <div className="text-center mt-3">
+                                            <button
+                                                onClick={() => openModal(rental, 'details')}
+                                                className="text-xs text-blue-600 hover:text-blue-800 underline"
+                                            >
+                                                View all {getAllActivities(rental).length} activities
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
+
 
                                 {/* Action Buttons */}
                                 <div className="flex flex-wrap gap-3">
@@ -421,17 +656,18 @@ function AdminRented() {
                 </div>
             )}
 
+
             {/* Modal */}
             {isModalOpen && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
                         <div className="bg-gradient-to-r from-rose-500 to-pink-500 text-white px-6 py-4 rounded-t-xl">
                             <div className="flex justify-between items-center">
                                 <h3 className="text-xl font-semibold">
                                     {modalType === 'return' && 'Process Return'}
                                     {modalType === 'add-rental' && 'Add More Items'}
                                     {modalType === 'payment' && 'Add Payment'}
-                                    {modalType === 'details' && 'Rental Details'}
+                                    {modalType === 'details' && 'Rental Details & Complete Activity History'}
                                 </h3>
                                 <button
                                     onClick={closeModal}
@@ -442,9 +678,10 @@ function AdminRented() {
                             </div>
                         </div>
 
+
                         <div className="p-6">
                             {modalType === 'details' ? (
-                                <div className="space-y-4">
+                                <div className="space-y-6">
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
                                             <p className="text-sm text-gray-600">Customer</p>
@@ -469,51 +706,53 @@ function AdminRented() {
                                         </div>
                                     </div>
 
-                                    {/* Full Transaction History */}
+                                    {/* Complete Activity History */}
                                     <div>
-                                        <h4 className="font-medium mb-3">All Transactions</h4>
-                                        <div className="space-y-2 max-h-60 overflow-y-auto">
-                                            {getTransactions(selectedRental).map((transaction, index) => (
-                                                <div key={index} className="p-3 bg-gray-50 rounded-lg">
-                                                    <div className="flex justify-between">
-                                                        <span className="font-medium">
-                                                            {transaction.type.replace('_', ' ').toUpperCase()}
-                                                        </span>
-                                                        <span>${liveBalances[selectedRental._id] || 0}</span>
-                                                    </div>
-                                                    <p className="text-sm text-gray-600">
-                                                        {transaction.quantity} units
-                                                    </p>
-                                                    <p className="text-xs text-gray-500">
-                                                        {new Date(transaction.date).toLocaleDateString()}
-                                                    </p>
+                                        <h4 className="font-medium mb-4 flex items-center gap-2">
+                                            <FiCalendar className="w-4 h-4" />
+                                            Complete Activity History ({getAllActivities(selectedRental).length} total)
+                                        </h4>
+                                        <div className="space-y-3 max-h-96 overflow-y-auto border rounded-lg p-4">
+                                            {getAllActivities(selectedRental).map((activity, index) =>
+                                                renderActivityItem(activity, index)
+                                            )}
+                                            {getAllActivities(selectedRental).length === 0 && (
+                                                <div className="text-center py-8">
+                                                    <FiPackage className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+                                                    <p className="text-gray-500">No activity history found</p>
                                                 </div>
-                                            ))}
+                                            )}
                                         </div>
                                     </div>
 
-                                    {/* Payment History */}
-                                    <div>
-                                        <h4 className="font-medium mb-3">Payment History</h4>
-                                        <div className="space-y-2 max-h-40 overflow-y-auto">
-                                            {getPayments(selectedRental).map((payment, index) => (
-                                                <div key={index} className="p-3 bg-green-50 rounded-lg">
-                                                    <div className="flex justify-between">
-                                                        <span className="font-medium">
-                                                            {payment.type.replace('_', ' ').toUpperCase()}
-                                                        </span>
-                                                        <span>${payment.amount || 0}</span>
-                                                    </div>
-                                                    <p className="text-xs text-gray-500">
-                                                        {new Date(payment.date).toLocaleDateString()}
-                                                    </p>
-                                                </div>
-                                            ))}
+                                    {/* Summary */}
+                                    <div className="bg-gray-50 rounded-lg p-4">
+                                        <h4 className="font-medium mb-3">Financial Summary</h4>
+                                        <div className="grid grid-cols-3 gap-4 text-center">
+                                            <div>
+                                                <p className="text-sm text-gray-600">Total Billed</p>
+                                                <p className="text-lg font-bold text-purple-600">
+                                                    ${selectedRental?.totalAmount || 0}
+                                                </p>
+                                            </div>
+                                            <div>
+                                                <p className="text-sm text-gray-600">Total Paid</p>
+                                                <p className="text-lg font-bold text-green-600">
+                                                    ${selectedRental?.totalPaid || 0}
+                                                </p>
+                                            </div>
+                                            <div>
+                                                <p className="text-sm text-gray-600">Balance Due</p>
+                                                <p className="text-lg font-bold text-red-600">
+                                                    ${(liveBalances[selectedRental._id] || 0).toFixed(2)}
+                                                </p>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                             ) : (
                                 <form onSubmit={handleSubmit} className="space-y-4">
+
 
                                     {modalType === 'return' && (
                                         <>
@@ -523,6 +762,7 @@ function AdminRented() {
                                                     Charges will be calculated automatically.
                                                 </p>
                                             </div>
+
 
                                             <div>
                                                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -540,6 +780,7 @@ function AdminRented() {
                                                 />
                                             </div>
 
+
                                             {/* Payment during return */}
                                             <div>
                                                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -556,6 +797,7 @@ function AdminRented() {
                                                     placeholder="Enter payment amount if any"
                                                 />
                                             </div>
+
 
                                             {/* Payment notes */}
                                             {formData.paymentAmount && (
@@ -577,6 +819,7 @@ function AdminRented() {
                                     )}
 
 
+
                                     {modalType === 'add-rental' && (
                                         <>
                                             <div className="mb-4 p-3 bg-green-50 rounded-lg">
@@ -585,6 +828,7 @@ function AdminRented() {
                                                     No upfront payment required - charges calculated on return.
                                                 </p>
                                             </div>
+
 
                                             <div>
                                                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -603,6 +847,7 @@ function AdminRented() {
                                         </>
                                     )}
 
+
                                     {modalType === 'payment' && (
                                         <>
                                             <div className="mb-4 p-3 bg-yellow-50 rounded-lg">
@@ -610,6 +855,7 @@ function AdminRented() {
                                                     <strong>Current Balance:</strong> ${(liveBalances[selectedRental._id] || 0).toFixed(2)}
                                                 </p>
                                             </div>
+
 
                                             <div>
                                                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -628,22 +874,6 @@ function AdminRented() {
                                                 />
                                             </div>
 
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                    Payment Amount
-                                                </label>
-                                                <input
-                                                    type="number"
-                                                    name="amount"
-                                                    value={formData.amount}
-                                                    onChange={handleChange}
-                                                    step="0.01"
-                                                    min="0.01"
-                                                    max={getNetBalance(selectedRental)}
-                                                    required
-                                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500"
-                                                />
-                                            </div>
 
                                             <div>
                                                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -663,6 +893,7 @@ function AdminRented() {
                                         </>
                                     )}
 
+
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-2">
                                             Notes
@@ -675,6 +906,7 @@ function AdminRented() {
                                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500"
                                         />
                                     </div>
+
 
                                     <div className="flex gap-3 pt-4">
                                         <button
@@ -704,5 +936,6 @@ function AdminRented() {
         </div>
     );
 }
+
 
 export default AdminRented;

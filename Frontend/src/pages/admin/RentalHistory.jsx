@@ -20,6 +20,7 @@ import {
 import PageLoading from "../../components/commonComp/PageLoading";
 import EmptyState from "../../components/commonComp/EmptyState";
 import LoadingSpinner from "../../components/commonComp/LoadingSpinner";
+import axiosInstance from "../../../axiosCreate";
 
 function RentalHistory() {
   const [rentals, setRentals] = useState([]);
@@ -43,13 +44,18 @@ function RentalHistory() {
   const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
-    fetchRentalHistory();
-  }, [currentPage, searchTerm, statusFilter]);
+    async function firstFeatch() {
+      setIsLoading(true);
+      await fetchRentalHistory();
+      setIsLoading(false);
+    }
+    firstFeatch()
+  }, [currentPage, statusFilter]);
 
   const fetchRentalHistory = async () => {
     try {
-      setIsLoading(true);
-      const response = await axios.get("http://localhost:8000/api/rentals/all-history", {
+
+      const response = await axiosInstance.get("/api/rentals/all-history", {
         params: {
           page: currentPage,
           limit: 10,
@@ -64,14 +70,13 @@ function RentalHistory() {
     } catch (error) {
       toast.error("Error fetching rental history");
       console.error("Error:", error);
-    } finally {
-      setIsLoading(false);
     }
   };
 
   const handleSearch = (e) => {
     setSearchTerm(e.target.value);
     setCurrentPage(1);
+    fetchRentalHistory()
   };
 
   const handleStatusFilter = (status) => {
@@ -122,7 +127,7 @@ function RentalHistory() {
     setIsSubmitting(true);
 
     try {
-      await axios.put(`http://localhost:8000/api/rentals/${selectedRental._id}/history-payment`, {
+      await axiosInstance.put(`/api/rentals/${selectedRental._id}/history-payment`, {
         amount: parseFloat(paymentData.amount),
         paymentType: paymentData.paymentType,
         notes: paymentData.notes
@@ -163,7 +168,7 @@ function RentalHistory() {
 
     setIsDeleting(true);
     try {
-      await axios.delete(`http://localhost:8000/api/rentals/${rentalToDelete._id}`);
+      await axiosInstance.delete(`/api/rentals/${rentalToDelete._id}`);
       toast.success("Rental record deleted successfully!");
       closeDeleteModal();
       fetchRentalHistory();
@@ -241,7 +246,7 @@ function RentalHistory() {
             <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
               type="text"
-              placeholder="Search by customer name, email, or phone..."
+              placeholder="Search by customer name or phone..."
               value={searchTerm}
               onChange={handleSearch}
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent"

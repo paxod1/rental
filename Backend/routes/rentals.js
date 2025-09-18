@@ -109,14 +109,15 @@ router.get("/history", async (req, res) => {
   }
 });
 
+
 // @desc    Create a new rental
 // @route   POST /api/rentals
 router.post("/", async (req, res) => {
   try {
     const {
       customerName,
-      customerEmail,
       customerPhone,
+      customerAddress,
       productId,
       quantity,
       days,
@@ -125,9 +126,18 @@ router.post("/", async (req, res) => {
       notes
     } = req.body;
 
-    if (!customerName || !productId || !quantity || !startDate) {
+    // Validate required fields
+    if (!customerName || !customerPhone || !productId || !quantity || !startDate) {
       return res.status(400).json({
-        message: "Please provide customerName, productId, quantity, and startDate"
+        message: "Please provide customerName, customerPhone, productId, quantity, and startDate"
+      });
+    }
+
+    // Validate phone number format (basic validation)
+    const phoneRegex = /^[\d\s\-\+\(\)]+$/;
+    if (!phoneRegex.test(customerPhone)) {
+      return res.status(400).json({
+        message: "Please provide a valid phone number"
       });
     }
 
@@ -178,9 +188,9 @@ router.post("/", async (req, res) => {
     }
 
     const rental = await Rental.create({
-      customerName,
-      customerEmail,
-      customerPhone,
+      customerName: customerName.trim(),
+      customerPhone: customerPhone.trim(),
+      customerAddress: customerAddress ? customerAddress.trim() : undefined,
       productId,
       initialQuantity: quantity,
       currentQuantity: quantity,
@@ -188,7 +198,7 @@ router.post("/", async (req, res) => {
       transactions,
       payments,
       totalAmount: amount,
-      notes,
+      notes: notes ? notes.trim() : undefined,
     });
 
     // Update product quantity
@@ -201,6 +211,15 @@ router.post("/", async (req, res) => {
 
     res.status(201).json(populatedRental);
   } catch (error) {
+    // Handle validation errors specifically
+    if (error.name === 'ValidationError') {
+      const validationErrors = Object.values(error.errors).map(err => err.message);
+      return res.status(400).json({
+        message: "Validation failed",
+        errors: validationErrors
+      });
+    }
+
     res.status(500).json({ message: error.message });
   }
 });
@@ -499,15 +518,15 @@ router.get("/all-history", async (req, res) => {
 router.delete("/:id", async (req, res) => {
   try {
     const rental = await Rental.findById(req.params.id).populate('productId');
-    
+
     if (!rental) {
       return res.status(404).json({ message: "Rental not found" });
     }
 
     // Check if rental is still active (has current quantity > 0)
     if (rental.currentQuantity > 0) {
-      return res.status(400).json({ 
-        message: "Cannot delete active rental. Please process returns first." 
+      return res.status(400).json({
+        message: "Cannot delete active rental. Please process returns first."
       });
     }
 
@@ -515,7 +534,7 @@ router.delete("/:id", async (req, res) => {
     if (rental.productId && rental.productId._id) {
       // If rental had items returned, we need to handle inventory properly
       const returnedQuantity = rental.initialQuantity - rental.currentQuantity;
-      
+
       if (returnedQuantity > 0) {
         // Since we're deleting the rental record, we need to subtract the returned quantity
         // from the product inventory to maintain consistency (reverse the return)
@@ -529,13 +548,13 @@ router.delete("/:id", async (req, res) => {
 
     // Delete the rental
     await Rental.findByIdAndDelete(req.params.id);
-    
+
     res.json({ message: "Rental deleted successfully" });
   } catch (error) {
     console.error("Error deleting rental:", error);
-    res.status(500).json({ 
-      message: "Error deleting rental", 
-      error: error.message 
+    res.status(500).json({
+      message: "Error deleting rental",
+      error: error.message
     });
   }
 });
