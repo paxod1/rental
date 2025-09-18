@@ -21,7 +21,7 @@ connectDB();
 
 // CORS and middleware
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:3000'],
+  origin: ['http://localhost:5173', 'http://localhost:3000','https://rental-xi-eight.vercel.app'],
   credentials: true
 }));
 
