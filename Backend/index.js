@@ -9,7 +9,8 @@ const app = express();
 // Database connection
 const connectDB = async () => {
   try {
-    await mongoose.connect(process.env.MONGO_URL);
+     await mongoose.connect(process.env.MONGO_URL);
+
     console.log('MongoDB connected successfully');
   } catch (error) {
     console.error('MongoDB connection error:', error);
@@ -21,7 +22,7 @@ connectDB();
 
 // CORS and middleware
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:3000','https://rental-xi-eight.vercel.app'],
+  origin: ['http://localhost:5173', 'http://localhost:3000', 'https://rental-xi-eight.vercel.app'],
   credentials: true
 }));
 

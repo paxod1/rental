@@ -224,7 +224,7 @@ function AdminProducts() {
                   >
                     <td className="px-6 py-4 font-medium text-gray-900">{product.name}</td>
                     <td className="px-6 py-4 text-gray-700">{product.quantity}</td>
-                    <td className="px-6 py-4 text-gray-700">${product.rate}</td>
+                    <td className="px-6 py-4 text-gray-700">₹{product.rate}</td>
                     <td className="px-6 py-4">
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-rose-100 text-rose-800">
                         {getRateTypeDisplay(product.rateType)}

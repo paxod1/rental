@@ -9,7 +9,7 @@ function AdminLayout() {
             <AdminNavbar />
 
             {/* Page content changes here */}
-            <div>
+            <div className='pt-16'>
                 <Outlet />
             </div>
         </div>

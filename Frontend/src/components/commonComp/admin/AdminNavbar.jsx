@@ -10,7 +10,7 @@ function AdminNavbar() {
     };
 
     return (
-        <nav className="bg-gradient-to-r from-rose-400 via-rose-500 to-rose-600 shadow-lg">
+        <nav className=" fixed w-full bg-gradient-to-r from-rose-400 via-rose-500 to-rose-600 shadow-lg">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex justify-between items-center h-16">
                     {/* Brand Logo */}
