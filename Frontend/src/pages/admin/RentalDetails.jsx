@@ -12,7 +12,7 @@ import {
     FiArrowDownCircle,
     FiCreditCard,
     FiUser,
-    FiPhone, 
+    FiPhone,
     FiChevronDown,
     FiCheck
 } from "react-icons/fi";
@@ -45,7 +45,9 @@ function RentalDetails({ rentalId, onBack }) {
         newProductDays: '',
         returnDate: new Date().toISOString().split('T')[0],
         addProductDate: new Date().toISOString().split('T')[0],
-        addMoreDate: new Date().toISOString().split('T')[0]
+        addMoreDate: new Date().toISOString().split('T')[0],
+        discountAmount: '0',        // ✅ Default to '0'
+        discountNotes: ''
     });
 
 
@@ -150,7 +152,9 @@ function RentalDetails({ rentalId, onBack }) {
             newProductDays: '',
             returnDate: new Date().toISOString().split('T')[0], // ✅ Reset to today
             addProductDate: new Date().toISOString().split('T')[0], // ✅ Reset to today
-            addMoreDate: new Date().toISOString().split('T')[0]
+            addMoreDate: new Date().toISOString().split('T')[0],
+            discountAmount: '0',        // ✅ Default to '0'
+            discountNotes: ''
         });
     };
 
@@ -182,8 +186,25 @@ function RentalDetails({ rentalId, onBack }) {
         try {
             let endpoint = '';
             let payload = {};
-
+            console.log(modalType);
             switch (modalType) {
+
+
+                case 'general-payment':
+                    endpoint = `/api/rentals/${rentalId}/general-payment`;
+                    payload = {
+                        amount: formData.amount ? parseFloat(formData.amount) : null,
+                        discountAmount: formData.discountAmount ? parseFloat(formData.discountAmount) : null,
+                        paymentType: formData.paymentType,
+                        notes: formData.notes,
+                        discountNotes: formData.discountNotes
+                    };
+                    break;
+
+
+
+
+
                 case 'return':
                     endpoint = `/api/rentals/${rentalId}/return-and-pay`;
                     payload = {
@@ -220,6 +241,7 @@ function RentalDetails({ rentalId, onBack }) {
                     };
                     break;
 
+
                 case 'payment':
                     endpoint = `/api/rentals/${rentalId}/payment`;
                     payload = {
@@ -228,27 +250,29 @@ function RentalDetails({ rentalId, onBack }) {
                         notes: formData.notes
                     };
                     break;
-                case 'product-payment':
-                    endpoint = `/api/rentals/${rentalId}/product-payment`;
-                    payload = {
-                        productId: formData.productId,
-                        amount: parseFloat(formData.amount),
-                        paymentType: formData.paymentType || 'product_payment',
-                        notes: formData.notes
-                    };
-                    break;
-                case 'product-full-payment':
-                    endpoint = `/api/rentals/${rentalId}/product-full-payment`;
-                    payload = {
-                        productId: formData.productId,
-                        notes: formData.notes
-                    };
-                    break;
+                default:
+                    console.log('❌ NO MATCH: falling to default');
+                    throw new Error(`Unknown modal type: ${modalType}`);
+
             }
 
             const response = await axiosInstance.put(`${endpoint}`, payload);
 
-            if (modalType === 'return' && response.data.returnCalculation) {
+            if (modalType === 'general-payment') {
+                const paymentAmt = response.data.paymentAmount || 0;
+                const discountAmt = response.data.discountAmount || 0;
+                const totalReduction = response.data.totalReduction || 0;
+
+                let message = `Payment: ₹${paymentAmt.toFixed(2)}`;
+                if (discountAmt > 0) {
+                    message += ` + Discount: ₹${discountAmt.toFixed(2)}`;
+                }
+                message += ` = Total: ₹${totalReduction.toFixed(2)} processed successfully!`;
+
+                toast.success(message, { duration: 4000 });
+            }
+
+            else if (modalType === 'return' && response.data.returnCalculation) {
                 toast.success(
                     `Return processed! Total charge: $${response.data.returnCalculation.total.toFixed(2)}`,
                     { duration: 3000 }
@@ -300,16 +324,138 @@ function RentalDetails({ rentalId, onBack }) {
         return activities.sort((a, b) => new Date(b.date) - new Date(a.date));
     };
 
-    const renderActivityItem = (activity, index) => {
+    // Get activities for a specific product
+    // Get activities for a specific product
+    const getProductActivities = (productId) => {
+        const activities = [];
+
+        // Get transactions for this specific product
+        const productTransactions = rental.transactions.filter(transaction =>
+            transaction.productId && transaction.productId.toString() === productId.toString()
+        );
+
+        productTransactions.forEach(transaction => {
+            activities.push({
+                ...transaction,
+                activityType: 'transaction',
+                date: transaction.date,
+                displayDate: new Date(transaction.date).toLocaleDateString(),
+
+            });
+        });
+
+        // Get payments for this specific product
+        const productPayments = rental.payments.filter(payment =>
+            payment.productId && payment.productId.toString() === productId.toString()
+        );
+
+        productPayments.forEach(payment => {
+            activities.push({
+                ...payment,
+                activityType: 'payment',
+                date: payment.date,
+                displayDate: new Date(payment.date).toLocaleDateString(),
+
+            });
+        });
+
+        // ✅ FIXED: Sort by date (OLDEST FIRST) - Chronological order
+        return activities.sort((a, b) => new Date(a.date) - new Date(b.date));
+    };
+
+
+    // Render activity item for specific product
+    // Render activity item for specific product with payment status
+    const renderProductActivityItem = (activity, index) => {
         const isTransaction = activity.activityType === 'transaction';
         const isPayment = activity.activityType === 'payment';
+
+        // Helper function to calculate days for a specific transaction
+        const calculateTransactionDays = (activity) => {
+            if (!activity.date) return 0;
+
+            if (activity.type === 'return' || activity.type === 'partial_return') {
+                // Find the original rental transaction for this product
+                const rentalTransaction = rental.transactions.find(t =>
+                    t.type === 'rental' &&
+                    t.productId &&
+                    t.productId.toString() === activity.productId.toString()
+                );
+
+                if (rentalTransaction) {
+                    const rentalStartDate = new Date(rentalTransaction.date);
+                    const returnDate = new Date(activity.date);
+
+                    // ✅ FIXED: Calculate inclusive days (both start and end dates count)
+                    const daysDifference = Math.ceil((returnDate - rentalStartDate) / (1000 * 60 * 60 * 24));
+
+                    // ✅ Add 1 to make it inclusive (if same date = 1 day, next date = 2 days, etc.)
+                    return daysDifference + 1;
+                }
+            }
+
+            // For rental transactions, return current duration
+            const startDate = new Date(activity.date);
+            const endDate = new Date();
+            return Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
+        };
+
+
+        // Helper function to get daily rate for the product
+        const getDailyRate = (productId) => {
+            const productItem = rental.productItems.find(item =>
+                (item.productId._id || item.productId).toString() === productId.toString()
+            );
+
+            if (!productItem) return 0;
+
+            switch (productItem.rateType) {
+                case 'daily': return productItem.rate;
+                case 'weekly': return productItem.rate / 7;
+                case 'monthly': return productItem.rate / 30;
+                default: return productItem.rate;
+            }
+        };
+
+        // Helper function to check payment status for returned products
+        const getPaymentStatus = (activity) => {
+            if (activity.type !== 'return' && activity.type !== 'partial_return') {
+                return { isPaid: true, paidAmount: 0, pendingAmount: 0 };
+            }
+
+            // Get all payments for this product after this return date
+            const returnDate = new Date(activity.date);
+            const productPayments = rental.payments.filter(payment =>
+                payment.productId &&
+                payment.productId.toString() === activity.productId.toString() &&
+                new Date(payment.date) >= returnDate &&
+                payment.type !== 'refund'
+            );
+
+            const totalPaid = productPayments.reduce((sum, payment) => sum + payment.amount, 0);
+            const returnAmount = activity.amount || 0;
+            const pendingAmount = Math.max(0, returnAmount - totalPaid);
+
+            return {
+                isPaid: pendingAmount <= 0,
+                paidAmount: Math.min(totalPaid, returnAmount),
+                pendingAmount: pendingAmount,
+                totalAmount: returnAmount
+            };
+        };
 
         if (isTransaction) {
             const isRental = activity.type === 'rental';
             const isReturn = activity.type === 'return' || activity.type === 'partial_return';
+            const transactionDays = calculateTransactionDays(activity);
+            const dailyRate = getDailyRate(activity.productId);
+            const calculatedAmount = activity.quantity * transactionDays * dailyRate;
+
+            // Get payment status for returns
+            const paymentStatus = isReturn ? getPaymentStatus(activity) : null;
 
             return (
-                <div key={`transaction-${index}`} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div key={`product-transaction-${index}`} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                     <div className="flex items-center gap-3">
                         <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isRental ? 'bg-green-100' : 'bg-orange-100'
                             }`}>
@@ -320,31 +466,89 @@ function RentalDetails({ rentalId, onBack }) {
                             )}
                         </div>
                         <div className="flex-1">
-                            <div className="flex items-center gap-2">
-                                <span className="text-sm font-medium">
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-sm font-semibold text-gray-800">
                                     {isRental ? 'Rented' : 'Returned'} {activity.quantity} units
-                                    {activity.productName && ` of ${activity.productName}`}
                                 </span>
-
+                                <span className="text-sm text-gray-600 bg-white px-2 py-1 rounded-full font-medium">
+                                    {activity.displayTime}
+                                </span>
                             </div>
-                            <div className="flex items-center gap-2 mt-1">
-                                <span className="text-xs text-gray-500">
-                                    {activity.displayDate}
-                                </span>
+
+                            {/* Enhanced info showing days and rate calculation */}
+                            <div className="text-sm text-gray-600 mt-1 space-y-1">
+                                <div className="font-medium">{activity.displayDate}</div>
+
+                                {/* Show days and rate calculation for returns */}
+                                {/* Show days and rate calculation for returns */}
+                                {isReturn && transactionDays > 0 && (
+                                    <div className="bg-white p-3 rounded border text-xs space-y-2">
+                                        {/* Detailed day calculation */}
+                                        <div className="bg-orange-50 p-2 rounded">
+                                            <div className="font-medium text-orange-800 mb-1">📅 Rental Period Calculation:</div>
+                                            <div className="space-y-1 text-orange-700">
+                                                <div>• Rented on: {new Date(rental.transactions.find(t =>
+                                                    t.type === 'rental' &&
+                                                    t.productId &&
+                                                    t.productId.toString() === activity.productId.toString()
+                                                )?.date).toLocaleDateString()}</div>
+                                                <div>• Returned on: {activity.displayDate}</div>
+                                                <div className="font-semibold">• Total days: {transactionDays} days (inclusive)</div>
+                                            </div>
+                                        </div>
+
+                                        {/* Calculation breakdown */}
+                                        <div className="bg-blue-50 p-2 rounded">
+                                            <div className="font-medium text-blue-800 mb-1">💰 Price Calculation:</div>
+                                            <div className="text-center font-semibold text-blue-800">
+                                                {activity.quantity} units × {transactionDays} days × ₹{dailyRate.toFixed(2)}/day = ₹{calculatedAmount.toFixed(2)}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+
+                                {/* Show rate info for rentals */}
+                                {isRental && (
+                                    <div className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
+                                        <span>Rate: ₹{dailyRate.toFixed(2)}/day</span>
+                                    </div>
+                                )}
+
                                 {activity.notes && (
-                                    <span className="text-xs text-blue-600 italic">
-                                        • {activity.notes}
-                                    </span>
+                                    <div className="text-sm text-blue-600 italic font-normal">
+                                        📝 {activity.notes}
+                                    </div>
                                 )}
                             </div>
                         </div>
                     </div>
-                    <div className="text-right">
-                        {activity.amount > 0 && (
-                            <span className={`font-semibold text-sm ${isReturn ? 'text-red-600' : 'text-green-600'
-                                }`}>
-                                {isReturn ? '+' : ''}₹{activity.amount.toFixed(2)}
+
+                    <div className="text-right space-y-1">
+                        {/* Show amount for rentals */}
+                        {isRental && activity.amount > 0 && (
+                            <span className="font-bold text-lg text-green-600 block">
+                                ₹{activity.amount.toFixed(2)}
                             </span>
+                        )}
+
+                        {/* Show payment status for returns */}
+                        {isReturn && (
+                            <div className="space-y-1">
+                                {/* Total return amount */}
+                                <span className="font-bold text-lg text-red-600 block">
+                                    ₹{(activity.amount || 0).toFixed(2)}
+                                </span>
+
+
+
+                                {/* Show calculated vs stored amount for returns */}
+                                {Math.abs(calculatedAmount - (activity.amount || 0)) > 0.01 && (
+                                    <span className="text-xs text-gray-500 block">
+                                        (Calc: ₹{calculatedAmount.toFixed(2)})
+                                    </span>
+                                )}
+                            </div>
                         )}
                     </div>
                 </div>
@@ -353,10 +557,9 @@ function RentalDetails({ rentalId, onBack }) {
 
         if (isPayment) {
             const isRefund = activity.type === 'refund';
-            const isProductPayment = activity.productId;
 
             return (
-                <div key={`payment-${index}`} className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+                <div key={`product-payment-${index}`} className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
                     <div className="flex items-center gap-3">
                         <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isRefund ? 'bg-red-100' : 'bg-blue-100'
                             }`}>
@@ -364,29 +567,26 @@ function RentalDetails({ rentalId, onBack }) {
                                 }`} />
                         </div>
                         <div className="flex-1">
-                            <div className="flex items-center gap-2">
-                                <span className="text-sm font-medium">
-                                    {isRefund ? 'Refund' : 'Payment'} received
-                                    {isProductPayment && ` for ${activity.productName}`}
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-sm font-semibold text-gray-800">
+                                    {isRefund ? 'Refund' : 'Payment received'}
                                 </span>
-                                <span className="text-xs text-gray-500 bg-white px-2 py-1 rounded-full">
+                                <span className="text-sm text-gray-600 bg-white px-2 py-1 rounded-full font-medium">
                                     {activity.displayTime}
                                 </span>
                             </div>
-                            <div className="flex items-center gap-2 mt-1">
-                                <span className="text-xs text-gray-500">
-                                    {activity.displayDate}
-                                </span>
+                            <div className="text-sm text-gray-600 mt-1">
+                                <div className="font-medium">{activity.displayDate}</div>
                                 {activity.notes && (
-                                    <span className="text-xs text-blue-600 italic">
-                                        • {activity.notes}
-                                    </span>
+                                    <div className="text-sm text-blue-600 italic font-normal mt-1">
+                                        📝 {activity.notes}
+                                    </div>
                                 )}
                             </div>
                         </div>
                     </div>
                     <div className="text-right">
-                        <span className={`font-semibold text-sm ${isRefund ? 'text-red-600' : 'text-green-600'
+                        <span className={`font-bold text-lg ${isRefund ? 'text-red-600' : 'text-green-600'
                             }`}>
                             {isRefund ? '-' : '+'}₹{activity.amount.toFixed(2)}
                         </span>
@@ -401,6 +601,109 @@ function RentalDetails({ rentalId, onBack }) {
 
 
 
+    const renderActivityItem = (activity, index) => {
+        const isTransaction = activity.activityType === 'transaction';
+        const isPayment = activity.activityType === 'payment';
+
+        if (isTransaction) {
+            const isRental = activity.type === 'rental';
+            const isReturn = activity.type === 'return' || activity.type === 'partial_return';
+
+            return (
+                <div key={`transaction-${index}`} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                    <div className="flex items-center gap-4">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isRental ? 'bg-green-100' : 'bg-orange-100'
+                            }`}>
+                            {isRental ? (
+                                <FiArrowUpCircle className="w-5 h-5 text-green-600" />
+                            ) : (
+                                <FiArrowDownCircle className="w-5 h-5 text-orange-600" />
+                            )}
+                        </div>
+                        <div className="flex-1">
+                            <div className="flex items-center gap-3">
+                                <span className="text-base font-semibold text-gray-800">
+                                    {isRental ? 'Rented' : 'Returned'} {activity.quantity} units
+                                    {activity.productName && ` of ${activity.productName}`}
+                                </span>
+                            </div>
+                            <div className="flex items-center gap-3 mt-2">
+                                <span className="text-base text-gray-700 font-medium">
+                                    {activity.displayDate}
+                                </span>
+                                <span className="text-base text-gray-600 bg-white px-3 py-1 rounded-full font-medium">
+                                    {activity.displayTime}
+                                </span>
+                                {activity.notes && (
+                                    <span className="text-sm text-blue-600 italic font-normal">
+                                        {activity.notes}
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                    <div className="text-right">
+                        {activity.amount > 0 && (
+                            <span className={`font-bold text-xl ${isReturn ? 'text-red-600' : 'text-green-600'
+                                }`}>
+                                {isReturn ? '-' : ''}₹{activity.amount.toFixed(2)}
+                            </span>
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        if (isPayment) {
+            const isRefund = activity.type === 'refund';
+            const isProductPayment = activity.productId;
+
+            return (
+                <div key={`payment-${index}`} className="flex items-center justify-between p-4 bg-blue-50 rounded-lg">
+                    <div className="flex items-center gap-4">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isRefund ? 'bg-red-100' : 'bg-blue-100'
+                            }`}>
+                            <FiCreditCard className={`w-5 h-5 ${isRefund ? 'text-red-600' : 'text-blue-600'
+                                }`} />
+                        </div>
+                        <div className="flex-1">
+                            <div className="flex items-center gap-3">
+                                <span className="text-base font-semibold text-gray-800">
+                                    {isRefund ? 'Refund' : 'Payment received'}
+                                    {isProductPayment && ` for ${activity.productName}`}
+                                </span>
+                            </div>
+                            <div className="flex items-center gap-3 mt-2">
+                                <span className="text-base text-gray-700 font-medium">
+                                    {activity.displayDate}
+                                </span>
+                                <span className="text-base text-gray-600 bg-white px-3 py-1 rounded-full font-medium">
+                                    {activity.displayTime}
+                                </span>
+                                {activity.notes && (
+                                    <span className="text-sm text-blue-600 italic font-normal">
+                                        {activity.notes}
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                    <div className="text-right">
+                        <span className={`font-bold text-xl ${isRefund ? 'text-red-600' : 'text-green-600'
+                            }`}>
+                            {isRefund ? '-' : '+'}₹{activity.amount.toFixed(2)}
+                        </span>
+                    </div>
+                </div>
+            );
+        }
+
+        return null;
+    };
+//hrh//
+
+
+
     const renderProductCard = (productItem, index) => {
         const daysRented = calculateDaysRentedForProduct(productItem);
         const liveAmount = calculateLiveAmountForProduct(productItem);
@@ -408,12 +711,15 @@ function RentalDetails({ rentalId, onBack }) {
         const isFullyPaid = productBalance <= 0;
         const paidAmount = liveAmount - productBalance;
 
+        // Get product-specific activities
+        const productActivities = getProductActivities(productItem.productId._id || productItem.productId);
+
         return (
-            <div key={index} className="bg-gray-50 p-6 rounded-lg border">
+            <div key={index} className="bg-gray-50 p-8 rounded-lg shadow-xl border border-[#eddbdb] ">
                 <div className="flex justify-between items-start mb-4">
                     <div className="flex-1">
                         <div className="flex items-center gap-2 mb-2">
-                            <h4 className="text-lg font-semibold text-gray-800">{productItem.productName}</h4>
+                            <h4 className="text-lg font-semibold text-gray-800 Rented Products uppercase">{productItem.productName}</h4>
                             {isFullyPaid && (
                                 <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs font-medium flex items-center gap-1">
                                     <FiCheck className="w-3 h-3" />
@@ -427,109 +733,120 @@ function RentalDetails({ rentalId, onBack }) {
                             )}
                         </div>
 
-                        <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mt-3 text-sm">
+                        {/* Product Stats Grid */}
+                        <div className="grid grid-cols-2 md:grid-cols-6 gap-2 mt-3 text-sm">
                             <div>
-                                <span className="text-gray-600">Current Qty:</span>
+                                <span className="text-gray-600">Current Qty</span>
                                 <span className="ml-2 font-semibold text-blue-600">{productItem.currentQuantity} units</span>
                             </div>
                             <div>
-                                <span className="text-gray-600">Rate:</span>
+                                <span className="text-gray-600">Rate</span>
                                 <span className="ml-2 font-semibold">₹{productItem.rate}/{productItem.rateType}</span>
                             </div>
                             <div>
-                                <span className="text-gray-600">Days:</span>
+                                <span className="text-gray-600">Days</span>
                                 <span className="ml-2 font-semibold text-orange-600">{daysRented} days</span>
                             </div>
-                            <div>
-                                <span className="text-gray-600">Total Amount:</span>
-                                <span className="ml-2 font-semibold text-purple-600">₹{liveAmount.toFixed(2)}</span>
-                            </div>
-                            <div>
-                                <span className="text-gray-600">Paid:</span>
-                                <span className="ml-2 font-semibold text-green-600">₹{paidAmount.toFixed(2)}</span>
-                            </div>
-                            <div>
-                                <span className="text-gray-600">Balance:</span>
-                                <span className={`ml-2 font-semibold ${isFullyPaid ? 'text-green-600' : 'text-red-600'}`}>
-                                    ₹{productBalance.toFixed(2)}
-                                </span>
-                            </div>
+
+
                         </div>
                     </div>
 
+                    {/* Product Action Buttons */}
                     <div className="flex flex-col gap-2 ml-4">
-                        {/* Product Action Buttons */}
                         <div className="flex gap-2">
+
+                        </div>
+
+                        {/* Product Payment Buttons */}
+                        <div className="flex gap-2 ">
                             <button
                                 onClick={() => openModal('return', productItem)}
-                                disabled={productItem.currentQuantity === 0}
-                                className="bg-orange-500 hover:bg-orange-600 disabled:bg-gray-300 text-white px-3 py-1 rounded text-sm transition-colors flex items-center gap-1"
+                                disabled={productItem.currentQuantity <= 0}
+                                className="cursor-pointer bg-orange-500 hover:bg-orange-600 disabled:bg-gray-300 text-white px-3 py-1 rounded text-sm transition-colors flex items-center gap-1"
                             >
                                 <FiMinus className="w-3 h-3" />
                                 Return
                             </button>
                             <button
                                 onClick={() => openModal('add-rental', productItem)}
-                                className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm transition-colors flex items-center gap-1"
+                                className=" cursor-pointer bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm transition-colors flex items-center gap-1"
                             >
                                 <FiPlus className="w-3 h-3" />
                                 Add More
                             </button>
-                        </div>
 
-                        {/* Product Payment Buttons */}
-                        {!isFullyPaid && (
-                            <div className="flex gap-2">
-                                <button
-                                    onClick={() => openModal('product-payment', productItem)}
-                                    className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm transition-colors flex items-center gap-1"
-                                >
-                                    <FiDollarSign className="w-3 h-3" />
-                                    Pay
-                                </button>
-                                <button
-                                    onClick={() => openModal('product-full-payment', productItem)}
-                                    className="bg-purple-500 hover:bg-purple-600 text-white px-3 py-1 rounded text-sm transition-colors flex items-center gap-1"
-                                >
-                                    <FiDollarSign className="w-3 h-3" />
-                                    Pay Full
-                                </button>
-                            </div>
-                        )}
+                            {!isFullyPaid && (
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => openModal('product-payment', productItem)}
+                                        className="cursor-pointer bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm transition-colors flex items-center gap-1"
+                                    >
+                                        <FiDollarSign className="w-3 h-3" />
+                                        Pay
+                                    </button>
+
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
 
-                {/* Payment Summary for Product */}
-                <div className="mt-4 p-3 bg-white rounded border">
-                    <h5 className="text-sm font-medium text-gray-700 mb-2">Payment Summary</h5>
-                    <div className="grid grid-cols-3 gap-4 text-xs">
+                {/* Payment Summary */}
+                <div className="mt-4 p-4 bg-white rounded-2xl shadow-xl shadow-gray-200">
+                    <h5 className="text-base font-semibold text-gray-700 mb-3">Payment Summary</h5>
+                    <div className="grid grid-cols-3 gap-4 text-sm">
                         <div className="text-center">
-                            <div className="text-gray-600">Total Amount</div>
-                            <div className="font-bold text-purple-600">₹{liveAmount.toFixed(2)}</div>
+                            <div className="text-gray-600 text-sm font-medium">Total Amount</div>
+                            <div className="font-bold text-lg text-purple-600">₹{liveAmount.toFixed(2)}</div>
                         </div>
                         <div className="text-center">
-                            <div className="text-gray-600">Paid Amount</div>
-                            <div className="font-bold text-green-600">₹{paidAmount.toFixed(2)}</div>
+                            <div className="text-gray-600 text-sm font-medium">Paid Amount</div>
+                            <div className="font-bold text-lg text-green-600">₹{paidAmount.toFixed(2)}</div>
                         </div>
                         <div className="text-center">
-                            <div className="text-gray-600">Balance</div>
-                            <div className={`font-bold ${isFullyPaid ? 'text-green-600' : 'text-red-600'}`}>
+                            <div className="text-gray-600 text-sm font-medium">Balance</div>
+                            <div className={`font-bold text-lg ${isFullyPaid ? 'text-green-600' : 'text-red-600'}`}>
                                 ₹{productBalance.toFixed(2)}
                             </div>
                         </div>
                     </div>
 
                     {/* Payment Progress Bar */}
-                    <div className="mt-3">
-                        <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div className="mt-4">
+                        <div className="w-full bg-gray-200 rounded-full h-3">
                             <div
-                                className="bg-green-500 h-2 rounded-full transition-all duration-300"
+                                className="bg-green-500 h-3 rounded-full transition-all duration-300"
                                 style={{ width: `${liveAmount > 0 ? (paidAmount / liveAmount) * 100 : 0}%` }}
                             ></div>
                         </div>
-                        <div className="text-xs text-center text-gray-600 mt-1">
+                        <div className="text-sm text-center text-gray-600 mt-2 font-medium">
                             {liveAmount > 0 ? ((paidAmount / liveAmount) * 100).toFixed(1) : 0}% Paid
                         </div>
+                    </div>
+                </div>
+
+
+                {/* ✅ NEW: Product-Specific Activity History */}
+                <div className="mt-4 p-5 bg-white rounded-2xl shadow-xl shadow-gray-200">
+                    <div className="flex items-center justify-between mb-3">
+                        <h5 className="text-sm font-medium text-gray-700">Product Activity History</h5>
+                        <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                            {productActivities.length} activities
+                        </span>
+                    </div>
+
+                    <div className="space-y-2  overflow-y-auto">
+                        {productActivities.length > 0 ? (
+                            productActivities.map((activity, index) =>
+                                renderProductActivityItem(activity, index)
+                            )
+                        ) : (
+                            <div className="text-center py-4 text-gray-500">
+                                <FiPackage className="w-6 h-6 mx-auto mb-2 opacity-50" />
+                                <p className="text-xs">No activity recorded for this product yet</p>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
@@ -576,7 +893,7 @@ function RentalDetails({ rentalId, onBack }) {
 
 
     return (
-        <div className="p-6 bg-gradient-to-br from-rose-50 to-pink-50 min-h-screen">
+        <div className="p-6 bg-gradient-to-br from-rose-50 to-pink-50 min-h-screen ">
             {/* Header */}
             <div className="mb-8">
                 <div className="flex items-center gap-4 mb-4">
@@ -587,10 +904,10 @@ function RentalDetails({ rentalId, onBack }) {
                         <FiArrowLeft className="w-5 h-5 text-gray-600" />
                     </button>
                     <div>
-                        <h2 className="text-3xl font-bold text-gray-800 bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                        <h2 className="text-3xl font-bold text-[#b86969] bg-[#b86969] bg-clip-text text-transparent">
                             Rental Details
                         </h2>
-                        <p className="text-gray-600">{rental.customerName}'s rental management</p>
+                        <p className="text-gray-600"> <span className="uppercase font-bold">{rental.customerName}</span>'s rental management</p>
                     </div>
                 </div>
             </div>
@@ -605,7 +922,7 @@ function RentalDetails({ rentalId, onBack }) {
                         </div>
                         <div>
                             <p className="text-sm text-gray-600">Customer Name</p>
-                            <p className="font-semibold">{rental.customerName}</p>
+                            <p className="font-semibold  uppercase">{rental.customerName}</p>
                         </div>
                     </div>
                     <div className="flex items-center gap-3">
@@ -631,55 +948,57 @@ function RentalDetails({ rentalId, onBack }) {
                 </div>
             </div>
 
-            {/* Summary Information */}
-            {/* Summary Information - Updated with 6 cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
+            <div className="w-full flex items-center justify-center mb-5">
+
+                {/* Summary Information - Updated with 6 cards */}
+                <div className="w-full flex flex-row gap-[10%] justify-center">
 
 
-                <div className="bg-white rounded-xl shadow-lg p-4">
-                    <div className="flex items-center gap-3">
-                        <div className="bg-blue-100 p-2 rounded-full">
-                            <FiPackage className="w-5 h-5 text-blue-600" />
-                        </div>
-                        <div>
-                            <p className="text-xs text-gray-600">Active Products</p>
-                            <p className="text-lg font-bold text-gray-900">
-                                {(rental.productItems || []).filter(item => item.currentQuantity > 0).length}
-                            </p>
-                        </div>
-                    </div>
-                </div>
-
-
-
-                <div className="bg-white rounded-xl shadow-lg p-4">
-                    <div className="flex items-center gap-3">
-                        <div className="bg-indigo-100 p-2 rounded-full">
-                            <FiDollarSign className="w-5 h-5 text-indigo-600" />
-                        </div>
-                        <div>
-                            <p className="text-xs text-gray-600">Total Rental Amount</p>
-                            <p className="text-lg font-bold text-indigo-600">
-                                ₹{calculateTotalRentalAmount().toFixed(2)}
-                            </p>
+                    <div className="bg-white rounded-xl shadow-lg p-4 px-10">
+                        <div className="flex items-center gap-3">
+                            <div className="bg-blue-100 p-2 rounded-full">
+                                <FiPackage className="w-5 h-5 text-blue-600" />
+                            </div>
+                            <div>
+                                <p className="text-xs text-gray-600">Active Products</p>
+                                <p className="text-lg font-bold text-gray-900">
+                                    {(rental.productItems || []).filter(item => item.currentQuantity > 0).length}
+                                </p>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <div className="bg-white rounded-xl shadow-lg p-4">
-                    <div className="flex items-center gap-3">
-                        <div className="bg-red-100 p-2 rounded-full">
-                            <FiDollarSign className="w-5 h-5 text-red-600" />
-                        </div>
-                        <div>
-                            <p className="text-xs text-gray-600">Total Balance</p>
-                            <p className="text-lg font-bold text-red-600">
-                                ₹{calculateTotalBalance().toFixed(2)}
-                            </p>
+
+
+                    <div className="bg-white rounded-xl shadow-lg p-4 px-10">
+                        <div className="flex items-center gap-3">
+                            <div className="bg-indigo-100 p-2 rounded-full">
+                                <FiDollarSign className="w-5 h-5 text-indigo-600" />
+                            </div>
+                            <div>
+                                <p className="text-xs text-gray-600">Total Rental Amount</p>
+                                <p className="text-lg font-bold text-indigo-600">
+                                    ₹{calculateTotalRentalAmount().toFixed(2)}
+                                </p>
+                            </div>
                         </div>
                     </div>
-                </div>
 
+                    <div className="bg-white rounded-xl shadow-lg p-4 px-10">
+                        <div className="flex items-center gap-3">
+                            <div className="bg-red-100 p-2 rounded-full">
+                                <FiDollarSign className="w-5 h-5 text-red-600" />
+                            </div>
+                            <div>
+                                <p className="text-xs text-gray-600">Total Balance</p>
+                                <p className="text-lg font-bold text-red-600">
+                                    ₹{calculateTotalBalance().toFixed(2)}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
             </div>
 
             {/* Products Section - Updated with Product-Specific Payments */}
@@ -705,37 +1024,33 @@ function RentalDetails({ rentalId, onBack }) {
 
 
 
-            {/** 
-           
+
+
+
+            {/* Enhanced General Actions with Discount Option */}
+            {/* Simplified General Actions - Only Global Payment and General Payment with Discount */}
             <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4">General Actions</h3>
+                <h3 className="text-lg font-semibold text-gray-800 mb-4">Payment Actions</h3>
                 <div className="flex flex-wrap gap-4">
+             
+                    {/* General Payment with Discount Button */}
                     <button
-                        onClick={() => openModal('payment')}
-                        className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white px-6 py-3 rounded-lg transition-all flex items-center gap-2"
+                        onClick={() => openModal('general-payment')}
+                        disabled={calculateTotalBalance() <= 0}
+                        className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 disabled:bg-gray-300 text-white px-6 py-3 rounded-lg transition-all flex items-center gap-2"
                     >
                         <FiDollarSign className="w-5 h-5" />
-                        Add General Payment
+                        Payment & Discount (Balance: ₹{calculateTotalBalance().toFixed(2)})
                     </button>
                 </div>
             </div>
-            */}
 
-            {/* Activity History */}
-            <div className="bg-white rounded-xl shadow-lg p-6">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4">Activity History</h3>
-                <div className="space-y-3">
-                    {getAllActivities().map((activity, index) =>
-                        renderActivityItem(activity, index)
-                    )}
-                    {getAllActivities().length === 0 && (
-                        <div className="text-center py-8 text-gray-500">
-                            <FiPackage className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                            <p>No activity recorded yet</p>
-                        </div>
-                    )}
-                </div>
-            </div>
+
+
+
+
+
+
 
             {/* Enhanced Modal with Product-Specific Payment Options */}
             {isModalOpen && (
@@ -1130,6 +1445,139 @@ function RentalDetails({ rentalId, onBack }) {
                                         </div>
                                     </>
                                 )}
+                                {/* Single Global Payment Modal */}
+                                {/* General Payment with Discount Modal */}
+                                {/* General Payment with Discount Modal - Discount defaults to 0 */}
+                                {modalType === 'general-payment' && (
+                                    <>
+                                        <div className="mb-4 p-4 bg-green-50 rounded-lg">
+                                            <p className="text-sm text-green-800">
+                                                <strong>Payment & Discount</strong>
+                                            </p>
+                                            <p className="text-lg font-bold text-green-900 mt-2">
+                                                Current Total Balance: ₹{calculateTotalBalance().toFixed(2)}
+                                            </p>
+                                            <p className="text-sm text-green-700 mt-1">
+                                                Add payment and optionally apply discount to reduce the total balance.
+                                            </p>
+                                        </div>
+
+                                        {/* Payment Amount - Required */}
+                                        <div className="mb-4">
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                💰 Payment Amount <span className="text-red-500">*</span>
+                                            </label>
+                                            <input
+                                                type="number"
+                                                name="amount"
+                                                value={formData.amount}
+                                                onChange={handleChange}
+                                                step="0.01"
+                                                min="0.01"
+                                                max={calculateTotalBalance() - (parseFloat(formData.discountAmount) || 0)}
+                                                required
+                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                                                placeholder="Enter payment amount"
+                                            />
+                                        </div>
+
+                                        {/* Discount Amount - Optional, defaults to 0 */}
+                                        <div className="mb-4">
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                💸 Discount Amount (Optional)
+                                            </label>
+                                            <input
+                                                type="number"
+                                                name="discountAmount"
+                                                value={formData.discountAmount}
+                                                onChange={handleChange}
+                                                step="0.01"
+                                                min="0"
+                                                max={calculateTotalBalance() - (parseFloat(formData.amount) || 0)}
+                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                                                placeholder="Enter discount amount (default: 0)"
+                                            />
+                                            <p className="text-xs text-gray-500 mt-1">
+                                                Discount will reduce the total amount permanently (set to 0 for no discount)
+                                            </p>
+                                        </div>
+
+                                        {/* Payment Type */}
+                                        <div className="mb-4">
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                Payment Type
+                                            </label>
+                                            <select
+                                                name="paymentType"
+                                                value={formData.paymentType}
+                                                onChange={handleChange}
+                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                                            >
+                                                <option value="general">General Payment</option>
+                                                <option value="partial_payment">Partial Payment</option>
+                                                <option value="advance">Advance Payment</option>
+                                            </select>
+                                        </div>
+
+                                        {/* Payment Notes */}
+                                        <div className="mb-4">
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                Payment Notes
+                                            </label>
+                                            <textarea
+                                                name="notes"
+                                                value={formData.notes}
+                                                onChange={handleChange}
+                                                rows="2"
+                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                                                placeholder="Payment method, reference, etc."
+                                            />
+                                        </div>
+
+                                        {/* Discount Notes - Only show if discount > 0 */}
+                                        {formData.discountAmount && parseFloat(formData.discountAmount) > 0 && (
+                                            <div className="mb-4">
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                    Discount Notes
+                                                </label>
+                                                <textarea
+                                                    name="discountNotes"
+                                                    value={formData.discountNotes}
+                                                    onChange={handleChange}
+                                                    rows="2"
+                                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                                                    placeholder="Reason for discount, special offer, etc."
+                                                />
+                                            </div>
+                                        )}
+
+                                        {/* Transaction Summary - Always show */}
+                                        <div className="mb-4 p-3 bg-blue-50 rounded-lg">
+                                            <p className="text-sm font-medium text-blue-800 mb-2">Transaction Summary:</p>
+                                            <div className="space-y-1 text-sm text-blue-700">
+                                                <p>💰 Payment: ₹{(parseFloat(formData.amount) || 0).toFixed(2)}</p>
+                                                <p>💸 Discount: ₹{(parseFloat(formData.discountAmount) || 0).toFixed(2)}</p>
+                                                <p className="font-medium border-t pt-1">
+                                                    📊 Total Reduction: ₹{((parseFloat(formData.amount) || 0) + (parseFloat(formData.discountAmount) || 0)).toFixed(2)}
+                                                </p>
+                                                <p className="font-medium text-green-700">
+                                                    🎯 New Balance: ₹{(calculateTotalBalance() - (parseFloat(formData.amount) || 0) - (parseFloat(formData.discountAmount) || 0)).toFixed(2)}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
+
+
+
+                                <div>
+
+
+
+                                </div>
+
+
+
 
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1164,6 +1612,7 @@ function RentalDetails({ rentalId, onBack }) {
                                         {modalType === 'payment' && 'Add Payment'}
                                         {modalType === 'product-payment' && 'Process Payment'}
                                         {modalType === 'product-full-payment' && 'Pay Full Amount'}
+                                        {modalType === 'global-full-payment' && 'Pay Amount'}
                                     </button>
                                 </div>
                             </form>

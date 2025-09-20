@@ -180,12 +180,12 @@ function AdminProducts() {
 
       {/* Header */}
       <div className="flex justify-between items-center mb-8">
-        <h2 className="text-3xl font-bold text-gray-800 bg-gradient-to-r from-rose-600 to-pink-600 bg-clip-text text-transparent">
+        <h2 className="text-3xl font-bold text-gray-800 bg-[#b86969] bg-clip-text text-transparent">
           Product Management
         </h2>
         <button
           onClick={openAddModal}
-          className="bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white px-6 py-3 rounded-lg font-medium shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-2"
+          className="bg-[#b86969] hover:to-[#af5d5d] cursor-pointer text-white px-6 py-3 rounded-lg font-medium shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-2"
         >
           <FiPlus className="w-5 h-5" />
           Add Product
@@ -205,7 +205,7 @@ function AdminProducts() {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gradient-to-r from-rose-500 to-pink-500 text-white">
+              <thead className="bg-[#b86969] text-white">
                 <tr>
                   <th className="px-6 py-4 text-left font-semibold">Product Name</th>
                   <th className="px-6 py-4 text-left font-semibold">Quantity</th>

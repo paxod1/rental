@@ -118,7 +118,7 @@ function AdminRented() {
 
             {/* Header with Search */}
             <div className="mb-8">
-                <h2 className="text-3xl font-bold text-gray-800 bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                <h2 className="text-3xl font-bold text-[#b86969]  bg-[#b86969] bg-clip-text text-transparent">
                     Active Rentals
                 </h2>
                 <p className="text-gray-600 mt-2 mb-6">Click on any rental card to view details and manage</p>
@@ -169,7 +169,7 @@ function AdminRented() {
                         <div className="flex items-end">
                             <button
                                 onClick={clearSearch}
-                                className="w-full bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center justify-center gap-2"
+                                className="w-full bg-[#b86969] cursor-pointer text-white px-4 py-2 rounded-lg transition-colors flex items-center justify-center gap-2"
                             >
                                 <FiX className="w-4 h-4" />
                                 Clear Filters
@@ -221,7 +221,8 @@ function AdminRented() {
                         <div 
                             key={rental._id} 
                             onClick={() => handleCardClick(rental._id)}
-                            className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer border hover:border-blue-300"
+                            className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer border border-gray-50
+                             hover:border-[#994646]"
                         >
                             <div className="p-6">
                                 <div className="flex items-center justify-between">
@@ -232,7 +233,7 @@ function AdminRented() {
                                                 <FiUser className="w-5 h-5 text-blue-600" />
                                             </div>
                                             <div>
-                                                <h3 className="text-lg font-semibold text-gray-800">
+                                                <h3 className="text-lg font-semibold text-gray-800 uppercase">
                                                     {rental.customerName || 'Unknown Customer'}
                                                 </h3>
                                                 <div className="flex items-center gap-4 text-sm text-gray-600 mt-1">

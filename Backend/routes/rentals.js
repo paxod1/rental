@@ -882,6 +882,7 @@ router.delete("/:id", async (req, res) => {
 // @desc    Add product-specific payment
 // @route   PUT /api/rentals/:id/product-payment
 
+// desc: Add product-specific payment
 router.put("/:id/product-payment", async (req, res) => {
   try {
     const { productId, amount, paymentType, notes } = req.body;
@@ -889,7 +890,7 @@ router.put("/:id/product-payment", async (req, res) => {
     console.log('\n💳 PRODUCT PAYMENT STARTING...');
     console.log(`🆔 Rental ID: ${req.params.id}`);
     console.log(`🆔 Product ID: ${productId}`);
-    console.log(`💰 Payment Amount: $${amount}`);
+    console.log(`💰 Payment Amount: ₹${amount}`);
 
     if (!productId || !amount || amount <= 0) {
       return res.status(400).json({
@@ -913,32 +914,39 @@ router.put("/:id/product-payment", async (req, res) => {
       return res.status(404).json({ message: "Product not found in this rental" });
     }
 
-    // ✅ DEBUG: Check product state
-    console.log('\n📊 PRODUCT STATE DEBUG:');
+    // ✅ FIXED: Calculate product balance properly
+    console.log('\n📊 PRODUCT BALANCE CALCULATION:');
     console.log(`   Product Name: ${productItem.productName}`);
     console.log(`   Product Amount: ₹${productItem.amount}`);
-    console.log(`   Product Paid Amount: ₹${productItem.paidAmount || 0}`);
-    console.log(`   Product Balance Amount: ₹${productItem.balanceAmount || 0}`);
+    console.log(`   Amount Locked: ${productItem.amountLocked}`);
 
-    // ✅ DEBUG: Check what getProductBalance returns
-    const currentProductBalance = rental.getProductBalance ? rental.getProductBalance(productId) : (productItem.amount - (productItem.paidAmount || 0));
-    console.log(`   getProductBalance() result: ₹${currentProductBalance}`);
-    console.log(`   Manual calculation: ₹${productItem.amount} - ₹${productItem.paidAmount || 0} = ₹${productItem.amount - (productItem.paidAmount || 0)}`);
-
-    // ✅ DEBUG: Check all payments for this product
-    const productPayments = rental.payments.filter(p =>
-      p.productId && p.productId.toString() === productId.toString()
+    // Get all payments for this specific product
+    const productPayments = rental.payments.filter(payment => 
+      payment.productId && payment.productId.toString() === productId.toString()
     );
-    console.log(`   Found ${productPayments.length} existing payments for this product:`);
-    productPayments.forEach((payment, index) => {
-      console.log(`     Payment ${index + 1}: ₹${payment.amount} (${payment.type}) on ${payment.date}`);
-    });
+
+    const totalPaid = productPayments.reduce((sum, payment) => {
+      return payment.type === 'refund' ? sum - payment.amount : sum + payment.amount;
+    }, 0);
+
+    // ✅ CORRECTED: Use the actual product amount and payments
+    const currentProductBalance = Math.max(0, productItem.amount - totalPaid);
+
+    console.log(`   Existing Payments: ${productPayments.length}`);
+    console.log(`   Total Paid: ₹${totalPaid}`);
+    console.log(`   Calculated Balance: ₹${currentProductBalance}`);
 
     // Check if payment amount exceeds product balance
     if (amount > currentProductBalance) {
-      console.log(`❌ PAYMENT REJECTED: $${amount} > ₹${currentProductBalance}`);
+      console.log(`❌ PAYMENT REJECTED: ₹${amount} > ₹${currentProductBalance}`);
       return res.status(400).json({
         message: `Payment amount (₹${amount}) exceeds product balance (₹${currentProductBalance.toFixed(2)})`
+      });
+    }
+
+    if (currentProductBalance <= 0) {
+      return res.status(400).json({
+        message: "This product is already fully paid"
       });
     }
 
@@ -958,7 +966,7 @@ router.put("/:id/product-payment", async (req, res) => {
     await rental.save();
 
     // Check if rental should be marked as completed
-    if (rental.isFullyReturned() && rental.balanceAmount <= 0) {
+    if (rental.isFullyReturned && rental.balanceAmount <= 0) {
       rental.status = 'completed';
       await rental.save();
       console.log('✅ RENTAL MARKED AS COMPLETED');
@@ -967,13 +975,15 @@ router.put("/:id/product-payment", async (req, res) => {
     const updatedRental = await Rental.findById(rental._id)
       .populate('productItems.productId', 'name rate rateType');
 
-    console.log('\n🏁 PAYMENT COMPLETED SUCCESSFULLY');
+    console.log('✅ PAYMENT COMPLETED SUCCESSFULLY');
     res.json(updatedRental);
+
   } catch (error) {
     console.error('❌ Error in product-payment:', error);
     res.status(500).json({ message: error.message });
   }
 });
+
 
 
 // @desc    Pay full amount for specific product
@@ -1124,57 +1134,64 @@ router.put("/:id/return-and-pay", async (req, res) => {
     console.log(`📝 Found ${rentalTransactions.length} rental transactions`);
 
     let totalUnitWiseCost = 0;
+    let daysUntilReturn = 0; // ✅ Declare this variable
 
     for (const transaction of rentalTransactions) {
       const rentalStartDate = new Date(transaction.date);
 
-      // ✅ FIXED DAY CALCULATION:
-      // - Returned units: from start to return date (inclusive)
-      // - Remaining units: from start to current date (inclusive, but not +1 extra)
+      // ✅ CORRECTED: Proper inclusive day calculation
+      // For returned units: from rental start to return date (inclusive)
+      daysUntilReturn = Math.ceil((selectedReturnDate - rentalStartDate) / (1000 * 60 * 60 * 24)) + 1;
 
-      const daysUntilReturn = Math.ceil((selectedReturnDate - rentalStartDate) / (1000 * 60 * 60 * 24)) + 1;
-      // ✅ FIX: Remove the extra +1 for total days
+      // ✅ FIXED: For remaining units: from rental start to current date (inclusive, but don't double-add)
       const totalDaysFromStart = Math.ceil((new Date() - rentalStartDate) / (1000 * 60 * 60 * 24));
 
       // Calculate cost for returned units (start to return date)
       const returnedUnitsCost = returnQuantity * daysUntilReturn * dailyRate;
 
-      // Calculate cost for remaining units (start to current - FULL DURATION)
+      // Calculate cost for remaining units (start to current)
       const remainingUnits = productItem.currentQuantity - returnQuantity;
       const remainingUnitsCost = remainingUnits * totalDaysFromStart * dailyRate;
 
       totalUnitWiseCost = returnedUnitsCost + remainingUnitsCost;
 
-      console.log(`🔹 Option B Unit-wise calculation (FIXED):`);
+      console.log(`🔹 Option B Unit-wise calculation (CORRECTED):`);
+      console.log(`   📅 Return period: ${daysUntilReturn} days (${new Date(rentalStartDate).toLocaleDateString()} to ${selectedReturnDate.toLocaleDateString()})`);
+      console.log(`   📅 Current period: ${totalDaysFromStart} days (${new Date(rentalStartDate).toLocaleDateString()} to ${new Date().toLocaleDateString()})`);
       console.log(`   💰 Returned units: ${returnQuantity} units × ${daysUntilReturn} days × ₹${dailyRate} = ₹${returnedUnitsCost}`);
       console.log(`   💰 Remaining units: ${remainingUnits} units × ${totalDaysFromStart} days × ₹${dailyRate} = ₹${remainingUnitsCost}`);
       console.log(`   🔹 Total unit-wise cost: ₹${totalUnitWiseCost}`);
 
-      break; // Process only the first transaction for simplicity
+      break;
     }
+
 
     // ✅ ALWAYS update amount with unit-wise calculation
     productItem.amount = Math.round(totalUnitWiseCost * 100) / 100;
     productItem.amountLocked = true;
 
     console.log(`   ✅ Amount updated to: ₹${productItem.amount}`);
-    // **********************************************************************************************
 
+    // ✅ Calculate the return amount directly using the same logic
+    const returnTransactionAmount = returnQuantity * daysUntilReturn * dailyRate;
 
-    // ✅ Use selectedReturnDate in calculateProductFIFOReturn
+    // Use calculateProductFIFOReturn for other purposes but calculate amount correctly
     const returnCalculation = calculateProductFIFOReturn(rental, productId, returnQuantity, selectedReturnDate);
 
-    // Add return transaction
+    // Add return transaction with correct amount calculation
     rental.transactions.push({
       type: returnQuantity === productItem.currentQuantity ? 'return' : 'partial_return',
       productId: productId,
       productName: productItem.productName,
       quantity: returnQuantity,
-      days: null,
-      amount: returnCalculation.total,
+      days: daysUntilReturn, // ✅ Add the calculated days
+      amount: Math.round(returnTransactionAmount * 100) / 100, // ✅ Use direct calculation
       date: selectedReturnDate,
       notes: notes || `Return processed for ${productItem.productName} on ${selectedReturnDate.toLocaleDateString()}`
     });
+
+    console.log(`✅ Return transaction amount: ₹${returnTransactionAmount.toFixed(2)} (${returnQuantity} units × ${daysUntilReturn} days × ₹${dailyRate}/day)`);
+
 
     // Update current quantity
     productItem.currentQuantity -= returnQuantity;
@@ -1260,6 +1277,200 @@ router.put("/:id/return-and-pay", async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 });
+
+// desc: Add global payment (pay total balance - full or partial)
+
+
+
+
+// @desc    Add general payment with optional discount
+// @route   PUT /api/rentals/:id/general-payment
+router.put("/:id/general-payment", async (req, res) => {
+  try {
+    const { amount, discountAmount, paymentType, notes, discountNotes } = req.body;
+    
+    console.log('\n💰 SIMPLE GENERAL PAYMENT STARTING...');
+    console.log(`🆔 Rental ID: ${req.params.id}`);
+    console.log(`💰 Payment: ₹${amount || 0}`);
+    console.log(`💸 Discount: ₹${discountAmount || 0}`);
+    
+    // Validation
+    if ((!amount || amount <= 0) && (!discountAmount || discountAmount <= 0)) {
+      return res.status(400).json({
+        message: "Please provide either payment amount or discount amount"
+      });
+    }
+    
+    const rental = await Rental.findById(req.params.id)
+      .populate('productItems.productId', 'name rate rateType');
+    
+    if (!rental) {
+      return res.status(404).json({ message: "Rental not found" });
+    }
+    
+    const discountAmt = parseFloat(discountAmount) || 0;
+    const paymentAmt = parseFloat(amount) || 0;
+    const totalToDistribute = discountAmt + paymentAmt;
+    
+    console.log(`📊 Total to distribute: ₹${totalToDistribute}`);
+    
+    // ✅ GET PRODUCTS WITH OUTSTANDING BALANCES
+    const productsWithBalance = rental.productItems.map(item => {
+      const productPayments = rental.payments.filter(payment =>
+        payment.productId && payment.productId.toString() === item.productId._id.toString()
+      );
+      const totalPaid = productPayments.reduce((sum, payment) => {
+        return payment.type === 'refund' ? sum - payment.amount : sum + payment.amount;
+      }, 0);
+      const currentBalance = Math.max(0, item.amount - totalPaid);
+      
+      return {
+        productItem: item,
+        productId: item.productId._id,
+        productName: item.productName || item.productId.name,
+        currentBalance,
+        originalAmount: item.amount
+      };
+    }).filter(item => item.currentBalance > 0);
+    
+    if (productsWithBalance.length === 0) {
+      return res.status(400).json({ message: "No products with outstanding balance found" });
+    }
+    
+    console.log(`🎯 Products with balance: ${productsWithBalance.length}`);
+    productsWithBalance.forEach(product => {
+      console.log(`   📦 ${product.productName}: Balance ₹${product.currentBalance}`);
+    });
+    
+    // ✅ SIMPLE DISTRIBUTION LOGIC
+    let remainingAmount = totalToDistribute;
+    const distributionDetails = [];
+    
+    // Try to distribute equally, handle overflow automatically
+    while (remainingAmount > 0) {
+      const availableProducts = productsWithBalance.filter(p => p.currentBalance > 0);
+      if (availableProducts.length === 0) {
+        return res.status(400).json({
+          message: `Cannot distribute ₹${remainingAmount} - all products are fully paid. Reduce payment amount.`,
+          excessAmount: remainingAmount
+        });
+      }
+      
+      // Equal distribution
+      const amountPerProduct = Math.floor(remainingAmount / availableProducts.length);
+      const remainder = remainingAmount - (amountPerProduct * availableProducts.length);
+      
+      console.log(`\n🔄 Distributing ₹${amountPerProduct} base + ₹${remainder} remainder among ${availableProducts.length} products`);
+      
+      let usedThisRound = 0;
+      
+      availableProducts.forEach((product, index) => {
+        let amountForProduct = amountPerProduct;
+        if (index < remainder) amountForProduct += 1; // Add remainder
+        
+        // Don't exceed current balance
+        const actualAmount = Math.min(amountForProduct, product.currentBalance);
+        
+        if (actualAmount > 0) {
+          // Calculate discount/payment split proportionally
+          const discountRatio = discountAmt / totalToDistribute;
+          const discountPortion = Math.round(actualAmount * discountRatio);
+          const paymentPortion = actualAmount - discountPortion;
+          
+          // Apply discount (reduce rental amount)
+          if (discountPortion > 0) {
+            product.productItem.amount -= discountPortion;
+          }
+          
+          // Apply payment (add to payments array)
+          if (paymentPortion > 0) {
+            rental.payments.push({
+              amount: paymentPortion,
+              type: paymentType || 'product_payment',
+              productId: product.productId,
+              productName: product.productName,
+              date: new Date(),
+              notes: notes || `Payment: ₹${paymentPortion} for ${product.productName}`
+            });
+          }
+          
+          // Add discount record for tracking
+          if (discountPortion > 0) {
+            rental.payments.push({
+              amount: discountPortion,
+              type: 'general',
+              productId: product.productId,
+              productName: product.productName,
+              date: new Date(),
+              notes: discountNotes || `Discount: ₹${discountPortion} for ${product.productName}`
+            });
+          }
+          
+          product.currentBalance -= actualAmount;
+          usedThisRound += actualAmount;
+          
+          // Track for response
+          let detail = distributionDetails.find(d => d.productName === product.productName);
+          if (!detail) {
+            detail = {
+              productId: product.productId,
+              productName: product.productName,
+              originalAmount: product.originalAmount + discountPortion, // Show original before discount
+              discountApplied: 0,
+              paymentApplied: 0,
+              newAmount: product.productItem.amount
+            };
+            distributionDetails.push(detail);
+          }
+          detail.discountApplied += discountPortion;
+          detail.paymentApplied += paymentPortion;
+          detail.newAmount = product.productItem.amount;
+          
+          console.log(`   📦 ${product.productName}: Applied ₹${actualAmount} (₹${discountPortion} discount + ₹${paymentPortion} payment)`);
+          console.log(`      Amount: ₹${product.originalAmount} → ₹${product.productItem.amount}, Balance: ₹${product.currentBalance}`);
+        }
+      });
+      
+      remainingAmount -= usedThisRound;
+      console.log(`   ✅ Used ₹${usedThisRound}, Remaining ₹${remainingAmount}`);
+      
+      if (usedThisRound === 0) break; // Safety break
+    }
+    
+    // Save
+    await rental.save();
+    
+    if (rental.isFullyReturned && rental.balanceAmount <= 0) {
+      rental.status = 'completed';
+      await rental.save();
+    }
+    
+    const updatedRental = await Rental.findById(rental._id)
+      .populate('productItems.productId', 'name rate rateType');
+    
+    console.log('✅ SIMPLE GENERAL PAYMENT COMPLETED');
+    
+    res.json({
+      rental: updatedRental,
+      paymentAmount: paymentAmt,
+      discountAmount: discountAmt,
+      totalReduction: totalToDistribute,
+      distributionDetails,
+      message: `Successfully distributed ₹${totalToDistribute} (₹${paymentAmt} payment + ₹${discountAmt} discount) across ${distributionDetails.length} products`
+    });
+    
+  } catch (error) {
+    console.error('❌ Error in simple general-payment:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+
+
+
+
+
+
 
 
 

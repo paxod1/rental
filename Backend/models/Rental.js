@@ -46,7 +46,18 @@ const paymentSchema = new mongoose.Schema({
   amount: { type: Number, required: true },
   type: {
     type: String,
-    enum: ['advance', 'full_payment', 'partial_payment', 'refund', 'product_payment', 'general'],
+    enum: [
+      'advance',
+      'full_payment',
+      'partial_payment',
+      'refund',
+      'product_payment',
+      'general',               // ✅ For general payments
+      'discount',              // ✅ For discounts
+      'global_payment',
+      'global_full_payment',
+      'global_partial_payment'
+    ],
     required: true
   },
   productId: { // Optional - for product-specific payments
@@ -121,6 +132,7 @@ rentalSchema.pre('save', async function (next) {
       let productAmount = 0;
 
       // ✅ CRITICAL: Check if amount is locked
+      // ✅ CRITICAL: Check if amount is locked
       if (productItem.amountLocked) {
         console.log(`   🔒 AMOUNT IS LOCKED - PRESERVING EXISTING AMOUNT`);
         console.log(`   📊 Using locked amount: ₹${productItem.amount}`);
@@ -139,33 +151,34 @@ rentalSchema.pre('save', async function (next) {
 
         if (rentalTransactions.length === 0) {
           console.log(`   ⚠️ WARNING: No rental transactions found for ${productItem.productName}`);
-        }
+          // ✅ CRITICAL FIX: Preserve existing amount if no transactions
+          productAmount = productItem.amount || 0;
+        } else {
+          // ✅ CRITICAL FIX: Calculate based on EACH transaction's actual quantity
+          for (const transaction of rentalTransactions) {
+            const rentalStartDate = new Date(transaction.date);
+            const daysRented = Math.ceil((currentDate - rentalStartDate) / (1000 * 60 * 60 * 24));
 
-        // ✅ CRITICAL FIX: Calculate based on EACH transaction's actual quantity
-        for (const transaction of rentalTransactions) {
-          const rentalStartDate = new Date(transaction.date);
-          const daysRented = Math.ceil((currentDate - rentalStartDate) / (1000 * 60 * 60 * 24));
+            let dailyRate = 0;
+            switch (productItem.rateType) {
+              case 'daily': dailyRate = productItem.rate; break;
+              case 'weekly': dailyRate = productItem.rate / 7; break;
+              case 'monthly': dailyRate = productItem.rate / 30; break;
+            }
 
-          let dailyRate = 0;
-          switch (productItem.rateType) {
-            case 'daily':
-              dailyRate = productItem.rate;
-              break;
-            case 'weekly':
-              dailyRate = productItem.rate / 7;
-              break;
-            case 'monthly':
-              dailyRate = productItem.rate / 30;
-              break;
+            // ✅ CRITICAL FIX: Use transaction.quantity (actual rented quantity)
+            const transactionAmount = transaction.quantity * daysRented * dailyRate;
+            productAmount += transactionAmount;
+
+            console.log(`   📊 Transaction Calc: ${transaction.quantity} units × ${daysRented} days × ₹${dailyRate} = ₹${transactionAmount}`);
+            console.log(`   📅 Period: ${rentalStartDate.toLocaleDateString()} to ${currentDate.toLocaleDateString()}`);
           }
 
-          // ✅ CRITICAL FIX: Use transaction.quantity (actual rented quantity)
-          // NOT activeQuantity or currentQuantity
-          const transactionAmount = transaction.quantity * daysRented * dailyRate;
-          productAmount += transactionAmount;
-
-          console.log(`   📊 Transaction Calc: ${transaction.quantity} units × ${daysRented} days × ₹${dailyRate} = ₹${transactionAmount}`);
-          console.log(`   📅 Period: ${rentalStartDate.toLocaleDateString()} to ${currentDate.toLocaleDateString()}`);
+          // ✅ ADDITIONAL PROTECTION: Don't update if calculation results in zero and product had previous amount
+          if (productAmount === 0 && productItem.amount > 0) {
+            console.log(`   🛡️ PROTECTING: Calculation resulted in zero but product had amount ₹${productItem.amount}`);
+            productAmount = productItem.amount;
+          }
         }
 
         // Update amount for non-locked products
@@ -174,10 +187,12 @@ rentalSchema.pre('save', async function (next) {
         console.log(`   📈 Amount updated: ₹${oldAmount} → ₹${productItem.amount}`);
       }
 
+
       // Calculate payments for this product
+      
       const productPayments = this.payments
         .filter(p => {
-          if (!p.productId) return false;
+          if (!p.productId) return false; // Only product-specific payments
           const pId = String(p.productId);
           const itemId = String(productItem.productId._id || productItem.productId);
           return pId === itemId;
@@ -186,11 +201,12 @@ rentalSchema.pre('save', async function (next) {
           return p.type === 'refund' ? sum - p.amount : sum + p.amount;
         }, 0);
 
-      console.log(`   💳 Total Product Payments: ₹${productPayments}`);
+      console.log(`   💳 Total Product-Specific Payments: ₹${productPayments}`);
 
       // Update payment tracking
       productItem.paidAmount = productPayments;
       productItem.balanceAmount = Math.max(0, productItem.amount - productPayments);
+
 
       console.log(`   📊 FINAL PRODUCT VALUES:`);
       console.log(`      💰 Amount: ₹${productItem.amount} ${productItem.amountLocked ? '(🔒 LOCKED)' : '(🔓 DYNAMIC)'}`);
