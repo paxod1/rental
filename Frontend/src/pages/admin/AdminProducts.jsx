@@ -222,7 +222,7 @@ function AdminProducts() {
                       index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
                     }`}
                   >
-                    <td className="px-6 py-4 font-medium text-gray-900">{product.name}</td>
+                    <td className="px-6 py-4 font-medium text-gray-900 uppercase">{product.name}</td>
                     <td className="px-6 py-4 text-gray-700">{product.quantity}</td>
                     <td className="px-6 py-4 text-gray-700">₹{product.rate}</td>
                     <td className="px-6 py-4">
