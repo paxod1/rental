@@ -126,7 +126,7 @@ function AdminRented() {
                 {/* Search Section */}
                 <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
                     <div className="flex items-center gap-2 mb-4">
-                        <FiSearch className="w-5 h-5 text-blue-600" />
+                        <FiSearch className="w-5 h-5 text-[#b86969]" />
                         <h3 className="text-lg font-semibold text-gray-800">Search & Filter</h3>
                     </div>
                     
@@ -143,7 +143,7 @@ function AdminRented() {
                                     value={searchCustomer}
                                     onChange={(e) => setSearchCustomer(e.target.value)}
                                     placeholder="Search by customer name..."
-                                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#b86969] focus:border-transparent transition-colors"
                                 />
                             </div>
                         </div>
@@ -160,7 +160,8 @@ function AdminRented() {
                                     value={searchProduct}
                                     onChange={(e) => setSearchProduct(e.target.value)}
                                     placeholder="Search by product name..."
-                                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg
+                                     focus:ring-2 focus:ring-[#b86969] focus:border-transparent transition-colors"
                                 />
                             </div>
                         </div>
@@ -180,7 +181,7 @@ function AdminRented() {
                     {/* Search Results Summary */}
                     {(searchCustomer || searchProduct) && (
                         <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-                            <p className="text-sm text-blue-800">
+                            <p className="text-sm text-[#b86969]">
                                 Found <span className="font-semibold">{filteredRentals.length}</span> rental(s) 
                                 {searchCustomer && <span> matching customer: "<span className="font-semibold">{searchCustomer}</span>"</span>}
                                 {searchCustomer && searchProduct && <span> and </span>}
@@ -230,7 +231,7 @@ function AdminRented() {
                                     <div className="flex-1">
                                         <div className="flex items-center gap-3 mb-3">
                                             <div className="bg-blue-100 p-2 rounded-full">
-                                                <FiUser className="w-5 h-5 text-blue-600" />
+                                                <FiUser className="w-5 h-5 text-[#b86969]" />
                                             </div>
                                             <div>
                                                 <h3 className="text-lg font-semibold text-gray-800 uppercase">
@@ -271,7 +272,7 @@ function AdminRented() {
                                                         .map((item, index) => (
                                                             <span 
                                                                 key={index}
-                                                                className="bg-blue-50 text-blue-700 px-2 py-1 rounded text-xs font-medium"
+                                                                className="bg-blue-50 text-[#b86969] px-2 py-1 rounded text-xs font-medium"
                                                             >
                                                                 {item.productName} ({item.currentQuantity})
                                                             </span>
