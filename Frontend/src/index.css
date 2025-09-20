@@ -1,1 +1,72 @@
 @import "tailwindcss";
+
+/* ✅ BEAUTIFUL CUSTOM SCROLLBAR DESIGN */
+
+/* For Webkit browsers (Chrome, Safari, Edge) */
+::-webkit-scrollbar {
+  width: 8px; /* Small width for vertical scrollbar */
+  height: 8px; /* Small height for horizontal scrollbar */
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(202, 100, 100, 0.1); /* Light red background */
+  border-radius: 10px;
+  margin: 5px; /* Add margin for rounded ends */
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #ca6464, #b85555); /* Beautiful red gradient */
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.2); /* Subtle white border */
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2); /* Inner highlight */
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #b85555, #a04a4a); /* Darker on hover */
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+::-webkit-scrollbar-thumb:active {
+  background: linear-gradient(180deg, #a04a4a, #8b3a3a); /* Even darker when clicked */
+}
+
+::-webkit-scrollbar-corner {
+  background: rgba(202, 100, 100, 0.1); /* Corner styling */
+}
+
+/* ✅ MODERN THIN SCROLLBAR FOR FIREFOX */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #ca6464 rgba(202, 100, 100, 0.1);
+}
+
+/* ✅ SMOOTH SCROLLING */
+html {
+  scroll-behavior: smooth;
+}
+
+/* ✅ CUSTOM SCROLLBAR FOR SPECIFIC CONTAINERS */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #ca6464 rgba(202, 100, 100, 0.1);
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(202, 100, 100, 0.05);
+  border-radius: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #ca6464, #b85555);
+  border-radius: 8px;
+  border: none;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #b85555, #a04a4a);
+}
