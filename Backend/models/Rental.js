@@ -101,14 +101,7 @@ const rentalSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Enhanced pre-save hook with comprehensive total calculations
-// Enhanced pre-save hook with comprehensive total calculations and debugging
-// Enhanced pre-save hook with proper handling of returned products
-// Enhanced pre-save hook that respects locked amounts
-// Enhanced pre-save hook that PROPERLY respects locked amounts
-// Enhanced pre-save hook with COMPREHENSIVE debugging
-
-// Enhanced pre-save hook with FIXED calculation logic
+// Enhanced pre-save hook with REAL-TIME calculation up to today
 rentalSchema.pre('save', async function (next) {
   try {
     const currentDate = new Date();
@@ -126,100 +119,100 @@ rentalSchema.pre('save', async function (next) {
       console.log(`   📦 Current Quantity: ${productItem.currentQuantity}`);
       console.log(`   💰 Stored Amount: ₹${productItem.amount}`);
       console.log(`   🔒 Amount Locked: ${productItem.amountLocked}`);
-      console.log(`   💳 Paid Amount: ₹${productItem.paidAmount || 0}`);
-      console.log(`   💰 Balance: ₹${productItem.balanceAmount || 0}`);
 
       let productAmount = 0;
 
-      // ✅ CRITICAL: Check if amount is locked
-      // ✅ CRITICAL: Check if amount is locked
-      if (productItem.amountLocked) {
-        console.log(`   🔒 AMOUNT IS LOCKED - PRESERVING EXISTING AMOUNT`);
-        console.log(`   📊 Using locked amount: ₹${productItem.amount}`);
-        productAmount = productItem.amount;
-        console.log(`   ✅ Amount preserved at: ₹${productAmount}`);
+      // ✅ ALWAYS CALCULATE REAL-TIME AMOUNT (ignore locked status for balance calculation)
+      console.log(`   🕐 CALCULATING REAL-TIME AMOUNT FOR TODAY`);
+
+      // Get all transactions for this product
+      const rentalTransactions = this.transactions
+        .filter(t => t.type === 'rental' &&
+          t.productId && t.productId.toString() === productItem.productId.toString())
+        .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+      const returnTransactions = this.transactions
+        .filter(t => (t.type === 'return' || t.type === 'partial_return') &&
+          t.productId && t.productId.toString() === productItem.productId.toString())
+        .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+      console.log(`   📝 Found ${rentalTransactions.length} rental transactions`);
+      console.log(`   📝 Found ${returnTransactions.length} return transactions`);
+
+      if (rentalTransactions.length === 0) {
+        console.log(`   ⚠️ WARNING: No rental transactions found for ${productItem.productName}`);
+        productAmount = productItem.amount || 0;
       } else {
-        console.log(`   🔓 AMOUNT NOT LOCKED - CALCULATING DYNAMICALLY`);
+        let dailyRate = 0;
+        switch (productItem.rateType) {
+          case 'daily': dailyRate = productItem.rate; break;
+          case 'weekly': dailyRate = productItem.rate / 7; break;
+          case 'monthly': dailyRate = productItem.rate / 30; break;
+        }
 
-        // Get rental transactions for this product
-        const rentalTransactions = this.transactions
-          .filter(t => t.type === 'rental' &&
-            t.productId && t.productId.toString() === productItem.productId.toString())
-          .sort((a, b) => new Date(a.date) - new Date(b.date));
+        let totalCalculatedAmount = 0;
 
-        console.log(`   📝 Found ${rentalTransactions.length} rental transactions`);
-
-        if (rentalTransactions.length === 0) {
-          console.log(`   ⚠️ WARNING: No rental transactions found for ${productItem.productName}`);
-          // ✅ CRITICAL FIX: Preserve existing amount if no transactions
-          productAmount = productItem.amount || 0;
-        } else {
-          // ✅ CRITICAL FIX: Calculate based on EACH transaction's actual quantity
-          for (const transaction of rentalTransactions) {
-            const rentalStartDate = new Date(transaction.date);
-            const daysRented = Math.ceil((currentDate - rentalStartDate) / (1000 * 60 * 60 * 24));
-
-            let dailyRate = 0;
-            switch (productItem.rateType) {
-              case 'daily': dailyRate = productItem.rate; break;
-              case 'weekly': dailyRate = productItem.rate / 7; break;
-              case 'monthly': dailyRate = productItem.rate / 30; break;
-            }
-
-            // ✅ CRITICAL FIX: Use transaction.quantity (actual rented quantity)
-            const transactionAmount = transaction.quantity * daysRented * dailyRate;
-            productAmount += transactionAmount;
-
-            console.log(`   📊 Transaction Calc: ${transaction.quantity} units × ${daysRented} days × ₹${dailyRate} = ₹${transactionAmount}`);
-            console.log(`   📅 Period: ${rentalStartDate.toLocaleDateString()} to ${currentDate.toLocaleDateString()}`);
-          }
-
-          // ✅ ADDITIONAL PROTECTION: Don't update if calculation results in zero and product had previous amount
-          if (productAmount === 0 && productItem.amount > 0) {
-            console.log(`   🛡️ PROTECTING: Calculation resulted in zero but product had amount ₹${productItem.amount}`);
-            productAmount = productItem.amount;
+        // ✅ CALCULATE RETURN AMOUNTS (already finalized)
+        for (const returnTx of returnTransactions) {
+          if (returnTx.amount && returnTx.amount > 0) {
+            totalCalculatedAmount += returnTx.amount;
+            console.log(`   💰 Return amount: ₹${returnTx.amount} for ${returnTx.quantity} units on ${new Date(returnTx.date).toLocaleDateString()}`);
           }
         }
 
-        // Update amount for non-locked products
-        const oldAmount = productItem.amount;
-        productItem.amount = Math.round(productAmount * 100) / 100;
-        console.log(`   📈 Amount updated: ₹${oldAmount} → ₹${productItem.amount}`);
+        // ✅ CALCULATE REMAINING QUANTITY AMOUNT UP TO TODAY
+        if (productItem.currentQuantity > 0) {
+          const originalRentalDate = new Date(rentalTransactions[0].date);
+          const daysRentedToToday = Math.ceil((currentDate - originalRentalDate) / (1000 * 60 * 60 * 24));
+          const remainingAmountToday = productItem.currentQuantity * daysRentedToToday * dailyRate;
+          
+          totalCalculatedAmount += remainingAmountToday;
+          
+          console.log(`   📊 Remaining TODAY: ${productItem.currentQuantity} units × ${daysRentedToToday} days × ₹${dailyRate} = ₹${remainingAmountToday}`);
+          console.log(`   📅 From: ${originalRentalDate.toLocaleDateString()} to TODAY: ${currentDate.toLocaleDateString()}`);
+        }
+
+        productAmount = totalCalculatedAmount;
+        console.log(`   🎯 TODAY'S TOTAL: ₹${productAmount} (returns + remaining up to today)`);
       }
 
+      // ✅ ALWAYS UPDATE AMOUNT TO REFLECT TODAY'S VALUE
+      const oldAmount = productItem.amount;
+      productItem.amount = Math.round(productAmount * 100) / 100;
+      console.log(`   📈 Amount updated for TODAY: ₹${oldAmount} → ₹${productItem.amount}`);
 
-      // Calculate payments for this product
-      
+      // Calculate payments for this product (exclude discounts from balance calculation)
       const productPayments = this.payments
         .filter(p => {
-          if (!p.productId) return false; // Only product-specific payments
+          if (!p.productId) return false;
           const pId = String(p.productId);
           const itemId = String(productItem.productId._id || productItem.productId);
-          return pId === itemId;
+          return pId === itemId && p.type !== 'discount';
         })
         .reduce((sum, p) => {
           return p.type === 'refund' ? sum - p.amount : sum + p.amount;
         }, 0);
 
-      console.log(`   💳 Total Product-Specific Payments: ₹${productPayments}`);
+      console.log(`   💳 Total Actual Payments: ₹${productPayments}`);
 
       // Update payment tracking
       productItem.paidAmount = productPayments;
       productItem.balanceAmount = Math.max(0, productItem.amount - productPayments);
 
-
-      console.log(`   📊 FINAL PRODUCT VALUES:`);
-      console.log(`      💰 Amount: ₹${productItem.amount} ${productItem.amountLocked ? '(🔒 LOCKED)' : '(🔓 DYNAMIC)'}`);
+      console.log(`   📊 FINAL PRODUCT VALUES (AS OF TODAY):`);
+      console.log(`      💰 Amount: ₹${productItem.amount} (live calculation)`);
       console.log(`      💳 Paid: ₹${productPayments}`);
       console.log(`      💰 Balance: ₹${productItem.balanceAmount}`);
 
       calculatedTotalAmount += productItem.amount;
     }
 
-    // Calculate total payments
-    const totalPaidAmount = this.payments.reduce((sum, p) => {
-      return p.type === 'refund' ? sum - p.amount : sum + p.amount;
-    }, 0);
+    // Calculate total payments (exclude discounts)
+    const totalPaidAmount = this.payments
+      .filter(p => p.type !== 'discount')
+      .reduce((sum, p) => {
+        return p.type === 'refund' ? sum - p.amount : sum + p.amount;
+      }, 0);
 
     // Update rental totals
     const oldTotalAmount = this.totalAmount;
@@ -230,10 +223,11 @@ rentalSchema.pre('save', async function (next) {
     this.totalPaid = Math.round(totalPaidAmount * 100) / 100;
     this.balanceAmount = Math.max(0, this.totalAmount - this.totalPaid);
 
-    console.log(`\n📊 RENTAL TOTALS UPDATED:`);
+    console.log(`\n📊 RENTAL TOTALS UPDATED (AS OF TODAY):`);
     console.log(`   💰 Total Amount: ₹${oldTotalAmount} → ₹${this.totalAmount}`);
     console.log(`   💳 Total Paid: ₹${oldTotalPaid} → ₹${this.totalPaid}`);
     console.log(`   💰 Balance: ₹${oldBalanceAmount} → ₹${this.balanceAmount}`);
+    console.log(`   📅 Calculation Date: ${currentDate.toLocaleDateString()}`);
 
     console.log(`\n🏁 PRE-SAVE HOOK COMPLETED\n`);
 
@@ -243,6 +237,7 @@ rentalSchema.pre('save', async function (next) {
     next(error);
   }
 });
+
 
 
 
@@ -347,3 +342,4 @@ rentalSchema.methods.hasUnpaidProducts = function () {
 };
 
 module.exports = mongoose.model("Rentals1", rentalSchema);
+ 

@@ -1,19 +1,27 @@
-import React from 'react'
-import { Outlet } from 'react-router-dom'
-import AdminNavbar from '../components/commonComp/admin/AdminNavbar'
+// layouts/AdminLayout.jsx
+import React from 'react';
+import { Outlet } from 'react-router-dom';
+import AdminNavbar from '../components/commonComp/admin/AdminNavbar';
+import { useAuth } from '../contexts/AuthContext';
 
 function AdminLayout() {
-    return (
-        <div>
-            {/* Navbar always visible */}
-            <AdminNavbar />
+  const { logout } = useAuth();
 
-            {/* Page content changes here */}
-            <div className='pt-16'>
-                <Outlet />
-            </div>
-        </div>
-    )
+  const handleMenuClick = () => {
+    // Handle mobile menu click if needed
+  };
+
+  return (
+    <div>
+      {/* Navbar always visible */}
+      <AdminNavbar onMenuClick={handleMenuClick} onLogout={logout} />
+
+      {/* Page content changes here */}
+      <div className='pt-16'>
+        <Outlet />
+      </div>
+    </div>
+  );
 }
 
-export default AdminLayout
+export default AdminLayout;

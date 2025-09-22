@@ -6,11 +6,13 @@ require('dotenv').config();
 
 const app = express();
 
+// Import auth middleware
+const authMiddleware = require('./middleware/auth');
+
 // Database connection
 const connectDB = async () => {
   try {
-     await mongoose.connect(process.env.MONGO_URL);
-
+    await mongoose.connect(process.env.MONGO_URL);
     console.log('MongoDB connected successfully');
   } catch (error) {
     console.error('MongoDB connection error:', error);
@@ -35,15 +37,22 @@ app.use((req, res, next) => {
   next();
 });
 
-// Routes - MAKE SURE THESE LINES EXIST
-app.use("/api/products", require("./routes/productRoutes"));
-app.use("/api/rentals", require("./routes/rentals"));    // <- This line is crucial
-app.use("/api/analytics", require("./routes/analytics"));
+// ✅ STEP 1: CREATE PROPER AUTH ROUTES
+// Create this file: routes/auth.js
+const authRoutes = require('./routes/userRoutes'); // NOT userRoutes
+
+// ✅ STEP 2: PUBLIC ROUTES (No token required)
+app.use('/api/auth', authRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ message: 'Server running', timestamp: new Date() });
 });
+
+// ✅ STEP 3: PROTECTED ROUTES (Token verification required)
+app.use('/api/products', authMiddleware, require('./routes/productRoutes'));
+app.use('/api/rentals', authMiddleware, require('./routes/rentals'));
+app.use('/api/analytics', authMiddleware, require('./routes/analytics'));
 
 // 404 handler
 app.use('*', (req, res) => {
@@ -54,4 +63,8 @@ app.use('*', (req, res) => {
 const PORT = process.env.PORT || 8000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+  console.log('🔐 Authentication middleware applied to:');
+  console.log('   - /api/products/*');
+  console.log('   - /api/rentals/*');
+  console.log('   - /api/analytics/*');
 });

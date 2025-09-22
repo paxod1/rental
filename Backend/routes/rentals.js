@@ -1284,186 +1284,197 @@ router.put("/:id/return-and-pay", async (req, res) => {
 
 
 // @desc    Add general payment with optional discount
-// @route   PUT /api/rentals/:id/general-payment
+
+
+
+
+
+
+
+// routes/rentals.js
 router.put("/:id/general-payment", async (req, res) => {
   try {
     const { amount, discountAmount, paymentType, notes, discountNotes } = req.body;
-    
-    console.log('\n💰 SIMPLE GENERAL PAYMENT STARTING...');
-    console.log(`🆔 Rental ID: ${req.params.id}`);
-    console.log(`💰 Payment: ₹${amount || 0}`);
-    console.log(`💸 Discount: ₹${discountAmount || 0}`);
-    
-    // Validation
+
+    console.log("\n💰 GENERAL PAYMENT STARTING...");
+    console.log(`Rental ID: ${req.params.id}`);
+    console.log(`Payment: ₹${amount || 0}, Discount: ₹${discountAmount || 0}`);
+
+    // Validate input
     if ((!amount || amount <= 0) && (!discountAmount || discountAmount <= 0)) {
-      return res.status(400).json({
-        message: "Please provide either payment amount or discount amount"
-      });
+      return res.status(400).json({ message: "Please provide payment or discount amount" });
     }
-    
+
     const rental = await Rental.findById(req.params.id)
-      .populate('productItems.productId', 'name rate rateType');
-    
+      .populate("productItems.productId", "name rate rateType");
+
     if (!rental) {
       return res.status(404).json({ message: "Rental not found" });
     }
-    
-    const discountAmt = parseFloat(discountAmount) || 0;
-    const paymentAmt = parseFloat(amount) || 0;
-    const totalToDistribute = discountAmt + paymentAmt;
-    
-    console.log(`📊 Total to distribute: ₹${totalToDistribute}`);
-    
-    // ✅ GET PRODUCTS WITH OUTSTANDING BALANCES
+
+    let paymentAmt = parseFloat(amount) || 0;
+    let discountAmt = parseFloat(discountAmount) || 0;
+    let totalToDistribute = paymentAmt + discountAmt;
+
+    // ✅ Collect products with balances
     const productsWithBalance = rental.productItems.map(item => {
-      const productPayments = rental.payments.filter(payment =>
-        payment.productId && payment.productId.toString() === item.productId._id.toString()
+      const productPayments = rental.payments.filter(
+        p => p.productId && p.productId.toString() === item.productId._id.toString()
       );
-      const totalPaid = productPayments.reduce((sum, payment) => {
-        return payment.type === 'refund' ? sum - payment.amount : sum + payment.amount;
+
+      const totalActualPayments = productPayments.reduce((sum, p) => {
+        if (p.type === "refund") return sum - p.amount;
+        if (p.type === "discount") return sum;
+        return sum + p.amount;
       }, 0);
-      const currentBalance = Math.max(0, item.amount - totalPaid);
-      
+
+      const totalDiscounts = productPayments.reduce((sum, p) => {
+        if (p.type === "discount") return sum + p.amount;
+        return sum;
+      }, 0);
+
+      const currentBalance = Math.max(0, (item.amount - totalDiscounts) - totalActualPayments);
+
       return {
         productItem: item,
         productId: item.productId._id,
         productName: item.productName || item.productId.name,
         currentBalance,
-        originalAmount: item.amount
+        paid: totalActualPayments,
+        discounts: totalDiscounts
       };
-    }).filter(item => item.currentBalance > 0);
-    
+    }).filter(p => p.currentBalance > 0);
+
     if (productsWithBalance.length === 0) {
-      return res.status(400).json({ message: "No products with outstanding balance found" });
+      return res.status(400).json({ message: "No products with outstanding balance" });
     }
-    
-    console.log(`🎯 Products with balance: ${productsWithBalance.length}`);
-    productsWithBalance.forEach(product => {
-      console.log(`   📦 ${product.productName}: Balance ₹${product.currentBalance}`);
-    });
-    
-    // ✅ SIMPLE DISTRIBUTION LOGIC
-    let remainingAmount = totalToDistribute;
+
+    // ✅ Sort products by balance (smallest first)
+    productsWithBalance.sort((a, b) => a.currentBalance - b.currentBalance);
+
     const distributionDetails = [];
-    
-    // Try to distribute equally, handle overflow automatically
-    while (remainingAmount > 0) {
-      const availableProducts = productsWithBalance.filter(p => p.currentBalance > 0);
-      if (availableProducts.length === 0) {
-        return res.status(400).json({
-          message: `Cannot distribute ₹${remainingAmount} - all products are fully paid. Reduce payment amount.`,
-          excessAmount: remainingAmount
+
+    // ✅ Step 1: fully pay off cheapest products until funds run out
+    for (let product of productsWithBalance) {
+      if (totalToDistribute <= 0) break;
+
+      let applyAmt = Math.min(product.currentBalance, totalToDistribute);
+
+      // Split between discount + payment proportionally
+      let fromDiscount = Math.min(discountAmt, applyAmt);
+      let fromPayment = applyAmt - fromDiscount;
+
+      // Apply discount
+      if (fromDiscount > 0) {
+        rental.payments.push({
+          amount: fromDiscount,
+          type: "discount",
+          productId: product.productId,
+          productName: product.productName,
+          date: new Date(),
+          notes: discountNotes || `Discount: ₹${fromDiscount} for ${product.productName}`
         });
+        discountAmt -= fromDiscount;
+        totalToDistribute -= fromDiscount;
       }
-      
-      // Equal distribution
-      const amountPerProduct = Math.floor(remainingAmount / availableProducts.length);
-      const remainder = remainingAmount - (amountPerProduct * availableProducts.length);
-      
-      console.log(`\n🔄 Distributing ₹${amountPerProduct} base + ₹${remainder} remainder among ${availableProducts.length} products`);
-      
-      let usedThisRound = 0;
-      
-      availableProducts.forEach((product, index) => {
-        let amountForProduct = amountPerProduct;
-        if (index < remainder) amountForProduct += 1; // Add remainder
-        
-        // Don't exceed current balance
-        const actualAmount = Math.min(amountForProduct, product.currentBalance);
-        
-        if (actualAmount > 0) {
-          // Calculate discount/payment split proportionally
-          const discountRatio = discountAmt / totalToDistribute;
-          const discountPortion = Math.round(actualAmount * discountRatio);
-          const paymentPortion = actualAmount - discountPortion;
-          
-          // Apply discount (reduce rental amount)
-          if (discountPortion > 0) {
-            product.productItem.amount -= discountPortion;
-          }
-          
-          // Apply payment (add to payments array)
-          if (paymentPortion > 0) {
-            rental.payments.push({
-              amount: paymentPortion,
-              type: paymentType || 'product_payment',
-              productId: product.productId,
-              productName: product.productName,
-              date: new Date(),
-              notes: notes || `Payment: ₹${paymentPortion} for ${product.productName}`
-            });
-          }
-          
-          // Add discount record for tracking
-          if (discountPortion > 0) {
-            rental.payments.push({
-              amount: discountPortion,
-              type: 'general',
-              productId: product.productId,
-              productName: product.productName,
-              date: new Date(),
-              notes: discountNotes || `Discount: ₹${discountPortion} for ${product.productName}`
-            });
-          }
-          
-          product.currentBalance -= actualAmount;
-          usedThisRound += actualAmount;
-          
-          // Track for response
-          let detail = distributionDetails.find(d => d.productName === product.productName);
-          if (!detail) {
-            detail = {
-              productId: product.productId,
-              productName: product.productName,
-              originalAmount: product.originalAmount + discountPortion, // Show original before discount
-              discountApplied: 0,
-              paymentApplied: 0,
-              newAmount: product.productItem.amount
-            };
-            distributionDetails.push(detail);
-          }
-          detail.discountApplied += discountPortion;
-          detail.paymentApplied += paymentPortion;
-          detail.newAmount = product.productItem.amount;
-          
-          console.log(`   📦 ${product.productName}: Applied ₹${actualAmount} (₹${discountPortion} discount + ₹${paymentPortion} payment)`);
-          console.log(`      Amount: ₹${product.originalAmount} → ₹${product.productItem.amount}, Balance: ₹${product.currentBalance}`);
-        }
+
+      // Apply payment
+      if (fromPayment > 0) {
+        rental.payments.push({
+          amount: fromPayment,
+          type: paymentType || "product_payment",
+          productId: product.productId,
+          productName: product.productName,
+          date: new Date(),
+          notes: notes || `Payment: ₹${fromPayment} for ${product.productName}`
+        });
+        paymentAmt -= fromPayment;
+        totalToDistribute -= fromPayment;
+      }
+
+      distributionDetails.push({
+        productId: product.productId,
+        productName: product.productName,
+        appliedTotal: applyAmt,
+        fromPayment,
+        fromDiscount
       });
-      
-      remainingAmount -= usedThisRound;
-      console.log(`   ✅ Used ₹${usedThisRound}, Remaining ₹${remainingAmount}`);
-      
-      if (usedThisRound === 0) break; // Safety break
     }
-    
-    // Save
-    await rental.save();
-    
-    if (rental.isFullyReturned && rental.balanceAmount <= 0) {
-      rental.status = 'completed';
-      await rental.save();
+
+    // ✅ Step 2: split leftover equally among remaining products (no decimals)
+    if (totalToDistribute > 0) {
+      const remainingProducts = productsWithBalance.filter(p => {
+        const dist = distributionDetails.find(d => d.productId.toString() === p.productId.toString());
+        return !dist || dist.appliedTotal < p.currentBalance;
+      });
+
+      if (remainingProducts.length > 0) {
+        let share = Math.floor(totalToDistribute / remainingProducts.length);
+
+        for (let product of remainingProducts) {
+          if (totalToDistribute <= 0) break;
+
+          let applyAmt = Math.min(product.currentBalance, share);
+
+          let fromDiscount = Math.min(discountAmt, applyAmt);
+          let fromPayment = applyAmt - fromDiscount;
+
+          if (fromDiscount > 0) {
+            rental.payments.push({
+              amount: fromDiscount,
+              type: "discount",
+              productId: product.productId,
+              productName: product.productName,
+              date: new Date(),
+              notes: discountNotes || `Discount: ₹${fromDiscount} for ${product.productName}`
+            });
+            discountAmt -= fromDiscount;
+            totalToDistribute -= fromDiscount;
+          }
+
+          if (fromPayment > 0) {
+            rental.payments.push({
+              amount: fromPayment,
+              type: paymentType || "product_payment",
+              productId: product.productId,
+              productName: product.productName,
+              date: new Date(),
+              notes: notes || `Payment: ₹${fromPayment} for ${product.productName}`
+            });
+            paymentAmt -= fromPayment;
+            totalToDistribute -= fromPayment;
+          }
+
+          distributionDetails.push({
+            productId: product.productId,
+            productName: product.productName,
+            appliedTotal: applyAmt,
+            fromPayment,
+            fromDiscount
+          });
+        }
+      }
     }
-    
+
+    await rental.save(); // pre-save hook recalculates totals
+
     const updatedRental = await Rental.findById(rental._id)
-      .populate('productItems.productId', 'name rate rateType');
-    
-    console.log('✅ SIMPLE GENERAL PAYMENT COMPLETED');
-    
+      .populate("productItems.productId", "name rate rateType");
+
     res.json({
       rental: updatedRental,
-      paymentAmount: paymentAmt,
-      discountAmount: discountAmt,
-      totalReduction: totalToDistribute,
       distributionDetails,
-      message: `Successfully distributed ₹${totalToDistribute} (₹${paymentAmt} payment + ₹${discountAmt} discount) across ${distributionDetails.length} products`
+      message: "General payment and discount applied successfully"
     });
-    
+
   } catch (error) {
-    console.error('❌ Error in simple general-payment:', error);
+    console.error("❌ Error in general-payment:", error);
     res.status(500).json({ message: error.message });
   }
 });
+
+
+
 
 
 

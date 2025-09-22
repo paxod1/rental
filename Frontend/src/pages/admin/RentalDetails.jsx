@@ -1612,7 +1612,7 @@ function RentalDetails({ rentalId, onBack }) {
                                         {modalType === 'payment' && 'Add Payment'}
                                         {modalType === 'product-payment' && 'Process Payment'}
                                         {modalType === 'product-full-payment' && 'Pay Full Amount'}
-                                        {modalType === 'global-full-payment' && 'Pay Amount'}
+                                        {modalType === 'general-payment' && 'Pay Amount'}
                                     </button>
                                 </div>
                             </form>
