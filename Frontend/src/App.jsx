@@ -9,7 +9,8 @@ import AdminHome from "./pages/admin/AdminHome";
 import AdminProducts from "./pages/admin/AdminProducts";
 import AdminRented from "./pages/admin/AdminRented";
 import RentalHistory from "./pages/admin/RentalHistory";
-import Login from "./components/Login";
+import Login from "./pages/admin/Login";
+
 
 function App() {
   return (
