@@ -28,7 +28,7 @@ axiosInstance.interceptors.response.use(
       // Token expired or invalid, clear cookies and redirect to login
       Cookies.remove('authToken');
       Cookies.remove('user');
-      window.location.href = '/login';
+      
     }
     return Promise.reject(error);
   }

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { FiX, FiChevronDown, FiDollarSign, FiPhone, FiMapPin, FiPlus, FiMinus, FiAlertTriangle, FiAlertCircle } from "react-icons/fi";
+import { toast } from 'react-toastify';
 import LoadingSpinner from "../LoadingSpinner";
 
 const RentalForm = ({
@@ -10,7 +11,8 @@ const RentalForm = ({
   title = "Create New Rental",
   products = [],
   initialData = null,
-  showAdvancePayment = true
+  showAdvancePayment = true,
+  showDaysField = true // ✅ New prop to control days field
 }) => {
   const [formData, setFormData] = useState({
     customerName: "",
@@ -25,7 +27,7 @@ const RentalForm = ({
     { productId: "", quantity: 1, days: "" }
   ]);
 
-  const [quantityErrors, setQuantityErrors] = useState({}); // ✅ Track quantity errors
+  const [quantityErrors, setQuantityErrors] = useState({});
 
   // Initialize form data when modal opens or initialData changes
   useEffect(() => {
@@ -61,7 +63,7 @@ const RentalForm = ({
       notes: ""
     });
     setProductItems([{ productId: "", quantity: 1, days: "" }]);
-    setQuantityErrors({}); // ✅ Reset errors
+    setQuantityErrors({});
   };
 
   const handleFormChange = (e) => {
@@ -74,7 +76,7 @@ const RentalForm = ({
     updatedItems[index] = { ...updatedItems[index], [field]: value };
     setProductItems(updatedItems);
 
-    // ✅ Clear quantity error when product changes
+    // Clear quantity error when product changes
     if (field === 'productId') {
       const newErrors = { ...quantityErrors };
       delete newErrors[index];
@@ -84,13 +86,13 @@ const RentalForm = ({
       setProductItems(updatedItems);
     }
 
-    // ✅ Validate quantity in real-time
+    // Validate quantity in real-time
     if (field === 'quantity') {
       validateQuantity(index, value, updatedItems[index].productId);
     }
   };
 
-  // ✅ Real-time quantity validation
+  // Real-time quantity validation
   const validateQuantity = (index, quantity, productId) => {
     const newErrors = { ...quantityErrors };
     const product = getSelectedProduct(productId);
@@ -99,6 +101,10 @@ const RentalForm = ({
       const qty = parseInt(quantity);
       if (qty > product.quantity) {
         newErrors[index] = `Only ${product.quantity} units available`;
+        // ✅ Show toast notification
+        toast.warn(`⚠️ Only ${product.quantity} units available for ${product.name}`, {
+          autoClose: 3000,
+        });
       } else {
         delete newErrors[index];
       }
@@ -111,6 +117,8 @@ const RentalForm = ({
 
   const addProductRow = () => {
     setProductItems([...productItems, { productId: "", quantity: 1, days: "" }]);
+    // ✅ Toast notification
+    toast.success('➕ Product row added', { autoClose: 1500 });
   };
 
   const removeProductRow = (index) => {
@@ -121,6 +129,8 @@ const RentalForm = ({
       const newErrors = { ...quantityErrors };
       delete newErrors[index];
       setQuantityErrors(newErrors);
+      // ✅ Toast notification
+      toast.info('➖ Product row removed', { autoClose: 1500 });
     }
   };
 
@@ -128,7 +138,7 @@ const RentalForm = ({
     return products.find(p => p._id === productId);
   };
 
-  // ✅ Get stock status for UI styling
+  // Get stock status for UI styling
   const getStockStatus = (product) => {
     if (!product) return { status: 'unknown', color: 'gray' };
     if (product.quantity <= 0) return { status: 'out-of-stock', color: 'red' };
@@ -137,24 +147,31 @@ const RentalForm = ({
   };
 
   const calculateItemTotal = (item) => {
-    if (!item.productId || !item.quantity || !item.days) return 0;
+    if (!item.productId || !item.quantity) return 0;
     
     const product = getSelectedProduct(item.productId);
     if (!product) return 0;
     
     let rate = 0;
-    switch (product.rateType) {
-      case 'daily':
-        rate = product.rate * parseInt(item.days || 0);
-        break;
-      case 'weekly':
-        rate = product.rate * Math.ceil(parseInt(item.days || 0) / 7);
-        break;
-      case 'monthly':
-        rate = product.rate * Math.ceil(parseInt(item.days || 0) / 30);
-        break;
-      default:
-        rate = product.rate;
+    
+    // ✅ If days field is shown and has value, calculate based on days
+    if (showDaysField && item.days) {
+      switch (product.rateType) {
+        case 'daily':
+          rate = product.rate * parseInt(item.days || 0);
+          break;
+        case 'weekly':
+          rate = product.rate * Math.ceil(parseInt(item.days || 0) / 7);
+          break;
+        case 'monthly':
+          rate = product.rate * Math.ceil(parseInt(item.days || 0) / 30);
+          break;
+        default:
+          rate = product.rate;
+      }
+    } else {
+      // ✅ If days field is not shown or empty, use base rate
+      rate = product.rate;
     }
     
     return rate * parseInt(item.quantity || 1);
@@ -174,8 +191,13 @@ const RentalForm = ({
     e.preventDefault();
     
     // Validate required fields
+    if (!formData.customerName.trim()) {
+      toast.error('❌ Customer name is required');
+      return;
+    }
+
     if (!formData.customerPhone.trim()) {
-      alert("Phone number is required");
+      toast.error('❌ Phone number is required');
       return;
     }
 
@@ -185,13 +207,13 @@ const RentalForm = ({
     );
 
     if (validItems.length === 0) {
-      alert("Please add at least one product");
+      toast.error('❌ Please add at least one product');
       return;
     }
 
     // Check for quantity errors
     if (Object.keys(quantityErrors).length > 0) {
-      alert("Please fix quantity errors before submitting");
+      toast.error('❌ Please fix quantity errors before submitting');
       return;
     }
 
@@ -199,10 +221,13 @@ const RentalForm = ({
     for (const item of validItems) {
       const product = getSelectedProduct(item.productId);
       if (product && product.quantity < item.quantity) {
-        alert(`Insufficient quantity for ${product.name}. Available: ${product.quantity}, Requested: ${item.quantity}`);
+        toast.error(`❌ Insufficient quantity for ${product.name}. Available: ${product.quantity}, Requested: ${item.quantity}`);
         return;
       }
     }
+    
+    // ✅ Show loading toast
+    toast.info('📝 Creating rental...', { autoClose: 1000 });
     
     // Prepare data for submission
     const submissionData = {
@@ -215,7 +240,8 @@ const RentalForm = ({
       productItems: validItems.map(item => ({
         productId: item.productId,
         quantity: parseInt(item.quantity),
-        days: item.days ? parseInt(item.days) : undefined
+        // ✅ Only include days if the field is shown and has value
+        ...(showDaysField && item.days && { days: parseInt(item.days) })
       }))
     };
 
@@ -346,8 +372,11 @@ const RentalForm = ({
                       )}
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                      <div className="md:col-span-2">
+                    {/* ✅ Conditional grid columns based on showDaysField */}
+                    <div className={`grid grid-cols-1 gap-4 ${
+                      showDaysField ? 'md:grid-cols-4' : 'md:grid-cols-3'
+                    }`}>
+                      <div className={showDaysField ? 'md:col-span-2' : 'md:col-span-1'}>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           Select Product *
                         </label>
@@ -382,7 +411,7 @@ const RentalForm = ({
                           </div>
                         </div>
                         
-                        {/* ✅ Stock Status Indicator */}
+                        {/* Stock Status Indicator */}
                         {selectedProduct && (
                           <div className="mt-2 flex items-center gap-2">
                             <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
@@ -423,7 +452,7 @@ const RentalForm = ({
                           }`}
                         />
                         
-                        {/* ✅ Quantity Error Message */}
+                        {/* Quantity Error Message */}
                         {hasQuantityError && (
                           <div className="mt-1 flex items-center gap-1 text-red-600 text-xs">
                             <FiAlertTriangle className="w-3 h-3" />
@@ -431,7 +460,7 @@ const RentalForm = ({
                           </div>
                         )}
                         
-                        {/* ✅ Available Stock Helper */}
+                        {/* Available Stock Helper */}
                         {selectedProduct && !hasQuantityError && (
                           <div className="mt-1 text-xs text-gray-500">
                             Max: {selectedProduct.quantity}
@@ -439,28 +468,32 @@ const RentalForm = ({
                         )}
                       </div>
 
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Days
-                        </label>
-                        <input
-                          type="number"
-                          placeholder="Days"
-                          value={item.days}
-                          onChange={(e) => handleProductChange(index, 'days', e.target.value)}
-                          min="1"
-                          disabled={isSubmitting}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all disabled:bg-gray-100"
-                        />
-                      </div>
+                      {/* ✅ Conditional Days Field */}
+                      {showDaysField && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Days (Optional)
+                          </label>
+                          <input
+                            type="number"
+                            placeholder="Days"
+                            value={item.days}
+                            onChange={(e) => handleProductChange(index, 'days', e.target.value)}
+                            min="1"
+                            disabled={isSubmitting}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all disabled:bg-gray-100"
+                          />
+                        </div>
+                      )}
                     </div>
 
                     {/* Product Item Total */}
-                    {item.productId && item.quantity && item.days && !hasQuantityError && (
+                    {item.productId && item.quantity && !hasQuantityError && (
                       <div className="mt-3 p-2 bg-blue-50 rounded border-l-4 border-blue-500">
                         <div className="flex justify-between items-center text-sm">
                           <span className="text-gray-600">
-                            {selectedProduct?.name} × {item.quantity} × {item.days} days
+                            {selectedProduct?.name} × {item.quantity}
+                            {showDaysField && item.days && ` × ${item.days} days`}
                           </span>
                           <span className="font-bold text-blue-600">
                             ₹{calculateItemTotal(item).toFixed(2)}

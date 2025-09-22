@@ -18,7 +18,6 @@ export const AuthProvider = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  // Check authentication status on app load
   useEffect(() => {
     checkAuthStatus();
   }, []);
@@ -29,59 +28,110 @@ export const AuthProvider = ({ children }) => {
       const userData = Cookies.get('user');
 
       if (token && userData) {
-        // Verify token with backend
-        const response = await axiosInstance.get('/api/auth/verify');
-        if (response.data.success) {
-          setUser(response.data.user);
-          setIsAuthenticated(true);
-        } else {
-          // Invalid token, clear cookies
-          Cookies.remove('authToken');
-          Cookies.remove('user');
+        try {
+          const response = await axiosInstance.get('/api/auth/verify');
+          if (response.data?.success) {
+            const parsedUser = JSON.parse(userData);
+            setUser(parsedUser);
+            setIsAuthenticated(true);
+          } else {
+            setTimeout(() => {
+              clearAuthData();
+            }, 4000)
+
+          }
+        } catch (verifyError) {
+          if (verifyError.response?.status === 401) {
+            setTimeout(() => {
+              clearAuthData();
+            }, 4000)
+          } else {
+            // Keep auth data on network errors
+            try {
+              const parsedUser = JSON.parse(userData);
+              setUser(parsedUser);
+              setIsAuthenticated(true);
+            } catch {
+              setTimeout(() => {
+                clearAuthData();
+              }, 4000)
+            }
+          }
         }
       }
     } catch (error) {
       console.error('Auth check failed:', error);
-      Cookies.remove('authToken');
-      Cookies.remove('user');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const login = async (username, password) => {
-    try {
-      const response = await axiosInstance.post('/api/auth/login', {
-        username,
-        password
-      });
-
-      if (response.data.success) {
-        const { token, user } = response.data;
-        
-        // Store in cookies with 7 days expiry
-        Cookies.set('authToken', token, { expires: 7, secure: false, sameSite: 'strict' });
-        Cookies.set('user', JSON.stringify(user), { expires: 7, secure: false, sameSite: 'strict' });
-        
-        setUser(user);
-        setIsAuthenticated(true);
-        
-        return { success: true, user };
-      }
-    } catch (error) {
-      console.error('Login error:', error);
-      return { 
-        success: false, 
-        message: error.response?.data?.message || 'Login failed' 
-      };
-    }
-  };
-
-  const logout = () => {
+  const clearAuthData = () => {
     Cookies.remove('authToken');
     Cookies.remove('user');
     setUser(null);
     setIsAuthenticated(false);
+  };
+
+  // ✅ BULLETPROOF login function with guaranteed error handling
+  const login = async (username, password) => {
+    try {
+      console.log('🔐 AuthContext: Login attempt');
+
+      const response = await axiosInstance.post('/api/auth/login', {
+        username: username?.trim() || '',
+        password: password?.trim() || ''
+      });
+
+      console.log('📡 AuthContext: Response:', response.data);
+
+      if (response?.data?.success) {
+        const { token, user } = response.data;
+
+        const cookieOptions = {
+          expires: 7,
+          secure: false,
+          sameSite: 'lax',
+          path: '/'
+        };
+
+        Cookies.set('authToken', token, cookieOptions);
+        Cookies.set('user', JSON.stringify(user), cookieOptions);
+
+        setUser(user);
+        setIsAuthenticated(true);
+
+        return { success: true, user };
+      } else {
+        return {
+          success: false,
+          message: response?.data?.message || 'Login failed'
+        };
+      }
+    } catch (error) {
+      console.error('❌ AuthContext: Login error:', error);
+
+      // GUARANTEED error handling - no uncaught errors
+      let message = 'Login failed. Please try again.';
+
+      try {
+        if (error?.response?.status === 401) {
+          message = 'Invalid username or password';
+        } else if (error?.response?.data?.message) {
+          message = error.response.data.message;
+        } else if (error?.code === 'ERR_NETWORK') {
+          message = 'Unable to connect to server';
+        }
+      } catch (parseError) {
+        console.error('Error parsing error:', parseError);
+      }
+
+      return { success: false, message };
+    }
+  };
+
+  const logout = () => {
+    clearAuthData();
   };
 
   const value = {
