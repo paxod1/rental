@@ -42,7 +42,7 @@ function Login() {
       const result = await login(formData.username, formData.password);
       
       if (result.success) {
-        toast.success('Login successful!');
+      
         navigate('/', { replace: true }); // Navigate to home page
       } else {
         toast.error(result.message);

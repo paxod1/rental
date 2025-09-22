@@ -16,31 +16,7 @@ function App() {
   return (
     <AuthProvider>
       <Router>
-        {/* ✅ Configure Toaster with 2-second duration */}
-        <Toaster 
-          position="top-right"
-          toastOptions={{
-            duration: 2000, // 2 seconds for all toasts
-            style: {
-              background: '#fff',
-              color: '#333',
-            },
-            success: {
-              duration: 2000,
-              iconTheme: {
-                primary: '#10b981',
-                secondary: '#fff',
-              },
-            },
-            error: {
-              duration: 2000,
-              iconTheme: {
-                primary: '#ef4444',
-                secondary: '#fff',
-              },
-            },
-          }}
-        />
+        <Toaster position="top-right" />
         <Routes>
           {/* Public route */}
           <Route path="/login" element={<Login />} />

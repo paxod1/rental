@@ -128,7 +128,7 @@ function AdminNavbar() {
                                     className="flex items-center space-x-2 px-4 py-2 rounded-lg text-white hover:bg-[#b85555] hover:bg-opacity-80 transition-all duration-300 ease-in-out"
                                 >
                                     <div className="w-8 h-8 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
-                                        <FiUser className="w-4 h-4 text-black" />
+                                        <FiUser className="w-4 h-4 text-[#a04a4a]" />
                                     </div>
                                     <span className="text-sm font-medium">{user?.username || 'Admin'}</span>
                                     <FiChevronDown className={`w-4 h-4 transition-transform duration-200 ${isProfileMenuOpen ? 'rotate-180' : ''}`} />
