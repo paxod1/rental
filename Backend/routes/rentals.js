@@ -1478,6 +1478,143 @@ router.put("/:id/general-payment", async (req, res) => {
 
 
 
+// Add multiple products to existing rental - BULK
+router.put('/:id/add-products-bulk', async (req, res) => {
+  try {
+    const { products, notes } = req.body;
+    
+    if (!products || !Array.isArray(products) || products.length === 0) {
+      return res.status(400).json({ message: 'Please provide at least one product' });
+    }
+
+    const rental = await Rental.findById(req.params.id)
+      .populate('productItems.productId', 'name rate rateType');
+    
+    if (!rental) {
+      return res.status(404).json({ message: 'Rental not found' });
+    }
+
+    const addedProducts = [];
+    const errors = [];
+
+    for (let i = 0; i < products.length; i++) {
+      const item = products[i];
+      const { productId, quantity, days, startDate } = item;
+      const selectedStartDate = startDate ? new Date(startDate) : new Date();
+
+      try {
+        // Validate product
+        if (!productId || !quantity || quantity <= 0) {
+          errors.push(`Product ${i + 1}: Invalid product ID or quantity`);
+          continue;
+        }
+
+        // Check if product already exists in this rental
+        const existingProduct = rental.productItems.find(item => 
+          item.productId.id.toString() === productId.toString()
+        );
+        
+        if (existingProduct) {
+          errors.push(`Product ${i + 1}: Already exists in this rental. Use Add More instead.`);
+          continue;
+        }
+
+        // Check product availability
+        const product = await Product.findById(productId);
+        if (!product) {
+          errors.push(`Product ${i + 1}: Product not found`);
+          continue;
+        }
+
+        if (product.quantity < quantity) {
+          errors.push(`Product ${i + 1}: Insufficient quantity. Available: ${product.quantity}, Requested: ${quantity}`);
+          continue;
+        }
+
+        // Calculate amount if days provided
+        let itemAmount = 0;
+        if (days) {
+          switch (product.rateType) {
+            case 'daily':
+              itemAmount = product.rate * days * quantity;
+              break;
+            case 'weekly':
+              itemAmount = product.rate * Math.ceil(days / 7) * quantity;
+              break;
+            case 'monthly':
+              itemAmount = product.rate * Math.ceil(days / 30) * quantity;
+              break;
+          }
+        }
+
+        // Add new product item
+        rental.productItems.push({
+          productId: productId,
+          productName: product.name,
+          quantity: quantity,
+          currentQuantity: quantity,
+          days: days || null,
+          rate: product.rate,
+          rateType: product.rateType,
+          amount: itemAmount
+        });
+
+        // Add rental transaction
+        rental.transactions.push({
+          type: 'rental',
+          productId: productId,
+          productName: product.name,
+          quantity: quantity,
+          days: days || null,
+          amount: itemAmount,
+          date: selectedStartDate,
+          notes: `${notes || 'Added new product'} - ${quantity} units of ${product.name} starting ${selectedStartDate.toLocaleDateString()}`
+        });
+
+        // Update product inventory
+        await Product.findByIdAndUpdate(productId, {
+          $inc: { quantity: -quantity }
+        });
+
+        addedProducts.push({
+          name: product.name,
+          quantity: quantity,
+          amount: itemAmount
+        });
+
+      } catch (error) {
+        errors.push(`Product ${i + 1}: ${error.message}`);
+      }
+    }
+
+    if (addedProducts.length === 0) {
+      return res.status(400).json({ 
+        message: 'No products were added successfully',
+        errors: errors
+      });
+    }
+
+    // Update rental status to active
+    rental.status = 'active';
+    await rental.save();
+
+    const updatedRental = await Rental.findById(rental._id)
+      .populate('productItems.productId', 'name rate rateType');
+
+    res.json({
+      rental: updatedRental,
+      addedProducts: addedProducts,
+      errors: errors.length > 0 ? errors : null,
+      message: `Successfully added ${addedProducts.length} products${errors.length > 0 ? ` (${errors.length} errors)` : ''}`
+    });
+
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+
+
 
 
 

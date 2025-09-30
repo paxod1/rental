@@ -46,10 +46,18 @@ function RentalDetails({ rentalId, onBack }) {
         returnDate: new Date().toISOString().split('T')[0],
         addProductDate: new Date().toISOString().split('T')[0],
         addMoreDate: new Date().toISOString().split('T')[0],
-        discountAmount: '0',        // ✅ Default to '0'
-        discountNotes: ''
+        discountAmount: '0',
+        discountNotes: '',
+        multipleProducts: [
+            {
+                id: Date.now(),
+                productId: '',
+                quantity: 1,
+                days: '',
+                startDate: new Date().toISOString().split('T')[0]
+            }
+        ]
     });
-
 
     useEffect(() => {
         fetchRentalDetails();
@@ -60,8 +68,6 @@ function RentalDetails({ rentalId, onBack }) {
         try {
             setIsLoading(true);
             const response = await axiosInstance.get(`/api/rentals/${rentalId}`);
-            console.log(response);
-
             setRental(response.data);
             setLiveBalance(response.data.balanceAmount || 0);
         } catch (error) {
@@ -81,11 +87,46 @@ function RentalDetails({ rentalId, onBack }) {
         }
     };
 
-    // Calculate days rented for a specific product based on rental start date
+    // Helper functions for managing multiple products
+    const addProductRow = () => {
+        const newProduct = {
+            id: Date.now() + Math.random(),
+            productId: '',
+            quantity: 1,
+            days: '',
+            startDate: new Date().toISOString().split('T')[0]
+        };
+
+        setFormData(prev => ({
+            ...prev,
+            multipleProducts: [...prev.multipleProducts, newProduct]
+        }));
+    };
+
+    const removeProductRow = (productRowId) => {
+        if (formData.multipleProducts.length > 1) {
+            setFormData(prev => ({
+                ...prev,
+                multipleProducts: prev.multipleProducts.filter(p => p.id !== productRowId)
+            }));
+        }
+    };
+
+    const updateProductRow = (productRowId, field, value) => {
+        setFormData(prev => ({
+            ...prev,
+            multipleProducts: prev.multipleProducts.map(product =>
+                product.id === productRowId
+                    ? { ...product, [field]: value }
+                    : product
+            )
+        }));
+    };
+
+    // Existing helper functions from your original code
     const calculateDaysRentedForProduct = (productItem) => {
         if (!rental.startDate) return 0;
 
-        // Get the earliest rental transaction for this product or use rental start date
         const productTransactions = (rental.transactions || [])
             .filter(t => t.type === 'rental' && t.productId?.toString() === (productItem.productId._id || productItem.productId)?.toString())
             .sort((a, b) => new Date(a.date) - new Date(b.date));
@@ -98,32 +139,19 @@ function RentalDetails({ rentalId, onBack }) {
         return Math.ceil((currentDate - startDate) / (1000 * 60 * 60 * 24));
     };
 
-    // Calculate live amount for a specific product
-    // ✅ Use backend calculated amount (preserves locked amounts)
     const calculateLiveAmountForProduct = (productItem) => {
-        // Use the amount calculated and stored by backend
-        // This respects locked amounts for returned products
         return productItem?.amount || 0;
     };
 
-
-    // Calculate product-specific balance
     const calculateProductBalance = (productItem) => {
         if (!productItem) return 0;
-
-        // Use the balance calculated and stored by backend
-        // This respects locked amounts and proper payment tracking
         return productItem.balanceAmount || 0;
     };
 
-
-
-    // Check if product is fully paid
     const isProductFullyPaid = (productItem) => {
         return calculateProductBalance(productItem) <= 0;
     };
 
-    // Calculate total days since rental started
     const calculateDaysRented = (startDate) => {
         return Math.ceil((new Date() - new Date(startDate)) / (1000 * 60 * 60 * 24));
     };
@@ -150,14 +178,22 @@ function RentalDetails({ rentalId, onBack }) {
             newProductId: '',
             newProductQuantity: '',
             newProductDays: '',
-            returnDate: new Date().toISOString().split('T')[0], // ✅ Reset to today
-            addProductDate: new Date().toISOString().split('T')[0], // ✅ Reset to today
+            returnDate: new Date().toISOString().split('T')[0],
+            addProductDate: new Date().toISOString().split('T')[0],
             addMoreDate: new Date().toISOString().split('T')[0],
-            discountAmount: '0',        // ✅ Default to '0'
-            discountNotes: ''
+            discountAmount: '0',
+            discountNotes: '',
+            multipleProducts: [
+                {
+                    id: Date.now(),
+                    productId: '',
+                    quantity: 1,
+                    days: '',
+                    startDate: new Date().toISOString().split('T')[0]
+                }
+            ]
         });
     };
-
 
     const openModal = (type, productItem = null) => {
         setSelectedProductItem(productItem);
@@ -186,10 +222,8 @@ function RentalDetails({ rentalId, onBack }) {
         try {
             let endpoint = '';
             let payload = {};
-            console.log(modalType);
+
             switch (modalType) {
-
-
                 case 'general-payment':
                     endpoint = `/api/rentals/${rentalId}/general-payment`;
                     payload = {
@@ -201,10 +235,6 @@ function RentalDetails({ rentalId, onBack }) {
                     };
                     break;
 
-
-
-
-
                 case 'return':
                     endpoint = `/api/rentals/${rentalId}/return-and-pay`;
                     payload = {
@@ -214,21 +244,51 @@ function RentalDetails({ rentalId, onBack }) {
                         paymentAmount: formData.paymentAmount ? parseFloat(formData.paymentAmount) : null,
                         paymentNotes: formData.paymentNotes || null,
                         notes: formData.notes,
-                        returnDate: formData.returnDate // ✅ Include return date
+                        returnDate: formData.returnDate
                     };
                     break;
-
 
                 case 'add-rental':
                     endpoint = `/api/rentals/${rentalId}/add-rental`;
                     payload = {
                         productId: formData.productId,
                         additionalQuantity: parseInt(formData.additionalQuantity),
-                        additionalStartDate: formData.addMoreDate, // ✅ This is correct
+                        additionalStartDate: formData.addMoreDate,
                         notes: formData.notes
                     };
                     break;
 
+                case 'add-products-bulk':
+                    // Validate all products before submission
+                    const validProducts = formData.multipleProducts.filter(product =>
+                        product.productId && product.quantity > 0
+                    );
+
+                    if (validProducts.length === 0) {
+                        toast.error('Please add at least one valid product');
+                        return;
+                    }
+
+                    // Check for duplicate products
+                    const productIds = validProducts.map(p => p.productId);
+                    const uniqueProductIds = [...new Set(productIds)];
+
+                    if (productIds.length !== uniqueProductIds.length) {
+                        toast.error('Cannot add duplicate products in the same operation');
+                        return;
+                    }
+
+                    endpoint = `/api/rentals/${rentalId}/add-products-bulk`;
+                    payload = {
+                        products: validProducts.map(product => ({
+                            productId: product.productId,
+                            quantity: parseInt(product.quantity),
+                            days: product.days ? parseInt(product.days) : null,
+                            startDate: product.startDate,
+                            notes: formData.notes
+                        }))
+                    };
+                    break;
 
                 case 'add-product':
                     endpoint = `/api/rentals/${rentalId}/add-product`;
@@ -237,15 +297,14 @@ function RentalDetails({ rentalId, onBack }) {
                         quantity: parseInt(formData.newProductQuantity),
                         days: formData.newProductDays ? parseInt(formData.newProductDays) : null,
                         notes: formData.notes,
-                        startDate: formData.addProductDate // ✅ Include product date
+                        startDate: formData.addProductDate
                     };
                     break;
 
-
                 case 'payment':
-                    endpoint = `api/rentals/${rentalId}/product-payment`;
+                    endpoint = `/api/rentals/${rentalId}/product-payment`;
                     payload = {
-                        productId: formData.productId,  // ✅ ADD THIS MISSING LINE
+                        productId: formData.productId,
                         amount: parseFloat(formData.amount),
                         paymentType: formData.paymentType,
                         notes: formData.notes
@@ -253,12 +312,10 @@ function RentalDetails({ rentalId, onBack }) {
                     break;
 
                 default:
-                    console.log('❌ NO MATCH: falling to default');
                     throw new Error(`Unknown modal type: ${modalType}`);
-
             }
 
-            const response = await axiosInstance.put(`${endpoint}`, payload);
+            const response = await axiosInstance.put(endpoint, payload);
 
             if (modalType === 'general-payment') {
                 const paymentAmt = response.data.paymentAmount || 0;
@@ -273,18 +330,10 @@ function RentalDetails({ rentalId, onBack }) {
 
                 toast.success(message, { duration: 4000 });
             }
-
-            else if (modalType === 'return' && response.data.returnCalculation) {
-                toast.success(
-                    `Return processed! Total charge: $${response.data.returnCalculation.total.toFixed(2)}`,
-                    { duration: 3000 }
-                );
-            } else if (modalType === 'product-full-payment') {
-                toast.success(
-                    `Full payment of $${response.data.paidAmount.toFixed(2)} processed!`,
-                    { duration: 3000 }
-                );
-            } else {
+            else if (modalType === 'add-products-bulk') {
+                toast.success(`Successfully added ${payload.products.length} products to rental!`, { duration: 4000 });
+            }
+            else {
                 toast.success(`${modalType.replace('-', ' ')} processed successfully!`);
             }
 
@@ -298,6 +347,7 @@ function RentalDetails({ rentalId, onBack }) {
         }
     };
 
+    // Activity functions
     const getAllActivities = () => {
         const activities = [];
 
@@ -326,12 +376,9 @@ function RentalDetails({ rentalId, onBack }) {
         return activities.sort((a, b) => new Date(b.date) - new Date(a.date));
     };
 
-    // Get activities for a specific product
-    // Get activities for a specific product
     const getProductActivities = (productId) => {
         const activities = [];
 
-        // Get transactions for this specific product
         const productTransactions = rental.transactions.filter(transaction =>
             transaction.productId && transaction.productId.toString() === productId.toString()
         );
@@ -342,11 +389,9 @@ function RentalDetails({ rentalId, onBack }) {
                 activityType: 'transaction',
                 date: transaction.date,
                 displayDate: new Date(transaction.date).toLocaleDateString(),
-
             });
         });
 
-        // Get payments for this specific product
         const productPayments = rental.payments.filter(payment =>
             payment.productId && payment.productId.toString() === productId.toString()
         );
@@ -357,27 +402,21 @@ function RentalDetails({ rentalId, onBack }) {
                 activityType: 'payment',
                 date: payment.date,
                 displayDate: new Date(payment.date).toLocaleDateString(),
-
             });
         });
 
-        // ✅ FIXED: Sort by date (OLDEST FIRST) - Chronological order
         return activities.sort((a, b) => new Date(a.date) - new Date(b.date));
     };
 
-
-    // Render activity item for specific product
-    // Render activity item for specific product with payment status
+    // [Keep all your existing activity rendering functions from the original file]
     const renderProductActivityItem = (activity, index) => {
         const isTransaction = activity.activityType === 'transaction';
         const isPayment = activity.activityType === 'payment';
 
-        // Helper function to calculate days for a specific transaction
         const calculateTransactionDays = (activity) => {
             if (!activity.date) return 0;
 
             if (activity.type === 'return' || activity.type === 'partial_return') {
-                // Find the original rental transaction for this product
                 const rentalTransaction = rental.transactions.find(t =>
                     t.type === 'rental' &&
                     t.productId &&
@@ -387,23 +426,16 @@ function RentalDetails({ rentalId, onBack }) {
                 if (rentalTransaction) {
                     const rentalStartDate = new Date(rentalTransaction.date);
                     const returnDate = new Date(activity.date);
-
-                    // ✅ FIXED: Calculate inclusive days (both start and end dates count)
                     const daysDifference = Math.ceil((returnDate - rentalStartDate) / (1000 * 60 * 60 * 24));
-
-                    // ✅ Add 1 to make it inclusive (if same date = 1 day, next date = 2 days, etc.)
                     return daysDifference + 1;
                 }
             }
 
-            // For rental transactions, return current duration
             const startDate = new Date(activity.date);
             const endDate = new Date();
             return Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
         };
 
-
-        // Helper function to get daily rate for the product
         const getDailyRate = (productId) => {
             const productItem = rental.productItems.find(item =>
                 (item.productId._id || item.productId).toString() === productId.toString()
@@ -419,33 +451,6 @@ function RentalDetails({ rentalId, onBack }) {
             }
         };
 
-        // Helper function to check payment status for returned products
-        const getPaymentStatus = (activity) => {
-            if (activity.type !== 'return' && activity.type !== 'partial_return') {
-                return { isPaid: true, paidAmount: 0, pendingAmount: 0 };
-            }
-
-            // Get all payments for this product after this return date
-            const returnDate = new Date(activity.date);
-            const productPayments = rental.payments.filter(payment =>
-                payment.productId &&
-                payment.productId.toString() === activity.productId.toString() &&
-                new Date(payment.date) >= returnDate &&
-                payment.type !== 'refund'
-            );
-
-            const totalPaid = productPayments.reduce((sum, payment) => sum + payment.amount, 0);
-            const returnAmount = activity.amount || 0;
-            const pendingAmount = Math.max(0, returnAmount - totalPaid);
-
-            return {
-                isPaid: pendingAmount <= 0,
-                paidAmount: Math.min(totalPaid, returnAmount),
-                pendingAmount: pendingAmount,
-                totalAmount: returnAmount
-            };
-        };
-
         if (isTransaction) {
             const isRental = activity.type === 'rental';
             const isReturn = activity.type === 'return' || activity.type === 'partial_return';
@@ -453,14 +458,10 @@ function RentalDetails({ rentalId, onBack }) {
             const dailyRate = getDailyRate(activity.productId);
             const calculatedAmount = activity.quantity * transactionDays * dailyRate;
 
-            // Get payment status for returns
-            const paymentStatus = isReturn ? getPaymentStatus(activity) : null;
-
             return (
                 <div key={`product-transaction-${index}`} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                     <div className="flex items-center gap-3">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isRental ? 'bg-green-100' : 'bg-orange-100'
-                            }`}>
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isRental ? 'bg-green-100' : 'bg-orange-100'}`}>
                             {isRental ? (
                                 <FiArrowUpCircle className="w-4 h-4 text-green-600" />
                             ) : (
@@ -472,20 +473,13 @@ function RentalDetails({ rentalId, onBack }) {
                                 <span className="text-sm font-semibold text-gray-800">
                                     {isRental ? 'Rented' : 'Returned'} {activity.quantity} units
                                 </span>
-                                <span className="text-sm text-gray-600 bg-white px-2 py-1 rounded-full font-medium">
-                                    {activity.displayTime}
-                                </span>
                             </div>
 
-                            {/* Enhanced info showing days and rate calculation */}
                             <div className="text-sm text-gray-600 mt-1 space-y-1">
                                 <div className="font-medium">{activity.displayDate}</div>
 
-                                {/* Show days and rate calculation for returns */}
-                                {/* Show days and rate calculation for returns */}
                                 {isReturn && transactionDays > 0 && (
                                     <div className="bg-white p-3 rounded border text-xs space-y-2">
-                                        {/* Detailed day calculation */}
                                         <div className="bg-orange-50 p-2 rounded">
                                             <div className="font-medium text-orange-800 mb-1">📅 Rental Period Calculation:</div>
                                             <div className="space-y-1 text-orange-700">
@@ -499,7 +493,6 @@ function RentalDetails({ rentalId, onBack }) {
                                             </div>
                                         </div>
 
-                                        {/* Calculation breakdown */}
                                         <div className="bg-blue-50 p-2 rounded">
                                             <div className="font-medium text-blue-800 mb-1">💰 Price Calculation:</div>
                                             <div className="text-center font-semibold text-blue-800">
@@ -509,8 +502,6 @@ function RentalDetails({ rentalId, onBack }) {
                                     </div>
                                 )}
 
-
-                                {/* Show rate info for rentals */}
                                 {isRental && (
                                     <div className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
                                         <span>Rate: ₹{dailyRate.toFixed(2)}/day</span>
@@ -527,24 +518,18 @@ function RentalDetails({ rentalId, onBack }) {
                     </div>
 
                     <div className="text-right space-y-1">
-                        {/* Show amount for rentals */}
                         {isRental && activity.amount > 0 && (
                             <span className="font-bold text-lg text-green-600 block">
                                 ₹{activity.amount.toFixed(2)}
                             </span>
                         )}
 
-                        {/* Show payment status for returns */}
                         {isReturn && (
                             <div className="space-y-1">
-                                {/* Total return amount */}
                                 <span className="font-bold text-lg text-red-600 block">
                                     ₹{(activity.amount || 0).toFixed(2)}
                                 </span>
 
-
-
-                                {/* Show calculated vs stored amount for returns */}
                                 {Math.abs(calculatedAmount - (activity.amount || 0)) > 0.01 && (
                                     <span className="text-xs text-gray-500 block">
                                         (Calc: ₹{calculatedAmount.toFixed(2)})
@@ -563,18 +548,13 @@ function RentalDetails({ rentalId, onBack }) {
             return (
                 <div key={`product-payment-${index}`} className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
                     <div className="flex items-center gap-3">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isRefund ? 'bg-red-100' : 'bg-blue-100'
-                            }`}>
-                            <FiCreditCard className={`w-4 h-4 ${isRefund ? 'text-red-600' : 'text-blue-600'
-                                }`} />
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isRefund ? 'bg-red-100' : 'bg-blue-100'}`}>
+                            <FiCreditCard className={`w-4 h-4 ${isRefund ? 'text-red-600' : 'text-blue-600'}`} />
                         </div>
                         <div className="flex-1">
                             <div className="flex items-center gap-2 flex-wrap">
                                 <span className="text-sm font-semibold text-gray-800">
                                     {isRefund ? 'Refund' : 'Payment received'}
-                                </span>
-                                <span className="text-sm text-gray-600 bg-white px-2 py-1 rounded-full font-medium">
-                                    {activity.displayTime}
                                 </span>
                             </div>
                             <div className="text-sm text-gray-600 mt-1">
@@ -588,8 +568,7 @@ function RentalDetails({ rentalId, onBack }) {
                         </div>
                     </div>
                     <div className="text-right">
-                        <span className={`font-bold text-lg ${isRefund ? 'text-red-600' : 'text-green-600'
-                            }`}>
+                        <span className={`font-bold text-lg ${isRefund ? 'text-red-600' : 'text-green-600'}`}>
                             {isRefund ? '-' : '+'}₹{activity.amount.toFixed(2)}
                         </span>
                     </div>
@@ -599,112 +578,6 @@ function RentalDetails({ rentalId, onBack }) {
 
         return null;
     };
-
-
-
-
-    const renderActivityItem = (activity, index) => {
-        const isTransaction = activity.activityType === 'transaction';
-        const isPayment = activity.activityType === 'payment';
-
-        if (isTransaction) {
-            const isRental = activity.type === 'rental';
-            const isReturn = activity.type === 'return' || activity.type === 'partial_return';
-
-            return (
-                <div key={`transaction-${index}`} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                    <div className="flex items-center gap-4">
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isRental ? 'bg-green-100' : 'bg-orange-100'
-                            }`}>
-                            {isRental ? (
-                                <FiArrowUpCircle className="w-5 h-5 text-green-600" />
-                            ) : (
-                                <FiArrowDownCircle className="w-5 h-5 text-orange-600" />
-                            )}
-                        </div>
-                        <div className="flex-1">
-                            <div className="flex items-center gap-3">
-                                <span className="text-base font-semibold text-gray-800">
-                                    {isRental ? 'Rented' : 'Returned'} {activity.quantity} units
-                                    {activity.productName && ` of ${activity.productName}`}
-                                </span>
-                            </div>
-                            <div className="flex items-center gap-3 mt-2">
-                                <span className="text-base text-gray-700 font-medium">
-                                    {activity.displayDate}
-                                </span>
-                                <span className="text-base text-gray-600 bg-white px-3 py-1 rounded-full font-medium">
-                                    {activity.displayTime}
-                                </span>
-                                {activity.notes && (
-                                    <span className="text-sm text-blue-600 italic font-normal">
-                                        {activity.notes}
-                                    </span>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                    <div className="text-right">
-                        {activity.amount > 0 && (
-                            <span className={`font-bold text-xl ${isReturn ? 'text-red-600' : 'text-green-600'
-                                }`}>
-                                {isReturn ? '-' : ''}₹{activity.amount.toFixed(2)}
-                            </span>
-                        )}
-                    </div>
-                </div>
-            );
-        }
-
-        if (isPayment) {
-            const isRefund = activity.type === 'refund';
-            const isProductPayment = activity.productId;
-
-            return (
-                <div key={`payment-${index}`} className="flex items-center justify-between p-4 bg-blue-50 rounded-lg">
-                    <div className="flex items-center gap-4">
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isRefund ? 'bg-red-100' : 'bg-blue-100'
-                            }`}>
-                            <FiCreditCard className={`w-5 h-5 ${isRefund ? 'text-red-600' : 'text-blue-600'
-                                }`} />
-                        </div>
-                        <div className="flex-1">
-                            <div className="flex items-center gap-3">
-                                <span className="text-base font-semibold text-gray-800">
-                                    {isRefund ? 'Refund' : 'Payment received'}
-                                    {isProductPayment && ` for ${activity.productName}`}
-                                </span>
-                            </div>
-                            <div className="flex items-center gap-3 mt-2">
-                                <span className="text-base text-gray-700 font-medium">
-                                    {activity.displayDate}
-                                </span>
-                                <span className="text-base text-gray-600 bg-white px-3 py-1 rounded-full font-medium">
-                                    {activity.displayTime}
-                                </span>
-                                {activity.notes && (
-                                    <span className="text-sm text-blue-600 italic font-normal">
-                                        {activity.notes}
-                                    </span>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                    <div className="text-right">
-                        <span className={`font-bold text-xl ${isRefund ? 'text-red-600' : 'text-green-600'
-                            }`}>
-                            {isRefund ? '-' : '+'}₹{activity.amount.toFixed(2)}
-                        </span>
-                    </div>
-                </div>
-            );
-        }
-
-        return null;
-    };
-    //hrh//
-
-
 
     const renderProductCard = (productItem, index) => {
         const daysRented = calculateDaysRentedForProduct(productItem);
@@ -713,15 +586,14 @@ function RentalDetails({ rentalId, onBack }) {
         const isFullyPaid = productBalance <= 0;
         const paidAmount = liveAmount - productBalance;
 
-        // Get product-specific activities
         const productActivities = getProductActivities(productItem.productId._id || productItem.productId);
 
         return (
-            <div key={index} className="bg-gray-50 p-8 rounded-lg shadow-xl border border-[#eddbdb] ">
+            <div key={index} className="bg-gray-50 p-8 rounded-lg shadow-xl border border-[#eddbdb]">
                 <div className="flex justify-between items-start mb-4">
                     <div className="flex-1">
                         <div className="flex items-center gap-2 mb-2">
-                            <h4 className="text-lg font-semibold text-gray-800 Rented Products uppercase">{productItem.productName}</h4>
+                            <h4 className="text-lg font-semibold text-gray-800 uppercase">{productItem.productName}</h4>
                             {isFullyPaid && (
                                 <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs font-medium flex items-center gap-1">
                                     <FiCheck className="w-3 h-3" />
@@ -735,7 +607,6 @@ function RentalDetails({ rentalId, onBack }) {
                             )}
                         </div>
 
-                        {/* Product Stats Grid */}
                         <div className="grid grid-cols-2 md:grid-cols-6 gap-2 mt-3 text-sm">
                             <div>
                                 <span className="text-gray-600">Current Qty</span>
@@ -749,19 +620,11 @@ function RentalDetails({ rentalId, onBack }) {
                                 <span className="text-gray-600">Days</span>
                                 <span className="ml-2 font-semibold text-orange-600">{daysRented} days</span>
                             </div>
-
-
                         </div>
                     </div>
 
-                    {/* Product Action Buttons */}
                     <div className="flex flex-col gap-2 ml-4">
                         <div className="flex gap-2">
-
-                        </div>
-
-                        {/* Product Payment Buttons */}
-                        <div className="flex gap-2 ">
                             <button
                                 onClick={() => openModal('return', productItem)}
                                 disabled={productItem.currentQuantity <= 0}
@@ -772,29 +635,25 @@ function RentalDetails({ rentalId, onBack }) {
                             </button>
                             <button
                                 onClick={() => openModal('add-rental', productItem)}
-                                className=" cursor-pointer bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm transition-colors flex items-center gap-1"
+                                className="cursor-pointer bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm transition-colors flex items-center gap-1"
                             >
                                 <FiPlus className="w-3 h-3" />
                                 Add More
                             </button>
 
                             {!isFullyPaid && (
-                                <div className="flex gap-2">
-                                    <button
-                                        onClick={() => openModal('payment', productItem)}
-                                        className="cursor-pointer bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm transition-colors flex items-center gap-1"
-                                    >
-                                        <FiDollarSign className="w-3 h-3" />
-                                        Pay
-                                    </button>
-
-                                </div>
+                                <button
+                                    onClick={() => openModal('payment', productItem)}
+                                    className="cursor-pointer bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm transition-colors flex items-center gap-1"
+                                >
+                                    <FiDollarSign className="w-3 h-3" />
+                                    Pay
+                                </button>
                             )}
                         </div>
                     </div>
                 </div>
 
-                {/* Payment Summary */}
                 <div className="mt-4 p-4 bg-white rounded-2xl shadow-xl shadow-gray-200">
                     <h5 className="text-base font-semibold text-gray-700 mb-3">Payment Summary</h5>
                     <div className="grid grid-cols-3 gap-4 text-sm">
@@ -814,7 +673,6 @@ function RentalDetails({ rentalId, onBack }) {
                         </div>
                     </div>
 
-                    {/* Payment Progress Bar */}
                     <div className="mt-4">
                         <div className="w-full bg-gray-200 rounded-full h-3">
                             <div
@@ -828,8 +686,6 @@ function RentalDetails({ rentalId, onBack }) {
                     </div>
                 </div>
 
-
-                {/* ✅ NEW: Product-Specific Activity History */}
                 <div className="mt-4 p-5 bg-white rounded-2xl shadow-xl shadow-gray-200">
                     <div className="flex items-center justify-between mb-3">
                         <h5 className="text-sm font-medium text-gray-700">Product Activity History</h5>
@@ -838,7 +694,7 @@ function RentalDetails({ rentalId, onBack }) {
                         </span>
                     </div>
 
-                    <div className="space-y-2  overflow-y-auto">
+                    <div className="space-y-2 overflow-y-auto">
                         {productActivities.length > 0 ? (
                             productActivities.map((activity, index) =>
                                 renderProductActivityItem(activity, index)
@@ -875,27 +731,22 @@ function RentalDetails({ rentalId, onBack }) {
         );
     }
 
-    // Calculate total rental amount for all products
     const calculateTotalRentalAmount = () => {
         if (!rental || !rental.productItems) return 0;
-
         return rental.productItems.reduce((total, productItem) => {
             return total + calculateLiveAmountForProduct(productItem);
         }, 0);
     };
 
-    // Calculate total balance for all products
     const calculateTotalBalance = () => {
         if (!rental || !rental.productItems) return 0;
-
         return rental.productItems.reduce((total, productItem) => {
             return total + calculateProductBalance(productItem);
         }, 0);
     };
 
-
     return (
-        <div className="p-6 bg-gradient-to-br from-rose-50 to-pink-50 min-h-screen ">
+        <div className="p-6 bg-gradient-to-br from-rose-50 to-pink-50 min-h-screen">
             {/* Header */}
             <div className="mb-8">
                 <div className="flex items-center gap-4 mb-4">
@@ -906,10 +757,12 @@ function RentalDetails({ rentalId, onBack }) {
                         <FiArrowLeft className="w-5 h-5 text-gray-600" />
                     </button>
                     <div>
-                        <h2 className="text-3xl font-bold text-[#b86969] bg-[#b86969] bg-clip-text text-transparent">
+                        <h2 className="text-3xl font-bold text-[#b86969]">
                             Rental Details
                         </h2>
-                        <p className="text-gray-600"> <span className="uppercase font-bold">{rental.customerName}</span>'s rental management</p>
+                        <p className="text-gray-600">
+                            <span className="uppercase font-bold">{rental.customerName}</span>'s rental management
+                        </p>
                     </div>
                 </div>
             </div>
@@ -924,7 +777,7 @@ function RentalDetails({ rentalId, onBack }) {
                         </div>
                         <div>
                             <p className="text-sm text-gray-600">Customer Name</p>
-                            <p className="font-semibold  uppercase">{rental.customerName}</p>
+                            <p className="font-semibold uppercase">{rental.customerName}</p>
                         </div>
                     </div>
                     <div className="flex items-center gap-3">
@@ -950,12 +803,9 @@ function RentalDetails({ rentalId, onBack }) {
                 </div>
             </div>
 
+            {/* Summary Cards */}
             <div className="w-full flex items-center justify-center mb-5">
-
-                {/* Summary Information - Updated with 6 cards */}
                 <div className="w-full flex flex-row gap-[10%] justify-center">
-
-
                     <div className="bg-white rounded-xl shadow-lg p-4 px-10">
                         <div className="flex items-center gap-3">
                             <div className="bg-blue-100 p-2 rounded-full">
@@ -969,8 +819,6 @@ function RentalDetails({ rentalId, onBack }) {
                             </div>
                         </div>
                     </div>
-
-
 
                     <div className="bg-white rounded-xl shadow-lg p-4 px-10">
                         <div className="flex items-center gap-3">
@@ -999,21 +847,24 @@ function RentalDetails({ rentalId, onBack }) {
                             </div>
                         </div>
                     </div>
-
                 </div>
             </div>
 
-            {/* Products Section - Updated with Product-Specific Payments */}
+            {/* Products Section with Updated Button */}
             <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
                 <div className="flex items-center justify-between mb-6">
                     <h3 className="text-lg font-semibold text-gray-800">Rented Products</h3>
-                    <button
-                        onClick={() => openModal('add-product')}
-                        className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
-                    >
-                        <FiPlus className="w-4 h-4" />
-                        Add Product
-                    </button>
+                    <div className="flex gap-2">
+                        {/* Multiple Products Button */}
+                        <button
+                            onClick={() => openModal('add-products-bulk')}
+                            className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
+                        >
+                            <FiPlus className="w-4 h-4" />
+                            Add Products
+                        </button>
+                      
+                    </div>
                 </div>
 
                 <div className="grid gap-6">
@@ -1023,19 +874,10 @@ function RentalDetails({ rentalId, onBack }) {
                 </div>
             </div>
 
-
-
-
-
-
-
-            {/* Enhanced General Actions with Discount Option */}
-            {/* Simplified General Actions - Only Global Payment and General Payment with Discount */}
+            {/* General Actions */}
             <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
                 <h3 className="text-lg font-semibold text-gray-800 mb-4">Payment Actions</h3>
                 <div className="flex flex-wrap gap-4">
-
-                    {/* General Payment with Discount Button */}
                     <button
                         onClick={() => openModal('general-payment')}
                         disabled={calculateTotalBalance() <= 0}
@@ -1047,39 +889,508 @@ function RentalDetails({ rentalId, onBack }) {
                 </div>
             </div>
 
-
-
-
-
-
-
-
-            {/* Enhanced Modal with Product-Specific Payment Options */}
+            {/* Enhanced Modal with Multiple Products Support */}
             {isModalOpen && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-                        <div className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-6 py-4 rounded-t-xl">
-                            <div className="flex justify-between items-center">
-                                <h3 className="text-xl font-semibold">
-                                    {modalType === 'return' && `Return ${selectedProductItem?.productName}`}
-                                    {modalType === 'add-rental' && `Add More ${selectedProductItem?.productName}`}
-                                    {modalType === 'add-product' && 'Add New Product to Rental'}
-                                    {modalType === 'payment' && 'Add General Payment'}
-                                    {modalType === 'product-payment' && `Pay for ${selectedProductItem?.productName}`}
-                                    {modalType === 'product-full-payment' && `Full Payment for ${selectedProductItem?.productName}`}
-                                </h3>
-                                <button
-                                    onClick={closeModal}
-                                    className="text-white hover:bg-white hover:bg-opacity-20 p-1 rounded transition-colors"
-                                >
-                                    <FiX className="w-6 h-6" />
-                                </button>
-                            </div>
+                <div className="fixed inset-0 bg-black/50 bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
+                        <div className="flex items-center justify-between p-6 border-b">
+                            <h3 className="text-xl font-semibold text-gray-800">
+                                {modalType === 'add-products-bulk' ? 'Add Multiple Products' : 
+                                 modalType === 'add-product' ? 'Add Single Product' :
+                                 modalType === 'general-payment' ? 'Payment & Discount' :
+                                 modalType.charAt(0).toUpperCase() + modalType.slice(1).replace('-', ' ')}
+                            </h3>
+                            <button
+                                onClick={closeModal}
+                                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                            >
+                                <FiX className="w-5 h-5 text-gray-500" />
+                            </button>
                         </div>
-
-                        <div className="p-6">
+                        
+                        <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
                             <form onSubmit={handleSubmit} className="space-y-4">
-                                {modalType === 'product-payment' && (
+                                {/* Multiple Products Modal Content */}
+                                {modalType === 'add-products-bulk' && (
+                                    <>
+                                        <div className="mb-4 p-3 bg-purple-50 rounded-lg">
+                                            <p className="text-sm text-purple-800">
+                                                Adding multiple products to <strong>{rental.customerName}'s</strong> rental.
+                                            </p>
+                                            <p className="text-sm text-purple-600 mt-1">
+                                                You can add multiple products with individual quantities and dates.
+                                            </p>
+                                        </div>
+
+                                        <div className="space-y-4">
+                                            <div className="flex items-center justify-between">
+                                                <h4 className="font-medium text-gray-700">Products to Add</h4>
+                                                <button
+                                                    type="button"
+                                                    onClick={addProductRow}
+                                                    className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm flex items-center gap-1"
+                                                >
+                                                    <FiPlus className="w-3 h-3" /> Add Product
+                                                </button>
+                                            </div>
+
+                                            <div className=" space-y-4">
+                                                {formData.multipleProducts.map((productRow, index) => (
+                                                    <div key={productRow.id} className="bg-gray-50 p-4 rounded-lg border">
+                                                        <div className="flex items-center justify-between mb-3">
+                                                            <span className="text-sm font-medium text-gray-600">
+                                                                Product #{index + 1}
+                                                            </span>
+                                                            {formData.multipleProducts.length > 1 && (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => removeProductRow(productRow.id)}
+                                                                    className="text-red-500 hover:text-red-700 p-1"
+                                                                >
+                                                                    <FiX className="w-4 h-4" />
+                                                                </button>
+                                                            )}
+                                                        </div>
+
+                                                        {/* Product Selection */}
+                                                        <div className="mb-3">
+                                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                                Select Product
+                                                            </label>
+                                                            <div className="relative">
+                                                                <select
+                                                                    value={productRow.productId}
+                                                                    onChange={(e) => updateProductRow(productRow.id, 'productId', e.target.value)}
+                                                                    required
+                                                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white cursor-pointer"
+                                                                >
+                                                                    <option value="">Choose a product</option>
+                                                                    {products
+                                                                        .filter(product => 
+                                                                            // Filter out products already in rental and already selected in other rows
+                                                                            !rental.productItems.some(item => 
+                                                                                (item.productId._id || item.productId).toString() === product._id.toString()
+                                                                            ) &&
+                                                                            !formData.multipleProducts
+                                                                                .filter(p => p.id !== productRow.id)
+                                                                                .map(p => p.productId)
+                                                                                .includes(product._id)
+                                                                        )
+                                                                        .map(product => (
+                                                                            <option key={product._id} value={product._id}>
+                                                                                {product.name} - ₹{product.rate}/{product.rateType} (Available: {product.quantity})
+                                                                            </option>
+                                                                        ))
+                                                                    }
+                                                                </select>
+                                                                <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                                                                    <FiChevronDown className="w-4 h-4 text-gray-400" />
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Quantity, Days, and Date in a grid */}
+                                                        <div className="grid grid-cols-3 gap-3">
+                                                            <div>
+                                                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                                    Quantity
+                                                                </label>
+                                                                <input
+                                                                    type="number"
+                                                                    value={productRow.quantity}
+                                                                    onChange={(e) => updateProductRow(productRow.id, 'quantity', e.target.value)}
+                                                                    min="1"
+                                                                    max={
+                                                                        productRow.productId 
+                                                                            ? products.find(p => p._id === productRow.productId)?.quantity || 1
+                                                                            : 1
+                                                                    }
+                                                                    required
+                                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                                    placeholder="Qty"
+                                                                />
+                                                            </div>
+
+                                                            <div>
+                                                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                                    Days (Optional)
+                                                                </label>
+                                                                <input
+                                                                    type="number"
+                                                                    value={productRow.days}
+                                                                    onChange={(e) => updateProductRow(productRow.id, 'days', e.target.value)}
+                                                                    min="1"
+                                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                                    placeholder="Days"
+                                                                />
+                                                            </div>
+
+                                                            <div>
+                                                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                                    <FiCalendar className="w-3 h-3 inline mr-1" />
+                                                                    Start Date
+                                                                </label>
+                                                                <input
+                                                                    type="date"
+                                                                    value={productRow.startDate}
+                                                                    onChange={(e) => updateProductRow(productRow.id, 'startDate', e.target.value)}
+                                                                    max={new Date().toISOString().split('T')[0]}
+                                                                    required
+                                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                                />
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Product Info Display */}
+                                                        {productRow.productId && (
+                                                            <div className="mt-3 p-2 bg-white rounded border">
+                                                                {(() => {
+                                                                    const selectedProduct = products.find(p => p._id === productRow.productId);
+                                                                    return selectedProduct ? (
+                                                                        <div className="text-xs text-gray-600 space-y-1">
+                                                                            <div className="flex justify-between">
+                                                                                <span>Rate: ₹{selectedProduct.rate}/{selectedProduct.rateType}</span>
+                                                                                <span>Available: {selectedProduct.quantity} units</span>
+                                                                            </div>
+                                                                            {productRow.days && (
+                                                                                <div className="text-blue-600 font-medium">
+                                                                                    Estimated Cost: ₹{(
+                                                                                        selectedProduct.rateType === 'daily' 
+                                                                                            ? selectedProduct.rate * productRow.days * productRow.quantity
+                                                                                            : selectedProduct.rateType === 'weekly'
+                                                                                            ? selectedProduct.rate * Math.ceil(productRow.days / 7) * productRow.quantity
+                                                                                            : selectedProduct.rate * Math.ceil(productRow.days / 30) * productRow.quantity
+                                                                                    ).toFixed(2)}
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    ) : null;
+                                                                })()}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                ))}
+                                            </div>
+
+                                            {/* Common Notes for all products */}
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                    Notes (Applied to all products)
+                                                </label>
+                                                <textarea
+                                                    name="notes"
+                                                    value={formData.notes}
+                                                    onChange={handleChange}
+                                                    rows="2"
+                                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                    placeholder="Additional notes for all products..."
+                                                />
+                                            </div>
+
+                                            {/* Summary */}
+                                            <div className="bg-blue-50 p-3 rounded-lg">
+                                                <p className="text-sm font-medium text-blue-800 mb-1">Summary</p>
+                                                <div className="text-sm text-blue-700">
+                                                    <p>Products to add: {formData.multipleProducts.filter(p => p.productId).length}</p>
+                                                    <p>Total units: {formData.multipleProducts.reduce((sum, p) => sum + (p.productId ? parseInt(p.quantity || 0) : 0), 0)}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
+
+                                {/* Single Product Modal */}
+                                {modalType === 'add-product' && (
+                                    <>
+                                        <div className="mb-4 p-3 bg-blue-50 rounded-lg">
+                                            <p className="text-sm text-blue-800">
+                                                Adding new product to <strong>{rental.customerName}'s</strong> rental.
+                                            </p>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                Select Product
+                                            </label>
+                                            <div className="relative">
+                                                <select
+                                                    name="newProductId"
+                                                    value={formData.newProductId}
+                                                    onChange={handleChange}
+                                                    required
+                                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 appearance-none"
+                                                >
+                                                    <option value="">Choose a product</option>
+                                                    {products
+                                                        .filter(product => 
+                                                            !rental.productItems.some(item => 
+                                                                (item.productId._id || item.productId).toString() === product._id.toString()
+                                                            )
+                                                        )
+                                                        .map(product => (
+                                                            <option key={product._id} value={product._id}>
+                                                                {product.name} - ₹{product.rate}/{product.rateType} (Available: {product.quantity})
+                                                            </option>
+                                                        ))
+                                                    }
+                                                </select>
+                                                <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                                                    <FiChevronDown className="w-4 h-4 text-gray-400" />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-3 gap-4">
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                    Quantity
+                                                </label>
+                                                <input
+                                                    type="number"
+                                                    name="newProductQuantity"
+                                                    value={formData.newProductQuantity}
+                                                    onChange={handleChange}
+                                                    min="1"
+                                                    required
+                                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                />
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                    Days (Optional)
+                                                </label>
+                                                <input
+                                                    type="number"
+                                                    name="newProductDays"
+                                                    value={formData.newProductDays}
+                                                    onChange={handleChange}
+                                                    min="1"
+                                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                />
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                    <FiCalendar className="w-4 h-4 inline mr-1" />
+                                                    Start Date
+                                                </label>
+                                                <input
+                                                    type="date"
+                                                    name="addProductDate"
+                                                    value={formData.addProductDate}
+                                                    onChange={handleChange}
+                                                    max={new Date().toISOString().split('T')[0]}
+                                                    required
+                                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                />
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
+
+                                {/* General Payment Modal */}
+                                {modalType === 'general-payment' && (
+                                    <>
+                                        <div className="mb-4 p-4 bg-green-50 rounded-lg">
+                                            <p className="text-sm text-green-800">
+                                                <strong>Payment & Discount</strong>
+                                            </p>
+                                            <p className="text-lg font-bold text-green-900 mt-2">
+                                                Current Total Balance: ₹{calculateTotalBalance().toFixed(2)}
+                                            </p>
+                                        </div>
+
+                                        <div className="mb-4">
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                💰 Payment Amount <span className="text-red-500">*</span>
+                                            </label>
+                                            <input
+                                                type="number"
+                                                name="amount"
+                                                value={formData.amount}
+                                                onChange={handleChange}
+                                                step="0.01"
+                                                min="0.01"
+                                                max={calculateTotalBalance() - (parseFloat(formData.discountAmount) || 0)}
+                                                required
+                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                                                placeholder="Enter payment amount"
+                                            />
+                                        </div>
+
+                                        <div className="mb-4">
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                💸 Discount Amount (Optional)
+                                            </label>
+                                            <input
+                                                type="number"
+                                                name="discountAmount"
+                                                value={formData.discountAmount}
+                                                onChange={handleChange}
+                                                step="0.01"
+                                                min="0"
+                                                max={calculateTotalBalance() - (parseFloat(formData.amount) || 0)}
+                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                                                placeholder="Enter discount amount (default: 0)"
+                                            />
+                                        </div>
+
+                                        <div className="mb-4">
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                Payment Type
+                                            </label>
+                                            <select
+                                                name="paymentType"
+                                                value={formData.paymentType}
+                                                onChange={handleChange}
+                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                                            >
+                                                <option value="general">General Payment</option>
+                                                <option value="partial_payment">Partial Payment</option>
+                                                <option value="advance">Advance Payment</option>
+                                            </select>
+                                        </div>
+
+                                        <div className="mb-4">
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                Payment Notes
+                                            </label>
+                                            <textarea
+                                                name="notes"
+                                                value={formData.notes}
+                                                onChange={handleChange}
+                                                rows="2"
+                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                                                placeholder="Payment method, reference, etc."
+                                            />
+                                        </div>
+
+                                        {formData.discountAmount && parseFloat(formData.discountAmount) > 0 && (
+                                            <div className="mb-4">
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                    Discount Notes
+                                                </label>
+                                                <textarea
+                                                    name="discountNotes"
+                                                    value={formData.discountNotes}
+                                                    onChange={handleChange}
+                                                    rows="2"
+                                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                                                    placeholder="Reason for discount, special offer, etc."
+                                                />
+                                            </div>
+                                        )}
+
+                                        <div className="mb-4 p-3 bg-blue-50 rounded-lg">
+                                            <p className="text-sm font-medium text-blue-800 mb-2">Transaction Summary:</p>
+                                            <div className="space-y-1 text-sm text-blue-700">
+                                                <p>💰 Payment: ₹{(parseFloat(formData.amount) || 0).toFixed(2)}</p>
+                                                <p>💸 Discount: ₹{(parseFloat(formData.discountAmount) || 0).toFixed(2)}</p>
+                                                <p className="font-medium border-t pt-1">
+                                                    📊 Total Reduction: ₹{((parseFloat(formData.amount) || 0) + (parseFloat(formData.discountAmount) || 0)).toFixed(2)}
+                                                </p>
+                                                <p className="font-medium text-green-700">
+                                                    🎯 New Balance: ₹{(calculateTotalBalance() - (parseFloat(formData.amount) || 0) - (parseFloat(formData.discountAmount) || 0)).toFixed(2)}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
+
+                                {/* Other existing modal types (return, add-rental, payment, etc.) would go here */}
+                                {modalType === 'return' && (
+                                    <>
+                                        <div className="mb-4 p-3 bg-blue-50 rounded-lg">
+                                            <p className="text-sm text-blue-800">
+                                                Returning <strong>{selectedProductItem?.productName}</strong>
+                                            </p>
+                                            <div className="text-sm text-blue-700 mt-1 space-y-1">
+                                                <p>Current quantity: <strong>{selectedProductItem?.currentQuantity} units</strong></p>
+                                                <p>Current balance: <strong>₹{calculateProductBalance(selectedProductItem).toFixed(2)}</strong></p>
+                                                <p>Days rented: <strong>{calculateDaysRentedForProduct(selectedProductItem)} days</strong></p>
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                Return Quantity (max: {selectedProductItem?.currentQuantity || 0})
+                                            </label>
+                                            <input
+                                                type="number"
+                                                name="returnQuantity"
+                                                value={formData.returnQuantity}
+                                                onChange={handleChange}
+                                                max={selectedProductItem?.currentQuantity || 0}
+                                                min="1"
+                                                required
+                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                <FiCalendar className="w-4 h-4 inline mr-1" />
+                                                Return Date
+                                            </label>
+                                            <input
+                                                type="date"
+                                                name="returnDate"
+                                                value={formData.returnDate}
+                                                onChange={handleChange}
+                                                max={new Date().toISOString().split('T')[0]}
+                                                required
+                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                            />
+                                            <p className="text-xs text-gray-500 mt-1">
+                                                Select the date when the product was returned
+                                            </p>
+                                        </div>
+                                    </>
+                                )}
+
+                                {modalType === 'add-rental' && (
+                                    <>
+                                        <div className="mb-4 p-3 bg-green-50 rounded-lg">
+                                            <p className="text-sm text-green-800">
+                                                Adding more <strong>{selectedProductItem?.productName}</strong>
+                                            </p>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                Additional Quantity
+                                            </label>
+                                            <input
+                                                type="number"
+                                                name="additionalQuantity"
+                                                value={formData.additionalQuantity}
+                                                onChange={handleChange}
+                                                min="1"
+                                                required
+                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                <FiCalendar className="w-4 h-4 inline mr-1" />
+                                                Start Date
+                                            </label>
+                                            <input
+                                                type="date"
+                                                name="addMoreDate"
+                                                value={formData.addMoreDate}
+                                                onChange={handleChange}
+                                                max={new Date().toISOString().split('T')[0]}
+                                                required
+                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                            />
+                                        </div>
+                                    </>
+                                )}
+
+                                {modalType === 'payment' && (
                                     <>
                                         <div className="mb-4 p-3 bg-green-50 rounded-lg">
                                             <p className="text-sm text-green-800">
@@ -1125,462 +1436,7 @@ function RentalDetails({ rentalId, onBack }) {
                                     </>
                                 )}
 
-                                {modalType === 'product-full-payment' && (
-                                    <>
-                                        <div className="mb-4 p-3 bg-purple-50 rounded-lg">
-                                            <p className="text-sm text-purple-800">
-                                                <strong>Full Payment for {selectedProductItem?.productName}</strong>
-                                            </p>
-                                            <p className="text-sm text-purple-700 mt-1">
-                                                Amount to be paid: <strong>₹{calculateProductBalance(selectedProductItem).toFixed(2)}</strong>
-                                            </p>
-                                        </div>
-                                    </>
-                                )}
-
-                                {modalType === 'return' && (
-                                    <div>
-                                        <div className="mb-4 p-3 bg-blue-50 rounded-lg">
-                                            <p className="text-sm text-blue-800">
-                                                Returning <strong>{selectedProductItem?.productName}</strong>
-                                            </p>
-                                            <div className="text-sm text-blue-700 mt-1 space-y-1">
-                                                <p>Current quantity: <strong>{selectedProductItem?.currentQuantity} units</strong></p>
-                                                <p>Current balance: <strong>₹{calculateProductBalance(selectedProductItem).toFixed(2)}</strong></p>
-                                                <p>Days rented: <strong>{calculateDaysRentedForProduct(selectedProductItem)} days</strong></p>
-                                            </div>
-                                        </div>
-
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                Return Quantity (max: {selectedProductItem?.currentQuantity || 0})
-                                            </label>
-                                            <input
-                                                type="number"
-                                                name="returnQuantity"
-                                                value={formData.returnQuantity}
-                                                onChange={handleChange}
-                                                max={selectedProductItem?.currentQuantity || 0}
-                                                min="1"
-                                                required
-                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                            />
-                                        </div>
-                                        {/* ✅ Add Return Date Picker */}
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                <FiCalendar className="w-4 h-4 inline mr-1" />
-                                                Return Date
-                                            </label>
-                                            <input
-                                                type="date"
-                                                name="returnDate"
-                                                value={formData.returnDate}
-                                                onChange={handleChange}
-                                                max={new Date().toISOString().split('T')[0]} // Can't select future dates
-                                                required
-                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                            />
-                                            <p className="text-xs text-gray-500 mt-1">
-                                                Select the date when the product was returned
-                                            </p>
-                                        </div>
-
-
-                                        {/* Payment Options */}
-                                        <div className="border-t pt-4">
-                                            <h4 className="font-medium text-gray-700 mb-3">Payment Options</h4>
-
-                                            <div className="space-y-3">
-                                                <label className="flex items-center">
-                                                    <input
-                                                        type="radio"
-                                                        name="paymentOption"
-                                                        value="none"
-                                                        checked={!formData.payFullAmount && !formData.paymentAmount}
-                                                        onChange={() => setFormData(prev => ({ ...prev, payFullAmount: false, paymentAmount: '' }))}
-                                                        className="mr-2"
-                                                    />
-                                                    <span className="text-sm">No payment now</span>
-                                                </label>
-
-                                                <label className="flex items-center">
-                                                    <input
-                                                        type="radio"
-                                                        name="paymentOption"
-                                                        value="full"
-                                                        checked={formData.payFullAmount}
-                                                        onChange={() => setFormData(prev => ({ ...prev, payFullAmount: true, paymentAmount: '' }))}
-                                                        className="mr-2"
-                                                    />
-                                                    <span className="text-sm">Pay full amount (${calculateProductBalance(selectedProductItem).toFixed(2)})</span>
-                                                </label>
-
-                                                <label className="flex items-center">
-                                                    <input
-                                                        type="radio"
-                                                        name="paymentOption"
-                                                        value="partial"
-                                                        checked={!formData.payFullAmount && formData.paymentAmount}
-                                                        onChange={() => setFormData(prev => ({ ...prev, payFullAmount: false }))}
-                                                        className="mr-2"
-                                                    />
-                                                    <span className="text-sm">Pay specific amount</span>
-                                                </label>
-                                            </div>
-
-                                            {!formData.payFullAmount && (
-                                                <div className="mt-3">
-                                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                        Payment Amount (Optional)
-                                                    </label>
-                                                    <input
-                                                        type="number"
-                                                        name="paymentAmount"
-                                                        value={formData.paymentAmount || ''}
-                                                        onChange={handleChange}
-                                                        step="0.01"
-                                                        min="0"
-                                                        max={calculateProductBalance(selectedProductItem)}
-                                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                                        placeholder="Enter payment amount"
-                                                    />
-                                                </div>
-                                            )}
-
-                                            {(formData.payFullAmount || formData.paymentAmount) && (
-                                                <div className="mt-3">
-                                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                        Payment Notes
-                                                    </label>
-                                                    <input
-                                                        type="text"
-                                                        name="paymentNotes"
-                                                        value={formData.paymentNotes || ''}
-                                                        onChange={handleChange}
-                                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                                        placeholder="Payment method, reference, etc."
-                                                    />
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                )}
-
-                                {modalType === 'add-rental' && (
-                                    <>
-                                        <div className="mb-4 p-3 bg-green-50 rounded-lg">
-                                            <p className="text-sm text-green-800">
-                                                Adding more units of <strong>{selectedProductItem?.productName}</strong>
-                                            </p>
-                                            <p className="text-sm text-green-700 mt-1">
-                                                Current quantity: <strong>{selectedProductItem?.currentQuantity} units</strong>
-                                            </p>
-                                        </div>
-
-
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                Additional Quantity
-                                            </label>
-                                            <input
-                                                type="number"
-                                                name="additionalQuantity"
-                                                value={formData.additionalQuantity}
-                                                onChange={handleChange}
-                                                min="1"
-                                                required
-                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                            />
-                                        </div>
-
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                <FiCalendar className="w-4 h-4 inline mr-1" />
-                                                Start Date
-                                            </label>
-                                            <input
-                                                type="date"
-                                                name="addMoreDate" // ✅ CORRECT
-                                                value={formData.addMoreDate} // ✅ CORRECT
-                                                onChange={handleChange}
-                                                max={new Date().toISOString().split('T')[0]}
-                                                required
-                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                            />
-                                            <p className="text-xs text-gray-500 mt-1">
-                                                Select when this product rental started (defaults to today)
-                                            </p>
-                                        </div>
-                                    </>
-                                )}
-
-                                {modalType === 'add-product' && (
-                                    <>
-                                        <div className="mb-4 p-3 bg-purple-50 rounded-lg">
-                                            <p className="text-sm text-purple-800">
-                                                Adding a new product to <strong>{rental.customerName}'s</strong> rental.
-                                            </p>
-                                        </div>
-
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                Select Product *
-                                            </label>
-                                            <div className="relative">
-                                                <select
-                                                    name="newProductId"
-                                                    value={formData.newProductId}
-                                                    onChange={handleChange}
-                                                    required
-                                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white cursor-pointer"
-                                                >
-                                                    <option value="">Choose a product</option>
-                                                    {products.map((product) => (
-                                                        <option key={product._id} value={product._id}>
-                                                            {product.name} - ${product.rate}/{product.rateType} (Available: {product.quantity})
-                                                        </option>
-                                                    ))}
-                                                </select>
-                                                <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-                                                    <FiChevronDown className="w-4 h-4 text-gray-400" />
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                    Quantity *
-                                                </label>
-                                                <input
-                                                    type="number"
-                                                    name="newProductQuantity"
-                                                    value={formData.newProductQuantity}
-                                                    onChange={handleChange}
-                                                    min="1"
-                                                    required
-                                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                                    placeholder="Enter quantity"
-                                                />
-                                            </div>
-
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                    Days (Optional)
-                                                </label>
-                                                <input
-                                                    type="number"
-                                                    name="newProductDays"
-                                                    value={formData.newProductDays}
-                                                    onChange={handleChange}
-                                                    min="1"
-                                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                                    placeholder="Enter days"
-                                                />
-                                            </div>
-
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                    <FiCalendar className="w-4 h-4 inline mr-1" />
-                                                    Start Date
-                                                </label>
-                                                <input
-                                                    type="date"
-                                                    name="addProductDate" // ✅ CORRECT
-                                                    value={formData.addProductDate} // ✅ CORRECT
-                                                    onChange={handleChange}
-                                                    max={new Date().toISOString().split('T')[0]}
-                                                    required
-                                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                                />
-                                                <p className="text-xs text-gray-500 mt-1">
-                                                    Select when this product rental started (defaults to today)
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </>
-                                )}
-
-                                {modalType === 'payment' && (
-                                    <>
-                                        <div className="mb-4 p-3 bg-yellow-50 rounded-lg">
-                                            <p className="text-sm text-yellow-800">
-                                                <strong>Current Total Balance:</strong>₹{calculateTotalBalance().toFixed(2)}
-                                            </p>
-                                            <p className="text-sm text-yellow-700 mt-1">
-                                                This is a general payment that will be applied to the overall rental balance.
-                                            </p>
-                                        </div>
-
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                Payment Amount
-                                            </label>
-                                            <input
-                                                type="number"
-                                                name="amount"
-                                                value={formData.amount}
-                                                onChange={handleChange}
-                                                step="0.01"
-                                                min="0.01"
-                                                max={liveBalance || 0}
-                                                required
-                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                            />
-                                        </div>
-
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                Payment Type
-                                            </label>
-                                            <select
-                                                name="paymentType"
-                                                value={formData.paymentType}
-                                                onChange={handleChange}
-                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                            >
-                                                <option value="advance">Advance Payment</option>
-                                                <option value="partial_payment">Partial Payment</option>
-                                                <option value="full_payment">Full Payment</option>
-                                            </select>
-                                        </div>
-                                    </>
-                                )}
-                                {/* Single Global Payment Modal */}
-                                {/* General Payment with Discount Modal */}
-                                {/* General Payment with Discount Modal - Discount defaults to 0 */}
-                                {modalType === 'general-payment' && (
-                                    <>
-                                        <div className="mb-4 p-4 bg-green-50 rounded-lg">
-                                            <p className="text-sm text-green-800">
-                                                <strong>Payment & Discount</strong>
-                                            </p>
-                                            <p className="text-lg font-bold text-green-900 mt-2">
-                                                Current Total Balance: ₹{calculateTotalBalance().toFixed(2)}
-                                            </p>
-                                            <p className="text-sm text-green-700 mt-1">
-                                                Add payment and optionally apply discount to reduce the total balance.
-                                            </p>
-                                        </div>
-
-                                        {/* Payment Amount - Required */}
-                                        <div className="mb-4">
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                💰 Payment Amount <span className="text-red-500">*</span>
-                                            </label>
-                                            <input
-                                                type="number"
-                                                name="amount"
-                                                value={formData.amount}
-                                                onChange={handleChange}
-                                                step="0.01"
-                                                min="0.01"
-                                                max={calculateTotalBalance() - (parseFloat(formData.discountAmount) || 0)}
-                                                required
-                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
-                                                placeholder="Enter payment amount"
-                                            />
-                                        </div>
-
-                                        {/* Discount Amount - Optional, defaults to 0 */}
-                                        <div className="mb-4">
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                💸 Discount Amount (Optional)
-                                            </label>
-                                            <input
-                                                type="number"
-                                                name="discountAmount"
-                                                value={formData.discountAmount}
-                                                onChange={handleChange}
-                                                step="0.01"
-                                                min="0"
-                                                max={calculateTotalBalance() - (parseFloat(formData.amount) || 0)}
-                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
-                                                placeholder="Enter discount amount (default: 0)"
-                                            />
-                                            <p className="text-xs text-gray-500 mt-1">
-                                                Discount will reduce the total amount permanently (set to 0 for no discount)
-                                            </p>
-                                        </div>
-
-                                        {/* Payment Type */}
-                                        <div className="mb-4">
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                Payment Type
-                                            </label>
-                                            <select
-                                                name="paymentType"
-                                                value={formData.paymentType}
-                                                onChange={handleChange}
-                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
-                                            >
-                                                <option value="general">General Payment</option>
-                                                <option value="partial_payment">Partial Payment</option>
-                                                <option value="advance">Advance Payment</option>
-                                            </select>
-                                        </div>
-
-                                        {/* Payment Notes */}
-                                        <div className="mb-4">
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                Payment Notes
-                                            </label>
-                                            <textarea
-                                                name="notes"
-                                                value={formData.notes}
-                                                onChange={handleChange}
-                                                rows="2"
-                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
-                                                placeholder="Payment method, reference, etc."
-                                            />
-                                        </div>
-
-                                        {/* Discount Notes - Only show if discount > 0 */}
-                                        {formData.discountAmount && parseFloat(formData.discountAmount) > 0 && (
-                                            <div className="mb-4">
-                                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                    Discount Notes
-                                                </label>
-                                                <textarea
-                                                    name="discountNotes"
-                                                    value={formData.discountNotes}
-                                                    onChange={handleChange}
-                                                    rows="2"
-                                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
-                                                    placeholder="Reason for discount, special offer, etc."
-                                                />
-                                            </div>
-                                        )}
-
-                                        {/* Transaction Summary - Always show */}
-                                        <div className="mb-4 p-3 bg-blue-50 rounded-lg">
-                                            <p className="text-sm font-medium text-blue-800 mb-2">Transaction Summary:</p>
-                                            <div className="space-y-1 text-sm text-blue-700">
-                                                <p>💰 Payment: ₹{(parseFloat(formData.amount) || 0).toFixed(2)}</p>
-                                                <p>💸 Discount: ₹{(parseFloat(formData.discountAmount) || 0).toFixed(2)}</p>
-                                                <p className="font-medium border-t pt-1">
-                                                    📊 Total Reduction: ₹{((parseFloat(formData.amount) || 0) + (parseFloat(formData.discountAmount) || 0)).toFixed(2)}
-                                                </p>
-                                                <p className="font-medium text-green-700">
-                                                    🎯 New Balance: ₹{(calculateTotalBalance() - (parseFloat(formData.amount) || 0) - (parseFloat(formData.discountAmount) || 0)).toFixed(2)}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </>
-                                )}
-
-
-
-                                <div>
-
-
-
-                                </div>
-
-
-
-
+                                {/* Common Notes Field */}
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
                                         Notes
@@ -1591,9 +1447,11 @@ function RentalDetails({ rentalId, onBack }) {
                                         onChange={handleChange}
                                         rows="3"
                                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                        placeholder="Additional notes..."
                                     />
                                 </div>
 
+                                {/* Action Buttons */}
                                 <div className="flex gap-3 pt-4">
                                     <button
                                         type="button"
@@ -1608,13 +1466,12 @@ function RentalDetails({ rentalId, onBack }) {
                                         className="flex-1 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white px-4 py-2 rounded-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                                     >
                                         {isSubmitting && <LoadingSpinner size="sm" color="gray" />}
+                                        {modalType === 'add-products-bulk' && 'Add All Products'}
+                                        {modalType === 'add-product' && 'Add Product'}
+                                        {modalType === 'general-payment' && 'Process Payment'}
                                         {modalType === 'return' && 'Process Return'}
                                         {modalType === 'add-rental' && 'Add Quantity'}
-                                        {modalType === 'add-product' && 'Add Product'}
                                         {modalType === 'payment' && 'Add Payment'}
-                                        {modalType === 'product-payment' && 'Process Payment'}
-                                        {modalType === 'product-full-payment' && 'Pay Full Amount'}
-                                        {modalType === 'general-payment' && 'Pay Amount'}
                                     </button>
                                 </div>
                             </form>
