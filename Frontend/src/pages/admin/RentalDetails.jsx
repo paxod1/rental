@@ -14,7 +14,11 @@ import {
     FiUser,
     FiPhone,
     FiChevronDown,
-    FiCheck
+    FiCheck,
+    FiEdit,    // ✅ Add this
+    FiSave,    // ✅ Add this
+    FiTrash2
+
 } from "react-icons/fi";
 import PageLoading from "../../components/commonComp/PageLoading";
 import LoadingSpinner from "../../components/commonComp/LoadingSpinner";
@@ -58,18 +62,87 @@ function RentalDetails({ rentalId, onBack }) {
             }
         ]
     });
+    const [isEditingCustomer, setIsEditingCustomer] = useState(false);
+    const [customerEditData, setCustomerEditData] = useState({
+        customerName: '',
+        customerPhone: '',
+        customerAddress: ''
+    });
+
 
     useEffect(() => {
         fetchRentalDetails();
         fetchProducts();
     }, [rentalId]);
 
+
+    const startEditingCustomer = () => {
+        setIsEditingCustomer(true);
+        setCustomerEditData({
+            customerName: rental.customerName || '',
+            customerPhone: rental.customerPhone || '',
+            customerAddress: rental.customerAddress || ''
+        });
+    };
+
+    const cancelCustomerEdit = () => {
+        setIsEditingCustomer(false);
+        setCustomerEditData({
+            customerName: rental.customerName || '',
+            customerPhone: rental.customerPhone || '',
+            customerAddress: rental.customerAddress || ''
+        });
+    };
+
+    const saveCustomerEdit = async () => {
+        try {
+            setIsSubmitting(true);
+
+            // Validation
+            if (!customerEditData.customerName.trim() || !customerEditData.customerPhone.trim()) {
+                toast.error("Customer name and phone number are required");
+                return;
+            }
+
+            const response = await axiosInstance.put(`/api/rentals/${rentalId}/update-customer`, {
+                customerName: customerEditData.customerName.trim(),
+                customerPhone: customerEditData.customerPhone.trim(),
+                customerAddress: customerEditData.customerAddress.trim()
+            });
+
+            setRental(response.data);
+            setIsEditingCustomer(false);
+            toast.success("Customer information updated successfully!");
+        } catch (error) {
+            toast.error(error.response?.data?.message || "Error updating customer information");
+            console.error("Error:", error);
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const handleCustomerEditChange = (e) => {
+        const { name, value } = e.target;
+        setCustomerEditData(prev => ({
+            ...prev,
+            [name]: value
+        }));
+    };
+
+    // ✅ UPDATE YOUR fetchRentalDetails FUNCTION
     const fetchRentalDetails = async () => {
         try {
             setIsLoading(true);
             const response = await axiosInstance.get(`/api/rentals/${rentalId}`);
             setRental(response.data);
             setLiveBalance(response.data.balanceAmount || 0);
+
+            // ✅ ADD THIS: Initialize customer edit data
+            setCustomerEditData({
+                customerName: response.data.customerName || '',
+                customerPhone: response.data.customerPhone || '',
+                customerAddress: response.data.customerAddress || ''
+            });
         } catch (error) {
             toast.error("Error fetching rental details");
             console.error("Error:", error);
@@ -140,8 +213,34 @@ function RentalDetails({ rentalId, onBack }) {
     };
 
     const calculateLiveAmountForProduct = (productItem) => {
-        return productItem?.amount || 0;
+        if (!productItem || !rental.transactions) {
+            return productItem?.amount || 0;
+        }
+
+        // If amount is locked and set, use it directly (this contains the accumulated total)
+        if (productItem.amountLocked && productItem.amount > 0) {
+            console.log(`✅ Using locked amount for ${productItem.productName}: ₹${productItem.amount}`);
+            return productItem.amount;
+        }
+
+        // Otherwise, calculate from transactions (fallback)
+        const productId = productItem.productId._id || productItem.productId;
+
+        const productTransactions = rental.transactions.filter(transaction =>
+            transaction.productId &&
+            transaction.productId.toString() === productId.toString() &&
+            (transaction.type === 'rental' || transaction.type === 'return' || transaction.type === 'partial_return')
+        );
+
+        const totalTransactionAmount = productTransactions.reduce((sum, transaction) => {
+            return sum + (transaction.amount || 0);
+        }, 0);
+
+        console.log(`💰 Calculated from transactions for ${productItem.productName}: ₹${totalTransactionAmount.toFixed(2)}`);
+
+        return Math.max(totalTransactionAmount, productItem.amount || 0);
     };
+
 
     const calculateProductBalance = (productItem) => {
         if (!productItem) return 0;
@@ -579,12 +678,65 @@ function RentalDetails({ rentalId, onBack }) {
         return null;
     };
 
+    // Add delete function
+    const deleteProduct = async (productItem) => {
+        // Show confirmation dialog
+        const confirmed = window.confirm(
+            `Are you sure you want to delete "${productItem.productName}" from this rental?\n\n` +
+            `This will:\n` +
+            `• Remove ${productItem.quantity} units from the rental\n` +
+            `• Return ${productItem.currentQuantity} units to inventory\n` +
+            `• Remove ₹${calculateLiveAmountForProduct(productItem).toFixed(2)} from total amount\n\n` +
+            `This action cannot be undone!`
+        );
+
+        if (!confirmed) return;
+
+        // Get reason for deletion
+        const reason = prompt(
+            "Please provide a reason for deleting this product:",
+            "Added by mistake"
+        );
+
+        if (reason === null) return; // User cancelled
+
+        try {
+            setIsSubmitting(true);
+            const response = await axiosInstance.delete(
+                `/api/rentals/${rentalId}/delete-product/${productItem.productId._id || productItem.productId}`,
+                {
+                    data: { reason: reason.trim() || "No reason provided" }
+                }
+            );
+
+            setRental(response.data.rental);
+            toast.success(response.data.message, { duration: 5000 });
+        } catch (error) {
+            toast.error(error.response?.data?.message || "Error deleting product");
+            console.error("Error:", error);
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
     const renderProductCard = (productItem, index) => {
         const daysRented = calculateDaysRentedForProduct(productItem);
         const liveAmount = calculateLiveAmountForProduct(productItem);
         const productBalance = calculateProductBalance(productItem);
         const isFullyPaid = productBalance <= 0;
         const paidAmount = liveAmount - productBalance;
+
+        // Check if product can be deleted (no returns or payments)
+        const hasReturns = rental.transactions.some(t =>
+            (t.type === 'return' || t.type === 'partial_return') &&
+            t.productId && t.productId.toString() === (productItem.productId._id || productItem.productId).toString()
+        );
+
+        const hasPayments = rental.payments.some(p =>
+            p.productId && p.productId.toString() === (productItem.productId._id || productItem.productId).toString()
+        );
+
+        const canDelete = !hasReturns && !hasPayments && productItem.currentQuantity === productItem.quantity;
 
         const productActivities = getProductActivities(productItem.productId._id || productItem.productId);
 
@@ -605,12 +757,21 @@ function RentalDetails({ rentalId, onBack }) {
                                     Returned
                                 </span>
                             )}
+                            {canDelete && (
+                                <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-xs font-medium">
+                                    Can Delete
+                                </span>
+                            )}
                         </div>
 
                         <div className="grid grid-cols-2 md:grid-cols-6 gap-2 mt-3 text-sm">
                             <div>
                                 <span className="text-gray-600">Current Qty</span>
                                 <span className="ml-2 font-semibold text-blue-600">{productItem.currentQuantity} units</span>
+                            </div>
+                            <div>
+                                <span className="text-gray-600">Total Qty</span>
+                                <span className="ml-2 font-semibold">{productItem.quantity} units</span>
                             </div>
                             <div>
                                 <span className="text-gray-600">Rate</span>
@@ -623,7 +784,9 @@ function RentalDetails({ rentalId, onBack }) {
                         </div>
                     </div>
 
+                    {/* Action buttons with Delete option */}
                     <div className="flex flex-col gap-2 ml-4">
+                        {/* Primary Actions Row */}
                         <div className="flex gap-2">
                             <button
                                 onClick={() => openModal('return', productItem)}
@@ -651,9 +814,45 @@ function RentalDetails({ rentalId, onBack }) {
                                 </button>
                             )}
                         </div>
+
+                        {/* Secondary Actions Row */}
+                        <div className="flex gap-2">
+                        
+
+                            {/* ✅ DELETE BUTTON */}
+                            {canDelete ? (
+                                <button
+                                    onClick={() => deleteProduct(productItem)}
+                                    disabled={isSubmitting}
+                                    className="bg-red-500 hover:bg-red-600 disabled:bg-gray-300 text-white px-3 py-1 rounded text-sm transition-colors flex items-center gap-1"
+                                    title="Delete this product (only if no returns or payments made)"
+                                >
+                                    {isSubmitting ? (
+                                        <LoadingSpinner size="sm" color="white" />
+                                    ) : (
+                                        <FiTrash2 className="w-3 h-3" />
+                                    )}
+                                    Delete
+                                </button>
+                            ) : (
+                                <button
+                                    disabled
+                                    className="bg-gray-300 text-gray-500 px-3 py-1 rounded text-sm cursor-not-allowed flex items-center gap-1"
+                                    title={
+                                        hasReturns ? "Cannot delete: Product has return transactions" :
+                                            hasPayments ? "Cannot delete: Product has payment transactions" :
+                                                "Cannot delete: Some units have been returned"
+                                    }
+                                >
+                                    <FiTrash2 className="w-3 h-3" />
+                                    Delete
+                                </button>
+                            )}
+                        </div>
                     </div>
                 </div>
 
+                {/* Rest of your existing product card content */}
                 <div className="mt-4 p-4 bg-white rounded-2xl shadow-xl shadow-gray-200">
                     <h5 className="text-base font-semibold text-gray-700 mb-3">Payment Summary</h5>
                     <div className="grid grid-cols-3 gap-4 text-sm">
@@ -769,39 +968,143 @@ function RentalDetails({ rentalId, onBack }) {
 
             {/* Customer Information Card */}
             <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4">Customer Information</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="flex items-center gap-3">
-                        <div className="bg-blue-100 p-2 rounded-full">
-                            <FiUser className="w-5 h-5 text-blue-600" />
-                        </div>
-                        <div>
-                            <p className="text-sm text-gray-600">Customer Name</p>
-                            <p className="font-semibold uppercase">{rental.customerName}</p>
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                        <div className="bg-green-100 p-2 rounded-full">
-                            <FiPhone className="w-5 h-5 text-green-600" />
-                        </div>
-                        <div>
-                            <p className="text-sm text-gray-600">Phone Number</p>
-                            <p className="font-semibold">{rental.customerPhone || 'Not provided'}</p>
-                        </div>
-                    </div>
-                    {rental.customerAddress && (
-                        <div className="md:col-span-2 flex items-start gap-3">
-                            <div className="bg-purple-100 p-2 rounded-full">
-                                <FiUser className="w-5 h-5 text-purple-600" />
-                            </div>
-                            <div>
-                                <p className="text-sm text-gray-600">Address</p>
-                                <p className="font-semibold">{rental.customerAddress}</p>
-                            </div>
-                        </div>
+                <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-gray-800">Customer Information</h3>
+                    {!isEditingCustomer && (
+                        <button
+                            onClick={startEditingCustomer}
+                            className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm transition-colors flex items-center gap-1"
+                        >
+                            <FiEdit className="w-3 h-3" />
+                            Edit
+                        </button>
                     )}
                 </div>
+
+                {isEditingCustomer ? (
+                    <div className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <FiUser className="w-4 h-4 inline mr-1" />
+                                    Customer Name *
+                                </label>
+                                <input
+                                    type="text"
+                                    name="customerName"
+                                    value={customerEditData.customerName}
+                                    onChange={handleCustomerEditChange}
+                                    required
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                    placeholder="Enter customer name"
+                                />
+                                {!customerEditData.customerName.trim() && (
+                                    <p className="text-xs text-red-600 mt-1">Customer name is required</p>
+                                )}
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <FiPhone className="w-4 h-4 inline mr-1" />
+                                    Phone Number *
+                                </label>
+                                <input
+                                    type="tel"
+                                    name="customerPhone"
+                                    value={customerEditData.customerPhone}
+                                    onChange={handleCustomerEditChange}
+                                    required
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                    placeholder="Enter phone number"
+                                />
+                                {!customerEditData.customerPhone.trim() && (
+                                    <p className="text-xs text-red-600 mt-1">Phone number is required</p>
+                                )}
+                            </div>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <FiUser className="w-4 h-4 inline mr-1" />
+                                Address (Optional)
+                            </label>
+                            <textarea
+                                name="customerAddress"
+                                value={customerEditData.customerAddress}
+                                onChange={handleCustomerEditChange}
+                                rows="3"
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                placeholder="Enter customer address"
+                            />
+                        </div>
+
+                        {/* Edit Action Buttons */}
+                        <div className="flex gap-3 pt-2">
+                            <button
+                                onClick={saveCustomerEdit}
+                                disabled={isSubmitting || !customerEditData.customerName.trim() || !customerEditData.customerPhone.trim()}
+                                className="bg-green-500 hover:bg-green-600 disabled:bg-gray-300 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
+                            >
+                                {isSubmitting ? (
+                                    <LoadingSpinner size="sm" color="white" />
+                                ) : (
+                                    <FiSave className="w-4 h-4" />
+                                )}
+                                {isSubmitting ? 'Saving...' : 'Save Changes'}
+                            </button>
+                            <button
+                                onClick={cancelCustomerEdit}
+                                disabled={isSubmitting}
+                                className="bg-gray-500 hover:bg-gray-600 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
+                            >
+                                <FiX className="w-4 h-4" />
+                                Cancel
+                            </button>
+                        </div>
+
+                        {/* Preview of changes */}
+                        <div className="mt-3 p-3 bg-blue-50 rounded-lg">
+                            <p className="text-sm font-medium text-blue-800 mb-2">Preview Changes:</p>
+                            <div className="text-sm space-y-1">
+                                <p><strong>Name:</strong> {customerEditData.customerName || <span className="text-gray-400">Not set</span>}</p>
+                                <p><strong>Phone:</strong> {customerEditData.customerPhone || <span className="text-gray-400">Not set</span>}</p>
+                                <p><strong>Address:</strong> {customerEditData.customerAddress || <span className="text-gray-400">Not set</span>}</p>
+                            </div>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="flex items-center gap-3">
+                            <div className="bg-blue-100 p-2 rounded-full">
+                                <FiUser className="w-5 h-5 text-blue-600" />
+                            </div>
+                            <div>
+                                <p className="text-sm text-gray-600">Customer Name</p>
+                                <p className="font-semibold uppercase">{rental.customerName}</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <div className="bg-green-100 p-2 rounded-full">
+                                <FiPhone className="w-5 h-5 text-green-600" />
+                            </div>
+                            <div>
+                                <p className="text-sm text-gray-600">Phone Number</p>
+                                <p className="font-semibold">{rental.customerPhone || 'Not provided'}</p>
+                            </div>
+                        </div>
+                        {rental.customerAddress && (
+                            <div className="md:col-span-2 flex items-start gap-3">
+                                <div className="bg-purple-100 p-2 rounded-full">
+                                    <FiUser className="w-5 h-5 text-purple-600" />
+                                </div>
+                                <div>
+                                    <p className="text-sm text-gray-600">Address</p>
+                                    <p className="font-semibold">{rental.customerAddress}</p>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
+
 
             {/* Summary Cards */}
             <div className="w-full flex items-center justify-center mb-5">
@@ -863,7 +1166,7 @@ function RentalDetails({ rentalId, onBack }) {
                             <FiPlus className="w-4 h-4" />
                             Add Products
                         </button>
-                      
+
                     </div>
                 </div>
 
@@ -895,10 +1198,10 @@ function RentalDetails({ rentalId, onBack }) {
                     <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
                         <div className="flex items-center justify-between p-6 border-b">
                             <h3 className="text-xl font-semibold text-gray-800">
-                                {modalType === 'add-products-bulk' ? 'Add Multiple Products' : 
-                                 modalType === 'add-product' ? 'Add Single Product' :
-                                 modalType === 'general-payment' ? 'Payment & Discount' :
-                                 modalType.charAt(0).toUpperCase() + modalType.slice(1).replace('-', ' ')}
+                                {modalType === 'add-products-bulk' ? 'Add Multiple Products' :
+                                    modalType === 'add-product' ? 'Add Single Product' :
+                                        modalType === 'general-payment' ? 'Payment & Discount' :
+                                            modalType.charAt(0).toUpperCase() + modalType.slice(1).replace('-', ' ')}
                             </h3>
                             <button
                                 onClick={closeModal}
@@ -907,7 +1210,7 @@ function RentalDetails({ rentalId, onBack }) {
                                 <FiX className="w-5 h-5 text-gray-500" />
                             </button>
                         </div>
-                        
+
                         <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
                             <form onSubmit={handleSubmit} className="space-y-4">
                                 {/* Multiple Products Modal Content */}
@@ -966,9 +1269,9 @@ function RentalDetails({ rentalId, onBack }) {
                                                                 >
                                                                     <option value="">Choose a product</option>
                                                                     {products
-                                                                        .filter(product => 
+                                                                        .filter(product =>
                                                                             // Filter out products already in rental and already selected in other rows
-                                                                            !rental.productItems.some(item => 
+                                                                            !rental.productItems.some(item =>
                                                                                 (item.productId._id || item.productId).toString() === product._id.toString()
                                                                             ) &&
                                                                             !formData.multipleProducts
@@ -1001,7 +1304,7 @@ function RentalDetails({ rentalId, onBack }) {
                                                                     onChange={(e) => updateProductRow(productRow.id, 'quantity', e.target.value)}
                                                                     min="1"
                                                                     max={
-                                                                        productRow.productId 
+                                                                        productRow.productId
                                                                             ? products.find(p => p._id === productRow.productId)?.quantity || 1
                                                                             : 1
                                                                     }
@@ -1055,11 +1358,11 @@ function RentalDetails({ rentalId, onBack }) {
                                                                             {productRow.days && (
                                                                                 <div className="text-blue-600 font-medium">
                                                                                     Estimated Cost: ₹{(
-                                                                                        selectedProduct.rateType === 'daily' 
+                                                                                        selectedProduct.rateType === 'daily'
                                                                                             ? selectedProduct.rate * productRow.days * productRow.quantity
                                                                                             : selectedProduct.rateType === 'weekly'
-                                                                                            ? selectedProduct.rate * Math.ceil(productRow.days / 7) * productRow.quantity
-                                                                                            : selectedProduct.rate * Math.ceil(productRow.days / 30) * productRow.quantity
+                                                                                                ? selectedProduct.rate * Math.ceil(productRow.days / 7) * productRow.quantity
+                                                                                                : selectedProduct.rate * Math.ceil(productRow.days / 30) * productRow.quantity
                                                                                     ).toFixed(2)}
                                                                                 </div>
                                                                             )}
@@ -1122,8 +1425,8 @@ function RentalDetails({ rentalId, onBack }) {
                                                 >
                                                     <option value="">Choose a product</option>
                                                     {products
-                                                        .filter(product => 
-                                                            !rental.productItems.some(item => 
+                                                        .filter(product =>
+                                                            !rental.productItems.some(item =>
                                                                 (item.productId._id || item.productId).toString() === product._id.toString()
                                                             )
                                                         )

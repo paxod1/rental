@@ -1055,10 +1055,7 @@ router.put("/:id/product-full-payment", async (req, res) => {
 });
 
 // @desc    Return product with full payment option
-// @route   PUT /api/rentals/:id/return-and-pay
-// @desc    Return product with full payment option
-// @route   PUT /api/rentals/:id/return-and-pay
-// @route   PUT /api/rentals/:id/return-and-pay
+
 router.put("/:id/return-and-pay", async (req, res) => {
   try {
     const { productId, returnQuantity, payFullAmount, paymentAmount, paymentNotes, notes, returnDate } = req.body;
@@ -1107,10 +1104,6 @@ router.put("/:id/return-and-pay", async (req, res) => {
     console.log(`   Stored Amount: ₹${productItem.amount}`);
     console.log(`   Amount Locked: ${productItem.amountLocked}`);
 
-    // **********************************************************************************
-    // ✅ OPTION B: UNIT-WISE FIFO CALCULATION (FIXED)
-    console.log('\n🔹 OPTION B: UNIT-WISE FIFO CALCULATION...');
-
     // Get daily rate
     let dailyRate = 0;
     switch (productItem.rateType) {
@@ -1133,75 +1126,81 @@ router.put("/:id/return-and-pay", async (req, res) => {
 
     console.log(`📝 Found ${rentalTransactions.length} rental transactions`);
 
-    let totalUnitWiseCost = 0;
-    let daysUntilReturn = 0; // ✅ Declare this variable
+    // ✅ CRITICAL FIX: Calculate return amount for this specific return transaction
+    let returnTransactionAmount = 0;
+    let daysUntilReturn = 0;
 
-    for (const transaction of rentalTransactions) {
-      const rentalStartDate = new Date(transaction.date);
-
+    if (rentalTransactions.length > 0) {
+      const originalRentalDate = new Date(rentalTransactions[0].date);
       // ✅ CORRECTED: Proper inclusive day calculation
-      // For returned units: from rental start to return date (inclusive)
-      daysUntilReturn = Math.ceil((selectedReturnDate - rentalStartDate) / (1000 * 60 * 60 * 24)) + 1;
+      daysUntilReturn = Math.ceil((selectedReturnDate - originalRentalDate) / (1000 * 60 * 60 * 24)) + 1;
+      returnTransactionAmount = returnQuantity * daysUntilReturn * dailyRate;
 
-      // ✅ FIXED: For remaining units: from rental start to current date (inclusive, but don't double-add)
-      const totalDaysFromStart = Math.ceil((new Date() - rentalStartDate) / (1000 * 60 * 60 * 24));
-
-      // Calculate cost for returned units (start to return date)
-      const returnedUnitsCost = returnQuantity * daysUntilReturn * dailyRate;
-
-      // Calculate cost for remaining units (start to current)
-      const remainingUnits = productItem.currentQuantity - returnQuantity;
-      const remainingUnitsCost = remainingUnits * totalDaysFromStart * dailyRate;
-
-      totalUnitWiseCost = returnedUnitsCost + remainingUnitsCost;
-
-      console.log(`🔹 Option B Unit-wise calculation (CORRECTED):`);
-      console.log(`   📅 Return period: ${daysUntilReturn} days (${new Date(rentalStartDate).toLocaleDateString()} to ${selectedReturnDate.toLocaleDateString()})`);
-      console.log(`   📅 Current period: ${totalDaysFromStart} days (${new Date(rentalStartDate).toLocaleDateString()} to ${new Date().toLocaleDateString()})`);
-      console.log(`   💰 Returned units: ${returnQuantity} units × ${daysUntilReturn} days × ₹${dailyRate} = ₹${returnedUnitsCost}`);
-      console.log(`   💰 Remaining units: ${remainingUnits} units × ${totalDaysFromStart} days × ₹${dailyRate} = ₹${remainingUnitsCost}`);
-      console.log(`   🔹 Total unit-wise cost: ₹${totalUnitWiseCost}`);
-
-      break;
+      console.log(`💰 Return calculation for this transaction:`);
+      console.log(`   📅 From: ${originalRentalDate.toLocaleDateString()} to ${selectedReturnDate.toLocaleDateString()}`);
+      console.log(`   📅 Days: ${daysUntilReturn} (inclusive)`);
+      console.log(`   💰 Amount: ${returnQuantity} units × ${daysUntilReturn} days × ₹${dailyRate} = ₹${returnTransactionAmount.toFixed(2)}`);
     }
 
+    // ✅ CRITICAL FIX: Calculate TOTAL accumulated amount correctly
+    if (!productItem.amountLocked) {
+      console.log(`\n🔒 CALCULATING TOTAL ACCUMULATED AMOUNT...`);
+      
+      // Get all existing return transactions for this product
+      const existingReturnTransactions = rental.transactions
+        .filter(t => (t.type === 'return' || t.type === 'partial_return') &&
+          t.productId && t.productId.toString() === productId.toString());
 
-    // ✅ ALWAYS update amount with unit-wise calculation
-    productItem.amount = Math.round(totalUnitWiseCost * 100) / 100;
-    productItem.amountLocked = true;
+      // Calculate total from existing returns
+      const existingReturnAmount = existingReturnTransactions.reduce((sum, t) => sum + (t.amount || 0), 0);
+      
+      // Add the new return amount
+      const newTotalAmount = existingReturnAmount + returnTransactionAmount;
+      
+      console.log(`   📊 Existing return amount: ₹${existingReturnAmount.toFixed(2)}`);
+      console.log(`   📊 New return amount: ₹${returnTransactionAmount.toFixed(2)}`);
+      console.log(`   📊 NEW TOTAL AMOUNT: ₹${newTotalAmount.toFixed(2)}`);
+      
+      // ✅ CRITICAL: Update with TOTAL accumulated amount
+      productItem.amount = Math.round(newTotalAmount * 100) / 100;
+      productItem.amountLocked = true;
+      
+      console.log(`   🔒 AMOUNT LOCKED AT: ₹${productItem.amount}`);
+    } else {
+      console.log(`\n✅ AMOUNT ALREADY LOCKED - keeping existing total: ₹${productItem.amount}`);
+      
+      // ✅ CRITICAL FIX: Even if locked, we need to ADD this return to the total
+      if (returnTransactionAmount > 0) {
+        const newTotal = productItem.amount + returnTransactionAmount;
+        productItem.amount = Math.round(newTotal * 100) / 100;
+        console.log(`   📊 Added new return ₹${returnTransactionAmount} to existing ₹${productItem.amount - returnTransactionAmount}`);
+        console.log(`   📊 NEW TOTAL: ₹${productItem.amount}`);
+      }
+    }
 
-    console.log(`   ✅ Amount updated to: ₹${productItem.amount}`);
-
-    // ✅ Calculate the return amount directly using the same logic
-    const returnTransactionAmount = returnQuantity * daysUntilReturn * dailyRate;
-
-    // Use calculateProductFIFOReturn for other purposes but calculate amount correctly
-    const returnCalculation = calculateProductFIFOReturn(rental, productId, returnQuantity, selectedReturnDate);
-
-    // Add return transaction with correct amount calculation
+    // Add return transaction with correct amount
     rental.transactions.push({
       type: returnQuantity === productItem.currentQuantity ? 'return' : 'partial_return',
       productId: productId,
       productName: productItem.productName,
       quantity: returnQuantity,
-      days: daysUntilReturn, // ✅ Add the calculated days
-      amount: Math.round(returnTransactionAmount * 100) / 100, // ✅ Use direct calculation
+      days: daysUntilReturn,
+      amount: Math.round(returnTransactionAmount * 100) / 100,
       date: selectedReturnDate,
       notes: notes || `Return processed for ${productItem.productName} on ${selectedReturnDate.toLocaleDateString()}`
     });
 
-    console.log(`✅ Return transaction amount: ₹${returnTransactionAmount.toFixed(2)} (${returnQuantity} units × ${daysUntilReturn} days × ₹${dailyRate}/day)`);
-
+    console.log(`✅ Added return transaction: ₹${returnTransactionAmount.toFixed(2)}`);
 
     // Update current quantity
     productItem.currentQuantity -= returnQuantity;
 
     console.log(`\n📦 AFTER RETURN PROCESSING:`);
     console.log(`   Current Quantity: ${productItem.currentQuantity}`);
-    console.log(`   Amount: ₹${productItem.amount}`);
+    console.log(`   Final Amount: ₹${productItem.amount}`);
     console.log(`   Amount Locked: ${productItem.amountLocked}`);
 
-    // Handle payments
+    // Handle payments (existing code)
     let paymentInfo = null;
     if (payFullAmount) {
       const productBalance = rental.getProductBalance ? rental.getProductBalance(productId) : (productItem.amount - (productItem.paidAmount || 0));
@@ -1268,7 +1267,7 @@ router.put("/:id/return-and-pay", async (req, res) => {
 
     res.json({
       rental: updatedRental,
-      returnCalculation: returnCalculation,
+      returnCalculation: { total: returnTransactionAmount },
       paymentInfo: paymentInfo
     });
 
@@ -1277,6 +1276,7 @@ router.put("/:id/return-and-pay", async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 });
+
 
 // desc: Add global payment (pay total balance - full or partial)
 router.put("/:id/general-payment", async (req, res) => {
@@ -1613,6 +1613,188 @@ router.put('/:id/add-products-bulk', async (req, res) => {
   }
 });
 
+
+
+
+
+// Update customer information (also add this if missing)
+router.put('/:id/update-customer', async (req, res) => {
+  try {
+    const { customerName, customerPhone, customerAddress } = req.body;
+    
+    if (!customerName || !customerPhone) {
+      return res.status(400).json({
+        message: 'Customer name and phone number are required'
+      });
+    }
+
+    const rental = await Rental.findById(req.params.id);
+    if (!rental) {
+      return res.status(404).json({ message: 'Rental not found' });
+    }
+
+    console.log('🔄 UPDATING CUSTOMER INFO');
+    console.log('📊 Old:', { name: rental.customerName, phone: rental.customerPhone, address: rental.customerAddress });
+    console.log('📊 New:', { name: customerName, phone: customerPhone, address: customerAddress });
+
+    // Update customer information
+    rental.customerName = customerName.trim();
+    rental.customerPhone = customerPhone.trim();
+    rental.customerAddress = customerAddress ? customerAddress.trim() : '';
+
+    await rental.save();
+
+    const updatedRental = await Rental.findById(rental._id)
+      .populate('productItems.productId', 'name rate rateType');
+
+    console.log('✅ Customer info updated successfully');
+
+    res.json(updatedRental);
+  } catch (error) {
+    console.error('❌ Error updating customer:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+
+// @desc    Delete product from rental (if added by mistake)
+// @route   DELETE /api/rentals/:id/delete-product/:productId
+router.delete('/:id/delete-product/:productId', async (req, res) => {
+  try {
+    const { id: rentalId, productId } = req.params;
+    const { reason } = req.body;
+
+    console.log('\n🗑️ PRODUCT DELETE STARTING...');
+    console.log(`🆔 Rental ID: ${rentalId}`);
+    console.log(`🆔 Product ID: ${productId}`);
+    console.log(`📝 Reason: ${reason || 'No reason provided'}`);
+
+    const rental = await Rental.findById(rentalId)
+      .populate('productItems.productId', 'name rate rateType');
+
+    if (!rental) {
+      return res.status(404).json({ message: 'Rental not found' });
+    }
+
+    // Find the product item
+    const productItemIndex = rental.productItems.findIndex(item =>
+      (item.productId._id || item.productId).toString() === productId.toString()
+    );
+
+    if (productItemIndex === -1) {
+      return res.status(404).json({ message: 'Product not found in this rental' });
+    }
+
+    const productItem = rental.productItems[productItemIndex];
+
+    console.log('\n📊 PRODUCT TO DELETE:');
+    console.log(`   Product: ${productItem.productName}`);
+    console.log(`   Original Quantity: ${productItem.quantity}`);
+    console.log(`   Current Quantity: ${productItem.currentQuantity}`);
+    console.log(`   Amount: ₹${productItem.amount}`);
+
+    // Check if product has any returns or payments
+    const hasReturns = rental.transactions.some(t => 
+      (t.type === 'return' || t.type === 'partial_return') &&
+      t.productId && t.productId.toString() === productId.toString()
+    );
+
+    const hasPayments = rental.payments.some(p => 
+      p.productId && p.productId.toString() === productId.toString()
+    );
+
+    if (hasReturns) {
+      return res.status(400).json({
+        message: 'Cannot delete product that has return transactions. Please contact admin if this product was added by mistake.'
+      });
+    }
+
+    if (hasPayments) {
+      return res.status(400).json({
+        message: 'Cannot delete product that has payment transactions. Please contact admin if this product was added by mistake.'
+      });
+    }
+
+    // Check if any quantity has been returned (current < original)
+    if (productItem.currentQuantity < productItem.quantity) {
+      return res.status(400).json({
+        message: `Cannot delete product. ${productItem.quantity - productItem.currentQuantity} units have already been returned.`
+      });
+    }
+
+    console.log('✅ VALIDATION PASSED - Product can be safely deleted');
+
+    // Return the rented quantity back to product inventory
+    const quantityToReturn = productItem.currentQuantity;
+    await Product.findByIdAndUpdate(productId, {
+      $inc: { quantity: quantityToReturn }
+    });
+
+    console.log(`📦 Returned ${quantityToReturn} units to product inventory`);
+
+    // Remove all rental transactions for this product
+    const removedTransactions = rental.transactions.filter(t =>
+      t.productId && t.productId.toString() === productId.toString()
+    );
+
+    rental.transactions = rental.transactions.filter(t =>
+      !t.productId || t.productId.toString() !== productId.toString()
+    );
+
+    console.log(`🗑️ Removed ${removedTransactions.length} transactions`);
+
+    // Add deletion audit transaction
+    rental.transactions.push({
+      type: 'edit', // Using edit type for audit
+      productId: productId,
+      productName: productItem.productName,
+      quantity: -productItem.quantity, // Negative to indicate deletion
+      days: 0,
+      amount: -productItem.amount, // Negative to indicate amount removal
+      date: new Date(),
+      notes: `PRODUCT DELETED: ${productItem.productName} (${productItem.quantity} units) - Reason: ${reason || 'Added by mistake'} | Amount: ₹${productItem.amount} removed`
+    });
+
+    // Remove the product item from rental
+    rental.productItems.splice(productItemIndex, 1);
+
+    console.log(`✅ Removed product from rental`);
+
+    // Save rental (pre-save hook will recalculate totals)
+    await rental.save();
+
+    // Check if rental is now empty
+    if (rental.productItems.length === 0) {
+      // If no products left, mark as cancelled
+      rental.status = 'cancelled';
+      await rental.save();
+      console.log('⚠️ Rental marked as cancelled - no products remaining');
+    }
+
+    const updatedRental = await Rental.findById(rental._id)
+      .populate('productItems.productId', 'name rate rateType');
+
+    console.log('\n🏁 PRODUCT DELETION COMPLETED:');
+    console.log(`   Remaining products: ${updatedRental.productItems.length}`);
+    console.log(`   New total amount: ₹${updatedRental.totalAmount}`);
+    console.log(`   New balance: ₹${updatedRental.balanceAmount}`);
+    console.log(`   Status: ${updatedRental.status}`);
+
+    res.json({
+      rental: updatedRental,
+      deletedProduct: {
+        name: productItem.productName,
+        quantity: productItem.quantity,
+        amount: productItem.amount
+      },
+      message: `Successfully deleted ${productItem.productName} (${productItem.quantity} units) from rental. ₹${productItem.amount} removed from total.`
+    });
+
+  } catch (error) {
+    console.error('❌ Error deleting product:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
 
 
 

@@ -27,7 +27,7 @@ const productItemSchema = new mongoose.Schema({
 const rentalTransactionSchema = new mongoose.Schema({
   type: {
     type: String,
-    enum: ['rental', 'return', 'partial_return'],
+    enum: ['rental', 'return', 'partial_return', 'edit'],
     required: true
   },
   productId: {
