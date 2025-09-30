@@ -12,13 +12,18 @@ const authMiddleware = require('./middleware/auth');
 // Database connection
 const connectDB = async () => {
   try {
-    await mongoose.connect(process.env.MONGO_URL);
-    console.log('MongoDB connected successfully');
+    await mongoose.connect(process.env.MONGO_URL, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+      serverSelectionTimeoutMS: 10000, // 10s timeout
+    });
+    console.log('✅ MongoDB connected successfully');
   } catch (error) {
-    console.error('MongoDB connection error:', error);
+    console.error('❌ MongoDB connection error:', error.message);
     process.exit(1);
   }
 };
+
 
 connectDB();
 

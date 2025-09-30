@@ -165,9 +165,9 @@ rentalSchema.pre('save', async function (next) {
           const originalRentalDate = new Date(rentalTransactions[0].date);
           const daysRentedToToday = Math.ceil((currentDate - originalRentalDate) / (1000 * 60 * 60 * 24));
           const remainingAmountToday = productItem.currentQuantity * daysRentedToToday * dailyRate;
-          
+
           totalCalculatedAmount += remainingAmountToday;
-          
+
           console.log(`   📊 Remaining TODAY: ${productItem.currentQuantity} units × ${daysRentedToToday} days × ₹${dailyRate} = ₹${remainingAmountToday}`);
           console.log(`   📅 From: ${originalRentalDate.toLocaleDateString()} to TODAY: ${currentDate.toLocaleDateString()}`);
         }
@@ -187,32 +187,53 @@ rentalSchema.pre('save', async function (next) {
           if (!p.productId) return false;
           const pId = String(p.productId);
           const itemId = String(productItem.productId._id || productItem.productId);
-          return pId === itemId && p.type !== 'discount';
+          return pId === itemId;
         })
         .reduce((sum, p) => {
-          return p.type === 'refund' ? sum - p.amount : sum + p.amount;
+          if (p.type === 'refund') return sum - p.amount;
+          if (p.type === 'discount') return sum; // ✅ Don't count discounts as payments
+          return sum + p.amount;
         }, 0);
 
+      // ✅ FIXED: Calculate discounts for this product separately
+      const productDiscounts = this.payments
+        .filter(p => {
+          if (!p.productId) return false;
+          const pId = String(p.productId);
+          const itemId = String(productItem.productId._id || productItem.productId);
+          return pId === itemId && p.type === 'discount';
+        })
+        .reduce((sum, p) => sum + p.amount, 0);
+
       console.log(`   💳 Total Actual Payments: ₹${productPayments}`);
+      console.log(`   💸 Total Discounts: ₹${productDiscounts}`);
 
       // Update payment tracking
       productItem.paidAmount = productPayments;
-      productItem.balanceAmount = Math.max(0, productItem.amount - productPayments);
+      // ✅ FIXED: Balance = (Amount - Discounts) - ActualPayments
+      productItem.balanceAmount = Math.max(0, (productItem.amount - productDiscounts) - productPayments);
 
       console.log(`   📊 FINAL PRODUCT VALUES (AS OF TODAY):`);
       console.log(`      💰 Amount: ₹${productItem.amount} (live calculation)`);
+      console.log(`      💸 Discounts: ₹${productDiscounts}`);
       console.log(`      💳 Paid: ₹${productPayments}`);
+      console.log(`      🎯 Adjusted Amount: ₹${productItem.amount - productDiscounts}`);
       console.log(`      💰 Balance: ₹${productItem.balanceAmount}`);
+
 
       calculatedTotalAmount += productItem.amount;
     }
 
-    // Calculate total payments (exclude discounts)
+    // ✅ FIXED: Calculate total payments and discounts separately
     const totalPaidAmount = this.payments
       .filter(p => p.type !== 'discount')
       .reduce((sum, p) => {
         return p.type === 'refund' ? sum - p.amount : sum + p.amount;
       }, 0);
+
+    const totalDiscountAmount = this.payments
+      .filter(p => p.type === 'discount')
+      .reduce((sum, p) => sum + p.amount, 0);
 
     // Update rental totals
     const oldTotalAmount = this.totalAmount;
@@ -221,11 +242,14 @@ rentalSchema.pre('save', async function (next) {
 
     this.totalAmount = Math.round(calculatedTotalAmount * 100) / 100;
     this.totalPaid = Math.round(totalPaidAmount * 100) / 100;
-    this.balanceAmount = Math.max(0, this.totalAmount - this.totalPaid);
+    // ✅ FIXED: Balance = (TotalAmount - TotalDiscounts) - TotalPaid
+    this.balanceAmount = Math.max(0, (this.totalAmount - totalDiscountAmount) - this.totalPaid);
 
     console.log(`\n📊 RENTAL TOTALS UPDATED (AS OF TODAY):`);
     console.log(`   💰 Total Amount: ₹${oldTotalAmount} → ₹${this.totalAmount}`);
+    console.log(`   💸 Total Discounts: ₹${totalDiscountAmount}`);
     console.log(`   💳 Total Paid: ₹${oldTotalPaid} → ₹${this.totalPaid}`);
+    console.log(`   🎯 Adjusted Total: ₹${this.totalAmount - totalDiscountAmount}`);
     console.log(`   💰 Balance: ₹${oldBalanceAmount} → ₹${this.balanceAmount}`);
     console.log(`   📅 Calculation Date: ${currentDate.toLocaleDateString()}`);
 
@@ -342,4 +366,3 @@ rentalSchema.methods.hasUnpaidProducts = function () {
 };
 
 module.exports = mongoose.model("Rentals1", rentalSchema);
- 

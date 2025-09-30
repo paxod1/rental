@@ -243,13 +243,15 @@ function RentalDetails({ rentalId, onBack }) {
 
 
                 case 'payment':
-                    endpoint = `/api/rentals/${rentalId}/payment`;
+                    endpoint = `api/rentals/${rentalId}/product-payment`;
                     payload = {
+                        productId: formData.productId,  // ✅ ADD THIS MISSING LINE
                         amount: parseFloat(formData.amount),
                         paymentType: formData.paymentType,
                         notes: formData.notes
                     };
                     break;
+
                 default:
                     console.log('❌ NO MATCH: falling to default');
                     throw new Error(`Unknown modal type: ${modalType}`);
@@ -700,7 +702,7 @@ function RentalDetails({ rentalId, onBack }) {
 
         return null;
     };
-//hrh//
+    //hrh//
 
 
 
@@ -779,7 +781,7 @@ function RentalDetails({ rentalId, onBack }) {
                             {!isFullyPaid && (
                                 <div className="flex gap-2">
                                     <button
-                                        onClick={() => openModal('product-payment', productItem)}
+                                        onClick={() => openModal('payment', productItem)}
                                         className="cursor-pointer bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm transition-colors flex items-center gap-1"
                                     >
                                         <FiDollarSign className="w-3 h-3" />
@@ -1032,7 +1034,7 @@ function RentalDetails({ rentalId, onBack }) {
             <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
                 <h3 className="text-lg font-semibold text-gray-800 mb-4">Payment Actions</h3>
                 <div className="flex flex-wrap gap-4">
-             
+
                     {/* General Payment with Discount Button */}
                     <button
                         onClick={() => openModal('general-payment')}
