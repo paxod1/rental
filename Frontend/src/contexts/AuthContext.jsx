@@ -29,7 +29,7 @@ export const AuthProvider = ({ children }) => {
 
       if (token && userData) {
         try {
-          const response = await axiosInstance.get('/api/auth/verify');
+          const response = await axiosInstance.get('/auth/verify');
           if (response.data?.success) {
             const parsedUser = JSON.parse(userData);
             setUser(parsedUser);
@@ -78,7 +78,7 @@ export const AuthProvider = ({ children }) => {
     try {
       console.log('🔐 AuthContext: Login attempt');
 
-      const response = await axiosInstance.post('/api/auth/login', {
+      const response = await axiosInstance.post('/auth/login', {
         username: username?.trim() || '',
         password: password?.trim() || ''
       });

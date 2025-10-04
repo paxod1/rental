@@ -26,12 +26,13 @@ const createDefaultAdmin = async () => {
   }
 };
 
-createDefaultAdmin();
+
 
 
 
 // Login route
 router.post('/login', async (req, res) => {
+  createDefaultAdmin()
   try {
     const { username, password } = req.body;
 
@@ -165,4 +166,5 @@ router.post('/logout', (req, res) => {
   });
 });
 
-module.exports = router;
+module.exports = { router, createDefaultAdmin };
+
