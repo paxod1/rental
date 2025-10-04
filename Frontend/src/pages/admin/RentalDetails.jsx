@@ -314,39 +314,36 @@ function RentalDetails({ rentalId, onBack }) {
         resetForm();
     };
 
-    // ✅ ADD THIS FUNCTION TO YOUR RENTALDETAILS COMPONENT
-    const deleteEntireRental = async () => {
-        // Show detailed confirmation dialog
-        const confirmed = window.confirm(
-            `⚠️ DELETE ENTIRE RENTAL - ${rental.customerName}\n\n` +
-            `This will permanently delete:\n` +
-            `• Customer: ${rental.customerName} (${rental.customerPhone})\n` +
-            `• ${rental.productItems.length} products totaling ₹${(rental.totalAmount || 0).toFixed(2)}\n` +
-            `• All ${(rental.transactions || []).length} transactions\n` +
-            `• All ${(rental.payments || []).length} payment records\n\n` +
-            `⚠️ This action CANNOT be undone!\n\n` +
-            `Are you absolutely sure?`
-        );
+    // ✅ UPDATED DELETE FUNCTION WITH FORCE DELETE OPTION
+    const deleteEntireRental = async (forceDelete = false) => {
+        if (!forceDelete) {
+            // First attempt - normal delete
+            const confirmed = window.confirm(
+                `⚠️ DELETE ENTIRE RENTAL - ${rental.customerName}\n\n` +
+                `This will permanently delete:\n` +
+                `• Customer: ${rental.customerName} (${rental.customerPhone})\n` +
+                `• ${rental.productItems.length} products totaling ₹${(rental.totalAmount || 0).toFixed(2)}\n` +
+                `• Total Paid: ₹${(rental.totalPaid || 0).toFixed(2)}\n` +
+                `• All ${(rental.transactions || []).length} transactions\n` +
+                `• All ${(rental.payments || []).length} payment records\n\n` +
+                `⚠️ This action CANNOT be undone!\n\n` +
+                `Are you absolutely sure?`
+            );
 
-        if (!confirmed) return;
+            if (!confirmed) return;
+        }
 
         // Get reason for deletion
         const reason = prompt(
-            "Please provide a reason for deleting this rental:",
-            "Added by mistake / Duplicate entry"
+            forceDelete
+                ? "FORCE DELETE - Provide reason for force deleting this rental with payments:"
+                : "Please provide a reason for deleting this rental:",
+            forceDelete
+                ? "Force delete with payments - admin decision"
+                : "Added by mistake / Duplicate entry"
         );
 
         if (reason === null) return; // User cancelled
-
-        // Final confirmation
-        const finalConfirm = window.confirm(
-            `Final confirmation:\n\n` +
-            `Delete rental for ${rental.customerName}?\n` +
-            `Reason: ${reason}\n\n` +
-            `Click OK to permanently delete.`
-        );
-
-        if (!finalConfirm) return;
 
         try {
             setIsSubmitting(true);
@@ -354,16 +351,21 @@ function RentalDetails({ rentalId, onBack }) {
             const response = await axiosInstance.delete(
                 `/api/rentals/${rentalId}/delete-rental`,
                 {
-                    data: { reason: reason.trim() || "No reason provided" }
+                    data: {
+                        reason: reason.trim() || "No reason provided",
+                        forceDelete: forceDelete // ✅ PASS FORCE DELETE FLAG
+                    }
                 }
             );
 
             // Show success message
+            const summary = response.data.deletionSummary;
             toast.success(
                 `Rental deleted successfully!\n\n` +
-                `Customer: ${response.data.deletionSummary.customerName}\n` +
-                `Products returned to inventory: ${response.data.deletionSummary.totalProducts}`,
-                { duration: 6000 }
+                `Customer: ${summary.customerName}\n` +
+                `Products returned: ${summary.totalProducts}\n` +
+                `${summary.totalPaid > 0 ? `⚠️ Payments deleted: ₹${summary.totalPaid.toFixed(2)}` : ''}`,
+                { duration: 8000 }
             );
 
             // Navigate back to list after short delay
@@ -372,6 +374,27 @@ function RentalDetails({ rentalId, onBack }) {
             }, 2000);
 
         } catch (error) {
+            // ✅ HANDLE PAYMENT RESTRICTION ERROR
+            if (error.response?.status === 400 && error.response?.data?.hasPendingPayments) {
+                const errorData = error.response.data;
+
+                const forceConfirm = window.confirm(
+                    `⚠️ RENTAL HAS PAYMENTS!\n\n` +
+                    `This rental has ₹${errorData.totalPaid.toFixed(2)} in payments.\n\n` +
+                    `Options:\n` +
+                    `• Click CANCEL to process refunds first (recommended)\n` +
+                    `• Click OK to FORCE DELETE anyway (⚠️ WARNING: This will permanently delete all payment records!)\n\n` +
+                    `Do you want to FORCE DELETE this rental and permanently delete all payments?`
+                );
+
+                if (forceConfirm) {
+                    // ✅ RECURSIVE CALL WITH FORCE DELETE
+                    deleteEntireRental(true);
+                }
+                return;
+            }
+
+            // Handle other errors
             toast.error(
                 error.response?.data?.message ||
                 "Error deleting rental. Please try again."
@@ -381,6 +404,7 @@ function RentalDetails({ rentalId, onBack }) {
             setIsSubmitting(false);
         }
     };
+
 
 
     const handleSubmit = async (e) => {
@@ -746,6 +770,7 @@ function RentalDetails({ rentalId, onBack }) {
 
         return null;
     };
+
 
     // Add delete function
     const deleteProduct = async (productItem) => {

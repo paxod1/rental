@@ -1585,11 +1585,13 @@ router.delete("/:id", async (req, res) => {
 });
 
 // DELETE ENTIRE RENTAL ROUTE - WITH PROPER INVENTORY RESTORATION
+// FORCE DELETE ENTIRE RENTAL ROUTE - NO RESTRICTIONS
 router.delete("/:id/delete-rental", async (req, res) => {
   try {
-    const { reason } = req.body;
+    const { reason, forceDelete } = req.body;
 
     console.log('🗑️ DELETE ENTIRE RENTAL STARTING...');
+    console.log(`🔥 Force Delete: ${forceDelete ? 'YES' : 'NO'}`);
     
     const rental = await Rental.findById(req.params.id)
       .populate('productItems.productId', 'name rate rateType');
@@ -1598,35 +1600,66 @@ router.delete("/:id/delete-rental", async (req, res) => {
       return res.status(404).json({ message: "Rental not found" });
     }
 
-    // ✅ CRITICAL: Check if rental has any payments
-    if (rental.payments && rental.payments.length > 0) {
-      const totalPaid = rental.payments
-        .filter(p => p.type !== 'refund')
-        .reduce((sum, p) => sum + (p.amount || 0), 0);
-      
-      if (totalPaid > 0) {
-        return res.status(400).json({
-          message: `Cannot delete rental with payments. Total paid: ₹${totalPaid.toFixed(2)}. Please process refunds first.`
-        });
-      }
+    // ✅ Calculate payments summary
+    const totalPaid = rental.payments
+      ? rental.payments
+          .filter(p => p.type !== 'refund' && p.type !== 'discount')
+          .reduce((sum, p) => sum + (p.amount || 0), 0)
+      : 0;
+
+    const totalRefunds = rental.payments
+      ? rental.payments
+          .filter(p => p.type === 'refund')
+          .reduce((sum, p) => sum + (p.amount || 0), 0)
+      : 0;
+
+    const netPaid = totalPaid - totalRefunds;
+
+    // ✅ ONLY CHECK PAYMENTS IF NOT FORCE DELETE
+    if (!forceDelete && netPaid > 0) {
+      return res.status(400).json({
+        message: `Cannot delete rental with payments. Total paid: ₹${netPaid.toFixed(2)}. Please process refunds first.`,
+        suggestion: "Use 'Force Delete' to delete anyway, or process refunds first.",
+        hasPendingPayments: true,
+        totalPaid: netPaid
+      });
     }
 
     // ✅ Prepare deletion summary
     const deletionSummary = {
       customerName: rental.customerName,
       customerPhone: rental.customerPhone,
+      rentalId: rental._id,
       totalProducts: rental.productItems.length,
       totalAmount: rental.totalAmount || 0,
+      totalPaid: netPaid,
+      totalPayments: rental.payments ? rental.payments.length : 0,
+      totalTransactions: rental.transactions ? rental.transactions.length : 0,
+      forceDeleted: forceDelete || false,
       productsReturned: [],
-      inventoryUpdates: []
+      inventoryUpdates: [],
+      paymentsDeleted: []
     };
 
-    // ✅ Return ALL products to inventory (both active and returned quantities)
+    // ✅ Log all payments being deleted (for audit)
+    if (rental.payments && rental.payments.length > 0) {
+      rental.payments.forEach(payment => {
+        deletionSummary.paymentsDeleted.push({
+          type: payment.type,
+          amount: payment.amount,
+          date: payment.date,
+          productName: payment.productName || 'General',
+          notes: payment.notes
+        });
+      });
+    }
+
+    // ✅ Return ALL ACTIVE products to inventory
     for (const productItem of rental.productItems) {
       const productId = productItem.productId._id || productItem.productId;
       
-      // Calculate total quantity to return (original quantity - what was already physically returned)
-      const quantityToReturn = productItem.currentQuantity; // Only return what's still out
+      // Only return active quantities (not already returned)
+      const quantityToReturn = productItem.currentQuantity;
       
       if (quantityToReturn > 0) {
         await Product.findByIdAndUpdate(productId, {
@@ -1636,7 +1669,8 @@ router.delete("/:id/delete-rental", async (req, res) => {
         deletionSummary.inventoryUpdates.push({
           productName: productItem.productName,
           quantityReturned: quantityToReturn,
-          totalQuantityWas: productItem.quantity
+          originalQuantity: productItem.quantity,
+          amountLost: productItem.balanceAmount || 0
         });
       }
 
@@ -1644,33 +1678,46 @@ router.delete("/:id/delete-rental", async (req, res) => {
         name: productItem.productName,
         originalQuantity: productItem.quantity,
         currentQuantity: productItem.currentQuantity,
-        amount: productItem.amount || 0
+        amount: productItem.amount || 0,
+        paidAmount: productItem.paidAmount || 0,
+        balanceAmount: productItem.balanceAmount || 0
       });
     }
 
-    // ✅ Create audit log entry before deletion (optional - you can store this in a separate collection)
+    // ✅ Create comprehensive audit log
     const auditLog = {
-      action: 'RENTAL_DELETED',
+      action: 'RENTAL_FORCE_DELETED',
       rentalId: rental._id,
       customerName: rental.customerName,
       customerPhone: rental.customerPhone,
       reason: reason || 'No reason provided',
       deletionDate: new Date(),
       deletedBy: 'Admin', // You can pass user info from auth
+      forceDelete: forceDelete || false,
+      paymentWarning: netPaid > 0 ? `₹${netPaid.toFixed(2)} in payments were deleted` : null,
       summary: deletionSummary
     };
 
     console.log('📋 DELETION AUDIT:', auditLog);
 
-    // ✅ Delete the rental
+    // ✅ WARNING LOG if payments are being deleted
+    if (netPaid > 0) {
+      console.log(`⚠️  WARNING: Deleting rental with ₹${netPaid.toFixed(2)} in payments!`);
+      console.log(`🔥 FORCE DELETE: ${forceDelete ? 'ENABLED' : 'DISABLED'}`);
+    }
+
+    // ✅ Delete the rental (this will delete all associated data)
     await Rental.findByIdAndDelete(req.params.id);
 
     console.log('✅ RENTAL DELETED SUCCESSFULLY');
 
     res.json({
-      message: `Rental deleted successfully`,
+      message: forceDelete 
+        ? `Rental force-deleted successfully (₹${netPaid.toFixed(2)} in payments removed)`
+        : `Rental deleted successfully`,
       deletionSummary: deletionSummary,
-      auditLog: auditLog
+      auditLog: auditLog,
+      warning: netPaid > 0 ? `₹${netPaid.toFixed(2)} in payments were permanently deleted` : null
     });
 
   } catch (error) {
@@ -1681,6 +1728,7 @@ router.delete("/:id/delete-rental", async (req, res) => {
     });
   }
 });
+
 
 
 module.exports = router;
