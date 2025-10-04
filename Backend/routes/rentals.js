@@ -34,12 +34,12 @@ const calculateInclusiveDays = (startDate, endDate) => {
 // ✅ MAIN CALCULATION FUNCTION - REPLACES PRE-SAVE HOOK
 
 // ✅ FIXED CALCULATION FUNCTION - INCLUDES RETURNED AMOUNTS
-// ✅ COMPLETELY FIXED CALCULATION FUNCTION - PROPER ADDON DATE HANDLING
+
 const calculateRentalAmounts = (rental) => {
   const currentDate = new Date();
   let calculatedTotalAmount = 0;
 
-  console.log('\n🚀 CALCULATING RENTAL AMOUNTS (ADDON DATES FIXED)...');
+  console.log('\n🚀 CALCULATING RENTAL AMOUNTS (ADDON LOGIC FIXED)...');
   console.log(`📅 Current Date: ${currentDate.toISOString()}`);
 
   for (const productItem of rental.productItems) {
@@ -47,12 +47,9 @@ const calculateRentalAmounts = (rental) => {
     console.log(`   📦 Original Quantity: ${productItem.quantity}`);
     console.log(`   📦 Current Quantity: ${productItem.currentQuantity}`);
 
-    // Get the correct product ID for comparison
     const targetProductId = productItem.productId._id ? 
       productItem.productId._id.toString() : 
       productItem.productId.toString();
-    
-    console.log(`   🆔 Target Product ID: ${targetProductId}`);
 
     // Calculate daily rate
     let dailyRate = 0;
@@ -64,9 +61,7 @@ const calculateRentalAmounts = (rental) => {
 
     let productTotalAmount = 0;
 
-    // ✅ STEP 1: Calculate ALL RETURNED amounts (finalized) - UNCHANGED
-    console.log(`\n🔍 DEBUGGING TRANSACTION SEARCH:`);
-    
+    // ✅ STEP 1: Calculate ALL RETURNED amounts (finalized)
     const returnTransactions = rental.transactions.filter(t => {
       const isReturnType = t.type === 'return' || t.type === 'partial_return';
       if (!isReturnType) return false;
@@ -76,17 +71,11 @@ const calculateRentalAmounts = (rental) => {
           t.productId._id.toString() : 
           t.productId.toString();
         
-        if (txProductId === targetProductId) {
-          console.log(`   ✅ FOUND MATCHING TRANSACTION: ${t.type} - ₹${t.amount}`);
-          return true;
-        }
+        if (txProductId === targetProductId) return true;
       }
 
       if (t.productName && productItem.productName && 
-          t.productName === productItem.productName) {
-        console.log(`   ✅ FOUND BY NAME: ${t.type} - ₹${t.amount}`);
-        return true;
-      }
+          t.productName === productItem.productName) return true;
 
       return false;
     });
@@ -100,10 +89,6 @@ const calculateRentalAmounts = (rental) => {
       if (tx.days && tx.quantity && dailyRate) {
         const recalculatedAmount = tx.quantity * tx.days * dailyRate;
         
-        console.log(`      Return: Qty=${tx.quantity}, Days=${tx.days} (stored)`);
-        console.log(`         Stored: ₹${tx.amount}`);
-        console.log(`         Should be: ₹${recalculatedAmount}`);
-        
         if (Math.abs(recalculatedAmount - tx.amount) > 0.01) {
           console.log(`         🔧 USING RECALCULATED: ₹${recalculatedAmount}`);
           correctAmount = recalculatedAmount;
@@ -116,7 +101,7 @@ const calculateRentalAmounts = (rental) => {
 
     console.log(`   💰 Total Returned Amount: ₹${totalReturnedAmount}`);
 
-    // ✅ STEP 2: Calculate CURRENT ACTIVE quantity - FIXED FOR ADDON DATES
+    // ✅ STEP 2: Calculate CURRENT ACTIVE quantity - COMPLETELY FIXED LOGIC
     let currentActiveAmount = 0;
     
     if (productItem.currentQuantity > 0) {
@@ -140,37 +125,52 @@ const calculateRentalAmounts = (rental) => {
       console.log(`\n🔍 Found ${rentalTransactions.length} rental transactions:`);
 
       if (rentalTransactions.length > 0) {
-        // ✅ CRITICAL FIX: Calculate active amount for EACH rental period separately
+        // ✅ CRITICAL FIX: Calculate each transaction's contribution to active amount
+        let totalReturnedQuantity = returnTransactions.reduce((sum, tx) => sum + tx.quantity, 0);
         let remainingActiveQuantity = productItem.currentQuantity;
         
-        console.log(`   📊 Processing active quantity: ${remainingActiveQuantity}`);
+        console.log(`   📊 Total Returned Quantity: ${totalReturnedQuantity}`);
+        console.log(`   📊 Current Active Quantity: ${remainingActiveQuantity}`);
+
+        // ✅ FIXED LOGIC: Calculate active contribution for each rental transaction
+        let quantityAccountedFor = 0;
         
-        // Process rental transactions from NEWEST to OLDEST for active calculation
-        for (let i = rentalTransactions.length - 1; i >= 0 && remainingActiveQuantity > 0; i--) {
+        for (let i = 0; i < rentalTransactions.length; i++) {
           const rentalTx = rentalTransactions[i];
           const rentalDate = new Date(rentalTx.date);
           
-          // Calculate how much of this transaction is still active
-          const quantityFromThisPeriod = Math.min(remainingActiveQuantity, rentalTx.quantity);
+          // ✅ CRITICAL: Determine how much of this transaction is still active
+          let activeFromThisTransaction = 0;
           
-          // ✅ FIXED: Use the ACTUAL rental date for this specific transaction
-          const daysFromThisRental = calculateInclusiveDays(rentalDate, currentDate);
-          const amountFromThisPeriod = quantityFromThisPeriod * daysFromThisRental * dailyRate;
+          if (i === 0) {
+            // First transaction: Active = original quantity - returned quantity
+            const originalActiveFromFirst = rentalTx.quantity - totalReturnedQuantity;
+            activeFromThisTransaction = Math.max(0, originalActiveFromFirst);
+          } else {
+            // Subsequent transactions: All quantity is active (unless we exceed current active)
+            const remainingToDistribute = remainingActiveQuantity - quantityAccountedFor;
+            activeFromThisTransaction = Math.min(rentalTx.quantity, remainingToDistribute);
+          }
+          
+          if (activeFromThisTransaction > 0) {
+            const daysFromThisRental = calculateInclusiveDays(rentalDate, currentDate);
+            const amountFromThisTransaction = activeFromThisTransaction * daysFromThisRental * dailyRate;
 
-          console.log(`   📅 Rental Period ${i + 1}:`);
-          console.log(`      Date: ${rentalDate.toLocaleDateString()}`);
-          console.log(`      Transaction Quantity: ${rentalTx.quantity}`);
-          console.log(`      Active Quantity from this period: ${quantityFromThisPeriod}`);
-          console.log(`      Days from THIS rental: ${daysFromThisRental}`);
-          console.log(`      Amount: ${quantityFromThisPeriod} × ${daysFromThisRental} × ₹${dailyRate} = ₹${amountFromThisPeriod}`);
+            console.log(`   📅 Rental Transaction ${i + 1}:`);
+            console.log(`      Date: ${rentalDate.toLocaleDateString()}`);
+            console.log(`      Transaction Quantity: ${rentalTx.quantity}`);
+            console.log(`      Active Quantity from this: ${activeFromThisTransaction}`);
+            console.log(`      Days: ${daysFromThisRental}`);
+            console.log(`      Amount: ${activeFromThisTransaction} × ${daysFromThisRental} × ₹${dailyRate} = ₹${amountFromThisTransaction}`);
 
-          currentActiveAmount += amountFromThisPeriod;
-          remainingActiveQuantity -= quantityFromThisPeriod;
+            currentActiveAmount += amountFromThisTransaction;
+            quantityAccountedFor += activeFromThisTransaction;
+          }
         }
         
         console.log(`   💰 Total Active Amount: ₹${currentActiveAmount}`);
       } else {
-        // Fallback: use rental start date if no rental transactions found
+        // Fallback: use rental start date
         const daysFromStart = calculateInclusiveDays(rental.startDate, currentDate);
         currentActiveAmount = productItem.currentQuantity * daysFromStart * dailyRate;
         console.log(`   📅 Fallback calculation: ${productItem.currentQuantity} × ${daysFromStart} days = ₹${currentActiveAmount}`);
@@ -250,6 +250,7 @@ const calculateRentalAmounts = (rental) => {
 
   return rental;
 };
+
 
 
 
