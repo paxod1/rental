@@ -315,9 +315,9 @@ function RentalDetails({ rentalId, onBack }) {
     };
 
     // ✅ UPDATED DELETE FUNCTION WITH FORCE DELETE OPTION
+    // ✅ CORRECTED DELETE FUNCTION - NO CIRCULAR REFERENCES
     const deleteEntireRental = async (forceDelete = false) => {
         if (!forceDelete) {
-            // First attempt - normal delete
             const confirmed = window.confirm(
                 `⚠️ DELETE ENTIRE RENTAL - ${rental.customerName}\n\n` +
                 `This will permanently delete:\n` +
@@ -333,7 +333,6 @@ function RentalDetails({ rentalId, onBack }) {
             if (!confirmed) return;
         }
 
-        // Get reason for deletion
         const reason = prompt(
             forceDelete
                 ? "FORCE DELETE - Provide reason for force deleting this rental with payments:"
@@ -343,22 +342,26 @@ function RentalDetails({ rentalId, onBack }) {
                 : "Added by mistake / Duplicate entry"
         );
 
-        if (reason === null) return; // User cancelled
+        if (reason === null) return;
 
         try {
             setIsSubmitting(true);
 
+            // ✅ CRITICAL: Only send plain, JSON-serializable data
+            const requestData = {
+                reason: reason.trim() || "No reason provided",
+                forceDelete: Boolean(forceDelete) // ✅ Ensure it's a boolean, not an object
+            };
+
+            console.log('🗑️ Sending delete request:', requestData); // ✅ Debug log
+
             const response = await axiosInstance.delete(
                 `/api/rentals/${rentalId}/delete-rental`,
                 {
-                    data: {
-                        reason: reason.trim() || "No reason provided",
-                        forceDelete: forceDelete // ✅ PASS FORCE DELETE FLAG
-                    }
+                    data: requestData // ✅ Clean data object
                 }
             );
 
-            // Show success message
             const summary = response.data.deletionSummary;
             toast.success(
                 `Rental deleted successfully!\n\n` +
@@ -368,13 +371,13 @@ function RentalDetails({ rentalId, onBack }) {
                 { duration: 8000 }
             );
 
-            // Navigate back to list after short delay
             setTimeout(() => {
                 onBack();
             }, 2000);
 
         } catch (error) {
-            // ✅ HANDLE PAYMENT RESTRICTION ERROR
+            console.error('❌ Delete error:', error); // ✅ Better error logging
+
             if (error.response?.status === 400 && error.response?.data?.hasPendingPayments) {
                 const errorData = error.response.data;
 
@@ -388,18 +391,15 @@ function RentalDetails({ rentalId, onBack }) {
                 );
 
                 if (forceConfirm) {
-                    // ✅ RECURSIVE CALL WITH FORCE DELETE
-                    deleteEntireRental(true);
+                    deleteEntireRental(true); // ✅ Recursive call with clean boolean
                 }
                 return;
             }
 
-            // Handle other errors
             toast.error(
                 error.response?.data?.message ||
                 "Error deleting rental. Please try again."
             );
-            console.error("Error:", error);
         } finally {
             setIsSubmitting(false);
         }
