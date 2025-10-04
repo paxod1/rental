@@ -13,7 +13,7 @@ const calculateDaysBetween = (startDate, endDate) => {
 };
 
 // ✅ FIXED: Proper inclusive day calculation for rental industry
-// ✅ VERIFIED: Proper inclusive day calculation
+
 const calculateInclusiveDays = (startDate, endDate) => {
   const start = new Date(startDate);
   const end = new Date(endDate);
@@ -25,9 +25,14 @@ const calculateInclusiveDays = (startDate, endDate) => {
   const timeDifference = end.getTime() - start.getTime();
   const dayDifference = Math.floor(timeDifference / (1000 * 60 * 60 * 24));
   
-  // ✅ CRITICAL: Add 1 to make it inclusive (both start and end dates count)
+  // ✅ CRITICAL: Add 1 to make it inclusive
   return dayDifference + 1;
 };
+
+// ✅ TEST IT:
+console.log('Test Sept 13 to Oct 5:', calculateInclusiveDays('2025-09-13', '2025-10-05'));
+// Should output: 23
+
 
 // ✅ TEST THE FUNCTION:
 console.log('Sept 13 to Oct 5:', calculateInclusiveDays('2025-09-13', '2025-10-05')); 
