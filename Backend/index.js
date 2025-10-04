@@ -3,6 +3,16 @@ const cors = require("cors");
 const mongoose = require("mongoose");
 require('dotenv').config();
 
+// ✅ Force server to use IST timezone
+process.env.TZ = 'Asia/Kolkata';
+
+// ✅ Alternative: Log current server time for debugging
+console.log('🕐 Server Current Time:', new Date().toLocaleString('en-IN', {
+  timeZone: 'Asia/Kolkata',
+  dateStyle: 'full',
+  timeStyle: 'full'
+}));
+
 const app = express();
 
 // ✅ Import auth router + admin creation function
