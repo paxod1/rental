@@ -28,6 +28,8 @@ const createDefaultAdmin = async () => {
 
 createDefaultAdmin();
 
+
+
 // Login route
 router.post('/login', async (req, res) => {
   try {
