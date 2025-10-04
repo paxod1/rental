@@ -13,7 +13,6 @@ const calculateDaysBetween = (startDate, endDate) => {
 };
 
 // ✅ FIXED: Proper inclusive day calculation for rental industry
-
 const calculateInclusiveDays = (startDate, endDate) => {
   const start = new Date(startDate);
   const end = new Date(endDate);
@@ -25,28 +24,16 @@ const calculateInclusiveDays = (startDate, endDate) => {
   const timeDifference = end.getTime() - start.getTime();
   const dayDifference = Math.floor(timeDifference / (1000 * 60 * 60 * 24));
   
-  // ✅ CRITICAL: Add 1 to make it inclusive
+  // ✅ CRITICAL: Add 1 to make it inclusive (both start and end dates count)
   return dayDifference + 1;
 };
 
-// ✅ TEST IT:
-console.log('Test Sept 13 to Oct 5:', calculateInclusiveDays('2025-09-13', '2025-10-05'));
-// Should output: 23
-
-
-// ✅ TEST THE FUNCTION:
-console.log('Sept 13 to Oct 5:', calculateInclusiveDays('2025-09-13', '2025-10-05')); 
-// Should output: 23 days
-
-
 // ✅ COMPLETELY FIXED CALCULATION FUNCTION - HANDLES MULTIPLE RENTAL PERIODS
-// ✅ COMPLETELY FIXED CALCULATION FUNCTION - PROPER INCLUSIVE DAYS
-// ✅ COMPLETELY FIXED CALCULATION FUNCTION - PROPER ADDON DATE HANDLING
 const calculateRentalAmounts = (rental) => {
   const currentDate = new Date();
   let calculatedTotalAmount = 0;
 
-  console.log('\n🚀 CALCULATING RENTAL AMOUNTS (ADDON DATES FIXED)...');
+  console.log('\n🚀 CALCULATING RENTAL AMOUNTS (MULTI-PERIOD FIXED)...');
   console.log(`📅 Current Date: ${currentDate.toISOString()}`);
 
   for (const productItem of rental.productItems) {
@@ -58,6 +45,8 @@ const calculateRentalAmounts = (rental) => {
     const targetProductId = productItem.productId._id ? 
       productItem.productId._id.toString() : 
       productItem.productId.toString();
+    
+    console.log(`   🆔 Target Product ID: ${targetProductId}`);
 
     // Calculate daily rate
     let dailyRate = 0;
@@ -109,11 +98,11 @@ const calculateRentalAmounts = (rental) => {
 
     console.log(`   💰 Total Returned Amount: ₹${totalReturnedAmount}`);
 
-    // ✅ STEP 2: Calculate CURRENT ACTIVE quantity - FIXED FOR ADDON DATES
+    // ✅ STEP 2: Calculate CURRENT ACTIVE quantity - FIXED FOR MULTIPLE PERIODS
     let currentActiveAmount = 0;
     
     if (productItem.currentQuantity > 0) {
-      // Get ALL rental transactions for this product (including add-more)
+      // ✅ Get ALL rental transactions for this product (including add-more)
       const rentalTransactions = rental.transactions.filter(t => {
         if (t.type !== 'rental') return false;
         
@@ -133,40 +122,34 @@ const calculateRentalAmounts = (rental) => {
 
       console.log(`\n🔍 Found ${rentalTransactions.length} rental transactions:`);
 
-      if (rentalTransactions.length > 0) {
-        // ✅ CRITICAL FIX: Calculate active amount based on ACTUAL rental dates
-        let remainingActiveQuantity = productItem.currentQuantity;
-        
-        // Process rental transactions from NEWEST to OLDEST for active calculation
-        for (let i = rentalTransactions.length - 1; i >= 0 && remainingActiveQuantity > 0; i--) {
-          const rentalTx = rentalTransactions[i];
-          const rentalDate = new Date(rentalTx.date);
-          
-          // ✅ CRITICAL: Calculate how much of this transaction is still active
-          const quantityFromThisPeriod = Math.min(remainingActiveQuantity, rentalTx.quantity);
-          
-          // ✅ FIXED: Use the ACTUAL rental date for this specific transaction
-          const daysFromThisRental = calculateInclusiveDays(rentalDate, currentDate);
-          const amountFromThisPeriod = quantityFromThisPeriod * daysFromThisRental * dailyRate;
+      // ✅ CRITICAL FIX: Calculate active amount for EACH rental period separately
+      let remainingActiveQuantity = productItem.currentQuantity;
+      let totalReturnedQuantity = returnTransactions.reduce((sum, tx) => sum + tx.quantity, 0);
 
-          console.log(`   📅 Rental Period ${i + 1}:`);
-          console.log(`      Transaction Date: ${rentalDate.toLocaleDateString()}`);
-          console.log(`      Transaction Quantity: ${rentalTx.quantity}`);
-          console.log(`      Active Quantity from this period: ${quantityFromThisPeriod}`);
-          console.log(`      Days from THIS rental: ${daysFromThisRental}`);
-          console.log(`      Amount: ${quantityFromThisPeriod} × ${daysFromThisRental} × ₹${dailyRate} = ₹${amountFromThisPeriod}`);
+      console.log(`   📊 Remaining Active Quantity: ${remainingActiveQuantity}`);
+      console.log(`   📊 Total Returned Quantity: ${totalReturnedQuantity}`);
 
-          currentActiveAmount += amountFromThisPeriod;
-          remainingActiveQuantity -= quantityFromThisPeriod;
-        }
+      // Process rental transactions from newest to oldest for active calculation
+      for (let i = rentalTransactions.length - 1; i >= 0 && remainingActiveQuantity > 0; i--) {
+        const rentalTx = rentalTransactions[i];
+        const rentalDate = new Date(rentalTx.date);
         
-        console.log(`   💰 Total Active Amount: ₹${currentActiveAmount}`);
-      } else {
-        // Fallback: use rental start date if no rental transactions found
-        const daysFromStart = calculateInclusiveDays(rental.startDate, currentDate);
-        currentActiveAmount = productItem.currentQuantity * daysFromStart * dailyRate;
-        console.log(`   📅 Fallback calculation: ${productItem.currentQuantity} × ${daysFromStart} days = ₹${currentActiveAmount}`);
+        // Calculate how much of this rental period is still active
+        const quantityFromThisPeriod = Math.min(remainingActiveQuantity, rentalTx.quantity);
+        const daysFromThisPeriod = calculateInclusiveDays(rentalDate, currentDate);
+        const amountFromThisPeriod = quantityFromThisPeriod * daysFromThisPeriod * dailyRate;
+
+        console.log(`   📅 Rental Period ${i + 1}:`);
+        console.log(`      Date: ${rentalDate.toLocaleDateString()}`);
+        console.log(`      Quantity from this period: ${quantityFromThisPeriod}`);
+        console.log(`      Days: ${daysFromThisPeriod}`);
+        console.log(`      Amount: ${quantityFromThisPeriod} × ${daysFromThisPeriod} × ₹${dailyRate} = ₹${amountFromThisPeriod}`);
+
+        currentActiveAmount += amountFromThisPeriod;
+        remainingActiveQuantity -= quantityFromThisPeriod;
       }
+
+      console.log(`   💰 Total Active Amount: ₹${currentActiveAmount}`);
     }
 
     // ✅ CRITICAL: TOTAL = Returned + Active
@@ -242,8 +225,6 @@ const calculateRentalAmounts = (rental) => {
 
   return rental;
 };
-
-
 
 
 
@@ -1604,13 +1585,11 @@ router.delete("/:id", async (req, res) => {
 });
 
 // DELETE ENTIRE RENTAL ROUTE - WITH PROPER INVENTORY RESTORATION
-// FORCE DELETE ENTIRE RENTAL ROUTE - NO RESTRICTIONS
 router.delete("/:id/delete-rental", async (req, res) => {
   try {
-    const { reason, forceDelete } = req.body;
+    const { reason } = req.body;
 
     console.log('🗑️ DELETE ENTIRE RENTAL STARTING...');
-    console.log(`🔥 Force Delete: ${forceDelete ? 'YES' : 'NO'}`);
     
     const rental = await Rental.findById(req.params.id)
       .populate('productItems.productId', 'name rate rateType');
@@ -1619,66 +1598,35 @@ router.delete("/:id/delete-rental", async (req, res) => {
       return res.status(404).json({ message: "Rental not found" });
     }
 
-    // ✅ Calculate payments summary
-    const totalPaid = rental.payments
-      ? rental.payments
-          .filter(p => p.type !== 'refund' && p.type !== 'discount')
-          .reduce((sum, p) => sum + (p.amount || 0), 0)
-      : 0;
-
-    const totalRefunds = rental.payments
-      ? rental.payments
-          .filter(p => p.type === 'refund')
-          .reduce((sum, p) => sum + (p.amount || 0), 0)
-      : 0;
-
-    const netPaid = totalPaid - totalRefunds;
-
-    // ✅ ONLY CHECK PAYMENTS IF NOT FORCE DELETE
-    if (!forceDelete && netPaid > 0) {
-      return res.status(400).json({
-        message: `Cannot delete rental with payments. Total paid: ₹${netPaid.toFixed(2)}. Please process refunds first.`,
-        suggestion: "Use 'Force Delete' to delete anyway, or process refunds first.",
-        hasPendingPayments: true,
-        totalPaid: netPaid
-      });
+    // ✅ CRITICAL: Check if rental has any payments
+    if (rental.payments && rental.payments.length > 0) {
+      const totalPaid = rental.payments
+        .filter(p => p.type !== 'refund')
+        .reduce((sum, p) => sum + (p.amount || 0), 0);
+      
+      if (totalPaid > 0) {
+        return res.status(400).json({
+          message: `Cannot delete rental with payments. Total paid: ₹${totalPaid.toFixed(2)}. Please process refunds first.`
+        });
+      }
     }
 
     // ✅ Prepare deletion summary
     const deletionSummary = {
       customerName: rental.customerName,
       customerPhone: rental.customerPhone,
-      rentalId: rental._id,
       totalProducts: rental.productItems.length,
       totalAmount: rental.totalAmount || 0,
-      totalPaid: netPaid,
-      totalPayments: rental.payments ? rental.payments.length : 0,
-      totalTransactions: rental.transactions ? rental.transactions.length : 0,
-      forceDeleted: forceDelete || false,
       productsReturned: [],
-      inventoryUpdates: [],
-      paymentsDeleted: []
+      inventoryUpdates: []
     };
 
-    // ✅ Log all payments being deleted (for audit)
-    if (rental.payments && rental.payments.length > 0) {
-      rental.payments.forEach(payment => {
-        deletionSummary.paymentsDeleted.push({
-          type: payment.type,
-          amount: payment.amount,
-          date: payment.date,
-          productName: payment.productName || 'General',
-          notes: payment.notes
-        });
-      });
-    }
-
-    // ✅ Return ALL ACTIVE products to inventory
+    // ✅ Return ALL products to inventory (both active and returned quantities)
     for (const productItem of rental.productItems) {
       const productId = productItem.productId._id || productItem.productId;
       
-      // Only return active quantities (not already returned)
-      const quantityToReturn = productItem.currentQuantity;
+      // Calculate total quantity to return (original quantity - what was already physically returned)
+      const quantityToReturn = productItem.currentQuantity; // Only return what's still out
       
       if (quantityToReturn > 0) {
         await Product.findByIdAndUpdate(productId, {
@@ -1688,8 +1636,7 @@ router.delete("/:id/delete-rental", async (req, res) => {
         deletionSummary.inventoryUpdates.push({
           productName: productItem.productName,
           quantityReturned: quantityToReturn,
-          originalQuantity: productItem.quantity,
-          amountLost: productItem.balanceAmount || 0
+          totalQuantityWas: productItem.quantity
         });
       }
 
@@ -1697,46 +1644,33 @@ router.delete("/:id/delete-rental", async (req, res) => {
         name: productItem.productName,
         originalQuantity: productItem.quantity,
         currentQuantity: productItem.currentQuantity,
-        amount: productItem.amount || 0,
-        paidAmount: productItem.paidAmount || 0,
-        balanceAmount: productItem.balanceAmount || 0
+        amount: productItem.amount || 0
       });
     }
 
-    // ✅ Create comprehensive audit log
+    // ✅ Create audit log entry before deletion (optional - you can store this in a separate collection)
     const auditLog = {
-      action: 'RENTAL_FORCE_DELETED',
+      action: 'RENTAL_DELETED',
       rentalId: rental._id,
       customerName: rental.customerName,
       customerPhone: rental.customerPhone,
       reason: reason || 'No reason provided',
       deletionDate: new Date(),
       deletedBy: 'Admin', // You can pass user info from auth
-      forceDelete: forceDelete || false,
-      paymentWarning: netPaid > 0 ? `₹${netPaid.toFixed(2)} in payments were deleted` : null,
       summary: deletionSummary
     };
 
     console.log('📋 DELETION AUDIT:', auditLog);
 
-    // ✅ WARNING LOG if payments are being deleted
-    if (netPaid > 0) {
-      console.log(`⚠️  WARNING: Deleting rental with ₹${netPaid.toFixed(2)} in payments!`);
-      console.log(`🔥 FORCE DELETE: ${forceDelete ? 'ENABLED' : 'DISABLED'}`);
-    }
-
-    // ✅ Delete the rental (this will delete all associated data)
+    // ✅ Delete the rental
     await Rental.findByIdAndDelete(req.params.id);
 
     console.log('✅ RENTAL DELETED SUCCESSFULLY');
 
     res.json({
-      message: forceDelete 
-        ? `Rental force-deleted successfully (₹${netPaid.toFixed(2)} in payments removed)`
-        : `Rental deleted successfully`,
+      message: `Rental deleted successfully`,
       deletionSummary: deletionSummary,
-      auditLog: auditLog,
-      warning: netPaid > 0 ? `₹${netPaid.toFixed(2)} in payments were permanently deleted` : null
+      auditLog: auditLog
     });
 
   } catch (error) {
@@ -1747,7 +1681,6 @@ router.delete("/:id/delete-rental", async (req, res) => {
     });
   }
 });
-
 
 
 module.exports = router;
