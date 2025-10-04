@@ -314,6 +314,75 @@ function RentalDetails({ rentalId, onBack }) {
         resetForm();
     };
 
+    // ✅ ADD THIS FUNCTION TO YOUR RENTALDETAILS COMPONENT
+    const deleteEntireRental = async () => {
+        // Show detailed confirmation dialog
+        const confirmed = window.confirm(
+            `⚠️ DELETE ENTIRE RENTAL - ${rental.customerName}\n\n` +
+            `This will permanently delete:\n` +
+            `• Customer: ${rental.customerName} (${rental.customerPhone})\n` +
+            `• ${rental.productItems.length} products totaling ₹${(rental.totalAmount || 0).toFixed(2)}\n` +
+            `• All ${(rental.transactions || []).length} transactions\n` +
+            `• All ${(rental.payments || []).length} payment records\n\n` +
+            `⚠️ This action CANNOT be undone!\n\n` +
+            `Are you absolutely sure?`
+        );
+
+        if (!confirmed) return;
+
+        // Get reason for deletion
+        const reason = prompt(
+            "Please provide a reason for deleting this rental:",
+            "Added by mistake / Duplicate entry"
+        );
+
+        if (reason === null) return; // User cancelled
+
+        // Final confirmation
+        const finalConfirm = window.confirm(
+            `Final confirmation:\n\n` +
+            `Delete rental for ${rental.customerName}?\n` +
+            `Reason: ${reason}\n\n` +
+            `Click OK to permanently delete.`
+        );
+
+        if (!finalConfirm) return;
+
+        try {
+            setIsSubmitting(true);
+
+            const response = await axiosInstance.delete(
+                `/api/rentals/${rentalId}/delete-rental`,
+                {
+                    data: { reason: reason.trim() || "No reason provided" }
+                }
+            );
+
+            // Show success message
+            toast.success(
+                `Rental deleted successfully!\n\n` +
+                `Customer: ${response.data.deletionSummary.customerName}\n` +
+                `Products returned to inventory: ${response.data.deletionSummary.totalProducts}`,
+                { duration: 6000 }
+            );
+
+            // Navigate back to list after short delay
+            setTimeout(() => {
+                onBack();
+            }, 2000);
+
+        } catch (error) {
+            toast.error(
+                error.response?.data?.message ||
+                "Error deleting rental. Please try again."
+            );
+            console.error("Error:", error);
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setIsSubmitting(true);
@@ -817,7 +886,7 @@ function RentalDetails({ rentalId, onBack }) {
 
                         {/* Secondary Actions Row */}
                         <div className="flex gap-2">
-                        
+
 
                             {/* ✅ DELETE BUTTON */}
                             {canDelete ? (
@@ -970,15 +1039,32 @@ function RentalDetails({ rentalId, onBack }) {
             <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
                 <div className="flex items-center justify-between mb-4">
                     <h3 className="text-lg font-semibold text-gray-800">Customer Information</h3>
-                    {!isEditingCustomer && (
+                    <div className="flex gap-1">
+                        {!isEditingCustomer && (
+                            <button
+                                onClick={startEditingCustomer}
+                                className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm transition-colors flex items-center gap-1"
+                            >
+                                <FiEdit className="w-3 h-3" />
+                                Edit
+                            </button>
+                        )}
+
+                        {/* ✅ DELETE RENTAL BUTTON */}
                         <button
-                            onClick={startEditingCustomer}
-                            className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm transition-colors flex items-center gap-1"
+                            onClick={deleteEntireRental}
+                            disabled={isSubmitting}
+                            className="bg-red-500 hover:bg-red-600 disabled:bg-gray-300 text-white px-3 py-1 rounded text-sm transition-colors flex items-center gap-1"
+                            title="Delete entire rental (will return all products to inventory)"
                         >
-                            <FiEdit className="w-3 h-3" />
-                            Edit
+                            {isSubmitting ? (
+                                <LoadingSpinner size="sm" color="white" />
+                            ) : (
+                                <FiTrash2 className="w-3 h-3" />
+                            )}
+                            Delete Rental
                         </button>
-                    )}
+                    </div>
                 </div>
 
                 {isEditingCustomer ? (

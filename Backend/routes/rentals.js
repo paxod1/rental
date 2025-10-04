@@ -1584,4 +1584,103 @@ router.delete("/:id", async (req, res) => {
   }
 });
 
+// DELETE ENTIRE RENTAL ROUTE - WITH PROPER INVENTORY RESTORATION
+router.delete("/:id/delete-rental", async (req, res) => {
+  try {
+    const { reason } = req.body;
+
+    console.log('🗑️ DELETE ENTIRE RENTAL STARTING...');
+    
+    const rental = await Rental.findById(req.params.id)
+      .populate('productItems.productId', 'name rate rateType');
+
+    if (!rental) {
+      return res.status(404).json({ message: "Rental not found" });
+    }
+
+    // ✅ CRITICAL: Check if rental has any payments
+    if (rental.payments && rental.payments.length > 0) {
+      const totalPaid = rental.payments
+        .filter(p => p.type !== 'refund')
+        .reduce((sum, p) => sum + (p.amount || 0), 0);
+      
+      if (totalPaid > 0) {
+        return res.status(400).json({
+          message: `Cannot delete rental with payments. Total paid: ₹${totalPaid.toFixed(2)}. Please process refunds first.`
+        });
+      }
+    }
+
+    // ✅ Prepare deletion summary
+    const deletionSummary = {
+      customerName: rental.customerName,
+      customerPhone: rental.customerPhone,
+      totalProducts: rental.productItems.length,
+      totalAmount: rental.totalAmount || 0,
+      productsReturned: [],
+      inventoryUpdates: []
+    };
+
+    // ✅ Return ALL products to inventory (both active and returned quantities)
+    for (const productItem of rental.productItems) {
+      const productId = productItem.productId._id || productItem.productId;
+      
+      // Calculate total quantity to return (original quantity - what was already physically returned)
+      const quantityToReturn = productItem.currentQuantity; // Only return what's still out
+      
+      if (quantityToReturn > 0) {
+        await Product.findByIdAndUpdate(productId, {
+          $inc: { quantity: quantityToReturn }
+        });
+
+        deletionSummary.inventoryUpdates.push({
+          productName: productItem.productName,
+          quantityReturned: quantityToReturn,
+          totalQuantityWas: productItem.quantity
+        });
+      }
+
+      deletionSummary.productsReturned.push({
+        name: productItem.productName,
+        originalQuantity: productItem.quantity,
+        currentQuantity: productItem.currentQuantity,
+        amount: productItem.amount || 0
+      });
+    }
+
+    // ✅ Create audit log entry before deletion (optional - you can store this in a separate collection)
+    const auditLog = {
+      action: 'RENTAL_DELETED',
+      rentalId: rental._id,
+      customerName: rental.customerName,
+      customerPhone: rental.customerPhone,
+      reason: reason || 'No reason provided',
+      deletionDate: new Date(),
+      deletedBy: 'Admin', // You can pass user info from auth
+      summary: deletionSummary
+    };
+
+    console.log('📋 DELETION AUDIT:', auditLog);
+
+    // ✅ Delete the rental
+    await Rental.findByIdAndDelete(req.params.id);
+
+    console.log('✅ RENTAL DELETED SUCCESSFULLY');
+
+    res.json({
+      message: `Rental deleted successfully`,
+      deletionSummary: deletionSummary,
+      auditLog: auditLog
+    });
+
+  } catch (error) {
+    console.error('❌ Error deleting rental:', error);
+    res.status(500).json({ 
+      message: "Error deleting rental",
+      error: error.message 
+    });
+  }
+});
+
+
 module.exports = router;
