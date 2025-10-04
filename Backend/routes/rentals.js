@@ -13,33 +13,29 @@ const calculateDaysBetween = (startDate, endDate) => {
 };
 // ✅ FIXED: Proper inclusive day calculation for rental industry
 // ✅ COMPLETELY FIXED: Proper inclusive day calculation
-// ✅ TIMEZONE-AWARE: Day calculation function
 const calculateInclusiveDays = (startDate, endDate) => {
-  // ✅ Parse dates in IST timezone
   const start = new Date(startDate);
   const end = new Date(endDate);
   
-  // ✅ Convert to IST and reset time
-  const startIST = new Date(start.toLocaleString('en-CA', { timeZone: 'Asia/Kolkata' }));
-  const endIST = new Date(end.toLocaleString('en-CA', { timeZone: 'Asia/Kolkata' }));
+  // Reset time to start of day to avoid time zone issues
+  start.setHours(0, 0, 0, 0);
+  end.setHours(0, 0, 0, 0);
   
-  startIST.setHours(0, 0, 0, 0);
-  endIST.setHours(0, 0, 0, 0);
-  
-  const timeDifference = endIST.getTime() - startIST.getTime();
+  const timeDifference = end.getTime() - start.getTime();
   const dayDifference = Math.floor(timeDifference / (1000 * 60 * 60 * 24));
   
+  // ✅ CRITICAL: Add 1 to make it inclusive (both start and end dates count)
   const inclusiveDays = dayDifference + 1;
   
-  console.log(`   🔍 Day calc (IST): ${startIST.toLocaleDateString()} to ${endIST.toLocaleDateString()} = ${inclusiveDays} days`);
+  // ✅ DEBUG: Log the calculation
+  console.log(`   🔍 Day calc: ${start.toLocaleDateString()} to ${end.toLocaleDateString()} = ${inclusiveDays} days`);
   
   return inclusiveDays;
 };
 
-
 // ✅ TEST THE FUNCTION:
 console.log('Testing day calculation:');
-console.log('Sept 13 to Oct 5:', calculateInclusiveDays('2025-09-13', '2025-10-05'));
+console.log('Sept 13 to Oct 5:', calculateInclusiveDays('2025-09-13', '2025-10-05')); 
 // Should output: 23 days
 
 
@@ -295,7 +291,6 @@ const calculateRentalAmounts = (rental) => {
 
   return rental;
 };
-
 
 
 
@@ -908,7 +903,7 @@ router.put("/:id/return-and-pay", async (req, res) => {
 
     if (rentalTransactions.length > 0) {
       const originalRentalDate = new Date(rentalTransactions[0].date);
-
+      
       // ✅ FIXED: Use inclusive day calculation
       daysUntilReturn = calculateInclusiveDays(originalRentalDate, selectedReturnDate);
       returnTransactionAmount = returnQuantity * daysUntilReturn * dailyRate;
@@ -993,7 +988,7 @@ router.put("/:id/return-and-pay", async (req, res) => {
 
     res.json({
       rental: updatedRental,
-      returnCalculation: {
+      returnCalculation: { 
         amount: returnTransactionAmount,
         days: daysUntilReturn, // This will now show 10 instead of 9
         rate: dailyRate,
@@ -1269,7 +1264,7 @@ router.put("/:id/general-payment", async (req, res) => {
         if (discountAmt <= 0) break;
 
         let discountForProduct = Math.min(product.currentBalance, discountAmt);
-
+        
         if (discountForProduct > 0) {
           rental.payments.push({
             amount: discountForProduct,
@@ -1302,7 +1297,7 @@ router.put("/:id/general-payment", async (req, res) => {
         if (product.currentBalance <= 0) continue;
 
         let paymentForProduct = Math.min(product.currentBalance, paymentAmt);
-
+        
         if (paymentForProduct > 0) {
           rental.payments.push({
             amount: paymentForProduct,
@@ -1362,14 +1357,14 @@ router.put("/:id/general-payment", async (req, res) => {
 router.put('/:id/add-products-bulk', async (req, res) => {
   try {
     const { products, notes } = req.body;
-
+    
     if (!products || !Array.isArray(products) || products.length === 0) {
       return res.status(400).json({ message: 'Please provide at least one product' });
     }
 
     const rental = await Rental.findById(req.params.id)
       .populate('productItems.productId', 'name rate rateType');
-
+    
     if (!rental) {
       return res.status(404).json({ message: 'Rental not found' });
     }
@@ -1388,10 +1383,10 @@ router.put('/:id/add-products-bulk', async (req, res) => {
           continue;
         }
 
-        const existingProduct = rental.productItems.find(item =>
+        const existingProduct = rental.productItems.find(item => 
           item.productId.id.toString() === productId.toString()
         );
-
+        
         if (existingProduct) {
           errors.push(`Product ${i + 1}: Already exists in this rental. Use Add More instead.`);
           continue;
@@ -1461,7 +1456,7 @@ router.put('/:id/add-products-bulk', async (req, res) => {
     }
 
     if (addedProducts.length === 0) {
-      return res.status(400).json({
+      return res.status(400).json({ 
         message: 'No products were added successfully',
         errors: errors
       });
@@ -1493,7 +1488,7 @@ router.put('/:id/add-products-bulk', async (req, res) => {
 router.put('/:id/update-customer', async (req, res) => {
   try {
     const { customerName, customerPhone, customerAddress } = req.body;
-
+    
     if (!customerName || !customerPhone) {
       return res.status(400).json({
         message: 'Customer name and phone number are required'
@@ -1548,12 +1543,12 @@ router.delete('/:id/delete-product/:productId', async (req, res) => {
     const productItem = rental.productItems[productItemIndex];
 
     // Validation checks
-    const hasReturns = rental.transactions.some(t =>
+    const hasReturns = rental.transactions.some(t => 
       (t.type === 'return' || t.type === 'partial_return') &&
       t.productId && t.productId.toString() === productId.toString()
     );
 
-    const hasPayments = rental.payments.some(p =>
+    const hasPayments = rental.payments.some(p => 
       p.productId && p.productId.toString() === productId.toString()
     );
 
@@ -1663,7 +1658,7 @@ router.delete("/:id/delete-rental", async (req, res) => {
     const { reason } = req.body;
 
     console.log('🗑️ DELETE ENTIRE RENTAL STARTING...');
-
+    
     const rental = await Rental.findById(req.params.id)
       .populate('productItems.productId', 'name rate rateType');
 
@@ -1676,7 +1671,7 @@ router.delete("/:id/delete-rental", async (req, res) => {
       const totalPaid = rental.payments
         .filter(p => p.type !== 'refund')
         .reduce((sum, p) => sum + (p.amount || 0), 0);
-
+      
       if (totalPaid > 0) {
         return res.status(400).json({
           message: `Cannot delete rental with payments. Total paid: ₹${totalPaid.toFixed(2)}. Please process refunds first.`
@@ -1697,10 +1692,10 @@ router.delete("/:id/delete-rental", async (req, res) => {
     // ✅ Return ALL products to inventory (both active and returned quantities)
     for (const productItem of rental.productItems) {
       const productId = productItem.productId._id || productItem.productId;
-
+      
       // Calculate total quantity to return (original quantity - what was already physically returned)
       const quantityToReturn = productItem.currentQuantity; // Only return what's still out
-
+      
       if (quantityToReturn > 0) {
         await Product.findByIdAndUpdate(productId, {
           $inc: { quantity: quantityToReturn }
@@ -1748,9 +1743,9 @@ router.delete("/:id/delete-rental", async (req, res) => {
 
   } catch (error) {
     console.error('❌ Error deleting rental:', error);
-    res.status(500).json({
+    res.status(500).json({ 
       message: "Error deleting rental",
-      error: error.message
+      error: error.message 
     });
   }
 });
