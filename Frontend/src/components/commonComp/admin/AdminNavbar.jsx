@@ -6,16 +6,12 @@ import { useAuth } from '../../../contexts/AuthContext';
 import toast from 'react-hot-toast';
 
 function AdminNavbar() {
-    const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
     const [scrolled, setScrolled] = useState(false);
+    const [showTooltip, setShowTooltip] = useState('');
     const location = useLocation();
     const { user, logout } = useAuth();
-
-    const toggleMenu = () => {
-        setIsMenuOpen(!isMenuOpen);
-    };
 
     const toggleProfileMenu = () => {
         setIsProfileMenuOpen(!isProfileMenuOpen);
@@ -63,12 +59,30 @@ function AdminNavbar() {
         return location.pathname === path;
     };
 
+    // Navigation items for reusability
+    const navItems = [
+        { path: '/', icon: FiHome, label: 'Home' },
+        { path: '/Admin-products', icon: FiBox, label: 'Products' },
+        { path: '/Rental-History', icon: FiClock, label: 'History' },
+        { path: '/Admin-Rented', icon: FiShoppingBag, label: 'Rented' }
+    ];
+
+    // Handle tooltip show/hide with delays
+    const handleTooltipShow = (label) => {
+        setTimeout(() => setShowTooltip(label), 300);
+    };
+
+    const handleTooltipHide = () => {
+        setShowTooltip('');
+    };
+
     return (
         <>
-            <nav className={`fixed w-full z-50 bg-gradient-to-r from-[#ca6464] to-[#d17474] shadow-lg transition-all duration-300 ${scrolled ? 'py-1' : 'py-2'}`}>
+            {/* Desktop Navbar - Hidden on mobile */}
+            <nav className={`hidden md:block fixed w-full z-50 bg-gradient-to-r from-[#ca6464] to-[#d17474] shadow-lg transition-all duration-300 ${scrolled ? 'py-1' : 'py-2'}`}>
                 <div className="w-[95%] mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between items-center h-16">
-                        {/* Brand Logo - Enhanced with gradient background */}
+                        {/* Brand Logo */}
                         <div className="flex-shrink-0">
                             <Link to="/" className="flex flex-col items-start group">
                                 <h1 className='text-white text-xl font-bold whitespace-nowrap group-hover:text-yellow-100 transition-colors duration-300'>
@@ -81,44 +95,20 @@ function AdminNavbar() {
                         </div>
 
                         {/* Desktop Menu */}
-                        <div className="hidden md:flex items-center space-x-4">
+                        <div className="flex items-center space-x-4">
                             <div className="flex items-baseline space-x-4">
-                                <Link
-                                    to="/"
-                                    className={`flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ease-in-out ${isActiveLink('/') 
-                                        ? 'bg-[#b85555] text-white shadow-lg transform scale-105 ring-2 ring-white/20' 
-                                        : 'text-white hover:bg-[#b85555] hover:bg-opacity-80 hover:shadow-md hover:scale-102'}`}
-                                >
-                                    <FiHome className="mr-2" />
-                                    Home
-                                </Link>
-                                <Link
-                                    to="/Admin-products"
-                                    className={`flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ease-in-out ${isActiveLink('/Admin-products') 
-                                        ? 'bg-[#b85555] text-white shadow-lg transform scale-105 ring-2 ring-white/20' 
-                                        : 'text-white hover:bg-[#b85555] hover:bg-opacity-80 hover:shadow-md hover:scale-102'}`}
-                                >
-                                    <FiBox className="mr-2" />
-                                    Products
-                                </Link>
-                                <Link
-                                    to="/Rental-History"
-                                    className={`flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ease-in-out ${isActiveLink('/Rental-History') 
-                                        ? 'bg-[#b85555] text-white shadow-lg transform scale-105 ring-2 ring-white/20' 
-                                        : 'text-white hover:bg-[#b85555] hover:bg-opacity-80 hover:shadow-md hover:scale-102'}`}
-                                >
-                                    <FiClock className="mr-2" />
-                                    History
-                                </Link>
-                                <Link
-                                    to="/Admin-Rented"
-                                    className={`flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ease-in-out ${isActiveLink('/Admin-Rented') 
-                                        ? 'bg-[#b85555] text-white shadow-lg transform scale-105 ring-2 ring-white/20' 
-                                        : 'text-white hover:bg-[#b85555] hover:bg-opacity-80 hover:shadow-md hover:scale-102'}`}
-                                >
-                                    <FiShoppingBag className="mr-2" />
-                                    Rented
-                                </Link>
+                                {navItems.map((item) => (
+                                    <Link
+                                        key={item.path}
+                                        to={item.path}
+                                        className={`flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ease-in-out ${isActiveLink(item.path) 
+                                            ? 'bg-[#b85555] text-white shadow-lg transform scale-105 ring-2 ring-white/20' 
+                                            : 'text-white hover:bg-[#b85555] hover:bg-opacity-80 hover:shadow-md hover:scale-102'}`}
+                                    >
+                                        <item.icon className="mr-2" />
+                                        {item.label}
+                                    </Link>
+                                ))}
                             </div>
 
                             {/* Profile Menu */}
@@ -153,79 +143,93 @@ function AdminNavbar() {
                                 )}
                             </div>
                         </div>
-
-                        {/* Mobile menu button */}
-                        <div className="md:hidden flex items-center space-x-2">
-                            {/* Mobile Profile Icon */}
-                            <button
-                                onClick={handleLogoutClick}
-                                className="text-white hover:bg-[#b85555] hover:bg-opacity-80 p-2 rounded-lg transition-all duration-300 ease-in-out"
-                            >
-                                <FiLogOut size={20} />
-                            </button>
-                            
-                            <button
-                                onClick={toggleMenu}
-                                className="text-white hover:bg-[#b85555] hover:bg-opacity-80 p-2 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-110"
-                            >
-                                {isMenuOpen ? <FiX size={24} /> : <FiMenu size={24} />}
-                            </button>
-                        </div>
                     </div>
-
-                    {/* Mobile Menu */}
-                    {isMenuOpen && (
-                        <div className="md:hidden transform origin-top transition-all duration-300 ease-in-out">
-                            <div className="px-3 pt-3 pb-4 space-y-2 bg-[#b85555] bg-opacity-95 backdrop-blur-sm rounded-lg mt-3 shadow-xl border border-white/10">
-                                <div className="border-b border-white/20 pb-3 mb-3">
-                                    <div className="flex items-center space-x-3">
-                                        <div className="w-10 h-10 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
-                                            <FiUser className="w-5 h-5 text-white" />
-                                        </div>
-                                        <div>
-                                            <p className="text-white font-medium text-sm">{user?.username || 'Admin'}</p>
-                                            <p className="text-yellow-200 text-xs capitalize">{user?.role || 'Administrator'}</p>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <Link
-                                    to="/"
-                                    className={`flex items-center text-white hover:bg-[#a04a4a] block px-4 py-3 rounded-lg text-base font-medium transition-all duration-300 ease-in-out ${isActiveLink('/') ? 'bg-[#a04a4a] shadow-md' : ''}`}
-                                    onClick={() => setIsMenuOpen(false)}
-                                >
-                                    <FiHome className="mr-3" />
-                                    Home
-                                </Link>
-                                <Link
-                                    to="/Admin-products"
-                                    className={`flex items-center text-white hover:bg-[#a04a4a] block px-4 py-3 rounded-lg text-base font-medium transition-all duration-300 ease-in-out ${isActiveLink('/Admin-products') ? 'bg-[#a04a4a] shadow-md' : ''}`}
-                                    onClick={() => setIsMenuOpen(false)}
-                                >
-                                    <FiBox className="mr-3" />
-                                    Products
-                                </Link>
-                                <Link
-                                    to="/Rental-History"
-                                    className={`flex items-center text-white hover:bg-[#a04a4a] block px-4 py-3 rounded-lg text-base font-medium transition-all duration-300 ease-in-out ${isActiveLink('/Rental-History') ? 'bg-[#a04a4a] shadow-md' : ''}`}
-                                    onClick={() => setIsMenuOpen(false)}
-                                >
-                                    <FiClock className="mr-3" />
-                                    History
-                                </Link>
-                                <Link
-                                    to="/Admin-Rented"
-                                    className={`flex items-center text-white hover:bg-[#a04a4a] block px-4 py-3 rounded-lg text-base font-medium transition-all duration-300 ease-in-out ${isActiveLink('/Admin-Rented') ? 'bg-[#a04a4a] shadow-md' : ''}`}
-                                    onClick={() => setIsMenuOpen(false)}
-                                >
-                                    <FiShoppingBag className="mr-3" />
-                                    Rented
-                                </Link>
-                            </div>
-                        </div>
-                    )}
                 </div>
             </nav>
+
+            {/* Mobile Header - Only brand logo */}
+            <div className="md:hidden fixed top-0 w-full z-40 bg-gradient-to-r from-[#ca6464] to-[#d17474] shadow-lg">
+                <div className="px-4 py-3">
+                    <Link to="/" className="flex flex-col items-start">
+                        <h1 className='text-white text-lg font-bold'>
+                            Edasserikkudiyil
+                        </h1>
+                        <p className='text-yellow-200 text-xs'>
+                            Quality Rentals You Can Trust
+                        </p>
+                    </Link>
+                </div>
+            </div>
+
+            {/* Instagram-Style Mobile Bottom Navigation */}
+            <div className="md:hidden fixed bottom-0 left-0 right-0 z-50">
+                {/* Bottom Nav Container */}
+                <div className="bg-white border-t border-gray-200 shadow-2xl">
+                    <div className="flex items-center justify-around px-2 py-2">
+                        {/* Navigation Items */}
+                        {navItems.map((item) => (
+                            <Link
+                                key={item.path}
+                                to={item.path}
+                                className="relative flex flex-col items-center justify-center p-2 rounded-xl transition-all duration-300 ease-in-out group"
+                                onMouseEnter={() => handleTooltipShow(item.label)}
+                                onMouseLeave={handleTooltipHide}
+                                onTouchStart={() => handleTooltipShow(item.label)}
+                                onTouchEnd={() => setTimeout(handleTooltipHide, 1500)}
+                            >
+                                <div className={`p-3 rounded-full transition-all duration-300 ${
+                                    isActiveLink(item.path) 
+                                        ? 'bg-[#ca6464] shadow-lg scale-110' 
+                                        : 'hover:bg-gray-100 group-active:bg-gray-200'
+                                }`}>
+                                    <item.icon 
+                                        className={`w-6 h-6 transition-colors duration-300 ${
+                                            isActiveLink(item.path) 
+                                                ? 'text-white' 
+                                                : 'text-gray-600 group-hover:text-[#ca6464]'
+                                        }`} 
+                                    />
+                                </div>
+                                
+                                {/* Active Indicator Dot */}
+                                {isActiveLink(item.path) && (
+                                    <div className="w-1 h-1 bg-[#ca6464] rounded-full mt-1"></div>
+                                )}
+
+                                {/* Tooltip */}
+                                {showTooltip === item.label && (
+                                    <div className="absolute -top-12 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded-md whitespace-nowrap animate-fade-in">
+                                        {item.label}
+                                        <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-2 border-l-transparent border-r-2 border-r-transparent border-t-2 border-t-gray-900"></div>
+                                    </div>
+                                )}
+                            </Link>
+                        ))}
+
+                        {/* Profile/Logout Button */}
+                        <button
+                            onClick={handleLogoutClick}
+                            className="relative flex flex-col items-center justify-center p-2 rounded-xl transition-all duration-300 ease-in-out group"
+                            onMouseEnter={() => handleTooltipShow('Logout')}
+                            onMouseLeave={handleTooltipHide}
+                            onTouchStart={() => handleTooltipShow('Logout')}
+                            onTouchEnd={() => setTimeout(handleTooltipHide, 1500)}
+                        >
+                            <div className="p-3 rounded-full hover:bg-gray-100 group-active:bg-gray-200 transition-all duration-300">
+                                <FiLogOut className="w-6 h-6 text-gray-600 group-hover:text-red-600 transition-colors duration-300" />
+                            </div>
+
+                            {/* Tooltip */}
+                            {showTooltip === 'Logout' && (
+                                <div className="absolute -top-12 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded-md whitespace-nowrap animate-fade-in">
+                                    Logout
+                                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-2 border-l-transparent border-r-2 border-r-transparent border-t-2 border-t-gray-900"></div>
+                                </div>
+                            )}
+                        </button>
+                    </div>
+                </div>
+            </div>
 
             {/* Logout Confirmation Modal */}
             {showLogoutConfirm && (
@@ -248,7 +252,7 @@ function AdminNavbar() {
                             </p>
                             
                             {/* Buttons */}
-                            <div className="flex space-x-3">
+                            <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3">
                                 <button
                                     onClick={handleLogoutCancel}
                                     className="flex-1 px-4 py-3 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors duration-200"
@@ -267,6 +271,31 @@ function AdminNavbar() {
                     </div>
                 </div>
             )}
+
+            {/* Custom CSS for animations */}
+            <style jsx>{`
+                @keyframes fade-in {
+                    from {
+                        opacity: 0;
+                        transform: translateY(10px) translateX(-50%);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: translateY(0) translateX(-50%);
+                    }
+                }
+                
+                .animate-fade-in {
+                    animation: fade-in 0.2s ease-out;
+                }
+
+                /* Add padding to body to account for bottom nav on mobile */
+                @media (max-width: 768px) {
+                    body {
+                        padding-bottom: 80px;
+                    }
+                }
+            `}</style>
         </>
     );
 }

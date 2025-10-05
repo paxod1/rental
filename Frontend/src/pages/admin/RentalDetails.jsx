@@ -15,11 +15,10 @@ import {
     FiPhone,
     FiChevronDown,
     FiCheck,
-    FiEdit,    // ✅ Add this
-    FiSave,    // ✅ Add this
+    FiEdit,
+    FiSave,
     FiTrash2,
     FiMessageSquare
-
 } from "react-icons/fi";
 import PageLoading from "../../components/commonComp/PageLoading";
 import LoadingSpinner from "../../components/commonComp/LoadingSpinner";
@@ -72,12 +71,10 @@ function RentalDetails({ rentalId, onBack }) {
         customerAddress: ''
     });
 
-
     useEffect(() => {
         fetchRentalDetails();
         fetchProducts();
     }, [rentalId]);
-
 
     const startEditingCustomer = () => {
         setIsEditingCustomer(true);
@@ -101,7 +98,6 @@ function RentalDetails({ rentalId, onBack }) {
         try {
             setIsSubmitting(true);
 
-            // Validation
             if (!customerEditData.customerName.trim() || !customerEditData.customerPhone.trim()) {
                 toast.error("Customer name and phone number are required");
                 return;
@@ -132,7 +128,6 @@ function RentalDetails({ rentalId, onBack }) {
         }));
     };
 
-    // ✅ UPDATE YOUR fetchRentalDetails FUNCTION
     const fetchRentalDetails = async () => {
         try {
             setIsLoading(true);
@@ -140,7 +135,6 @@ function RentalDetails({ rentalId, onBack }) {
             setRental(response.data);
             setLiveBalance(response.data.balanceAmount || 0);
 
-            // ✅ ADD THIS: Initialize customer edit data
             setCustomerEditData({
                 customerName: response.data.customerName || '',
                 customerPhone: response.data.customerPhone || '',
@@ -199,7 +193,6 @@ function RentalDetails({ rentalId, onBack }) {
         }));
     };
 
-    // Existing helper functions from your original code
     const calculateDaysRentedForProduct = (productItem) => {
         if (!rental.startDate) return 0;
 
@@ -220,13 +213,11 @@ function RentalDetails({ rentalId, onBack }) {
             return productItem?.amount || 0;
         }
 
-        // If amount is locked and set, use it directly (this contains the accumulated total)
         if (productItem.amountLocked && productItem.amount > 0) {
             console.log(`✅ Using locked amount for ${productItem.productName}: ₹${productItem.amount}`);
             return productItem.amount;
         }
 
-        // Otherwise, calculate from transactions (fallback)
         const productId = productItem.productId._id || productItem.productId;
 
         const productTransactions = rental.transactions.filter(transaction =>
@@ -243,7 +234,6 @@ function RentalDetails({ rentalId, onBack }) {
 
         return Math.max(totalTransactionAmount, productItem.amount || 0);
     };
-
 
     const calculateProductBalance = (productItem) => {
         if (!productItem) return 0;
@@ -317,8 +307,6 @@ function RentalDetails({ rentalId, onBack }) {
         resetForm();
     };
 
-    // ✅ UPDATED DELETE FUNCTION WITH FORCE DELETE OPTION
-    // ✅ CORRECTED DELETE FUNCTION - NO CIRCULAR REFERENCES
     const deleteEntireRental = async (forceDelete = false) => {
         if (!forceDelete) {
             const confirmed = window.confirm(
@@ -350,18 +338,17 @@ function RentalDetails({ rentalId, onBack }) {
         try {
             setIsSubmitting(true);
 
-            // ✅ CRITICAL: Only send plain, JSON-serializable data
             const requestData = {
                 reason: reason.trim() || "No reason provided",
-                forceDelete: Boolean(forceDelete) // ✅ Ensure it's a boolean, not an object
+                forceDelete: Boolean(forceDelete)
             };
 
-            console.log('🗑️ Sending delete request:', requestData); // ✅ Debug log
+            console.log('🗑️ Sending delete request:', requestData);
 
             const response = await axiosInstance.delete(
                 `/api/rentals/${rentalId}/delete-rental`,
                 {
-                    data: requestData // ✅ Clean data object
+                    data: requestData
                 }
             );
 
@@ -379,7 +366,7 @@ function RentalDetails({ rentalId, onBack }) {
             }, 2000);
 
         } catch (error) {
-            console.error('❌ Delete error:', error); // ✅ Better error logging
+            console.error('❌ Delete error:', error);
 
             if (error.response?.status === 400 && error.response?.data?.hasPendingPayments) {
                 const errorData = error.response.data;
@@ -394,7 +381,7 @@ function RentalDetails({ rentalId, onBack }) {
                 );
 
                 if (forceConfirm) {
-                    deleteEntireRental(true); // ✅ Recursive call with clean boolean
+                    deleteEntireRental(true);
                 }
                 return;
             }
@@ -407,8 +394,6 @@ function RentalDetails({ rentalId, onBack }) {
             setIsSubmitting(false);
         }
     };
-
-
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -454,7 +439,6 @@ function RentalDetails({ rentalId, onBack }) {
                     break;
 
                 case 'add-products-bulk':
-                    // Validate all products before submission
                     const validProducts = formData.multipleProducts.filter(product =>
                         product.productId && product.quantity > 0
                     );
@@ -464,7 +448,6 @@ function RentalDetails({ rentalId, onBack }) {
                         return;
                     }
 
-                    // Check for duplicate products
                     const productIds = validProducts.map(p => p.productId);
                     const uniqueProductIds = [...new Set(productIds)];
 
@@ -603,7 +586,6 @@ function RentalDetails({ rentalId, onBack }) {
         return activities.sort((a, b) => new Date(a.date) - new Date(b.date));
     };
 
-    // [Keep all your existing activity rendering functions from the original file]
     const renderProductActivityItem = (activity, index) => {
         const isTransaction = activity.activityType === 'transaction';
         const isPayment = activity.activityType === 'payment';
@@ -654,8 +636,8 @@ function RentalDetails({ rentalId, onBack }) {
             const calculatedAmount = activity.quantity * transactionDays * dailyRate;
 
             return (
-                <div key={`product-transaction-${index}`} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div className="flex items-center gap-3">
+                <div key={`product-transaction-${index}`} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 bg-gray-50 rounded-lg space-y-2 sm:space-y-0">
+                    <div className="flex items-center gap-3 w-full">
                         <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isRental ? 'bg-green-100' : 'bg-orange-100'}`}>
                             {isRental ? (
                                 <FiArrowUpCircle className="w-4 h-4 text-green-600" />
@@ -663,19 +645,17 @@ function RentalDetails({ rentalId, onBack }) {
                                 <FiArrowDownCircle className="w-4 h-4 text-orange-600" />
                             )}
                         </div>
-                        <div className="flex-1">
+                        <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
                                 <span className="text-sm font-semibold text-gray-800">
                                     {isRental ? 'Rented' : 'Returned'} {activity.quantity} units
                                 </span>
                             </div>
-
                             <div className="text-sm text-gray-600 mt-1 space-y-1">
                                 <div className="font-medium">{activity.displayDate}</div>
 
                                 {isReturn && transactionDays > 0 && (
                                     <div className="bg-white p-3 rounded border text-xs space-y-2">
-                                        {/* ✅ RENTAL PERIOD CALCULATION */}
                                         <div className="bg-orange-50 p-2 rounded">
                                             <div className="font-medium text-orange-800 mb-1">📅 Rental Period Calculation:</div>
                                             <div className="space-y-1 text-orange-700">
@@ -711,7 +691,6 @@ function RentalDetails({ rentalId, onBack }) {
                                             </div>
                                         </div>
 
-                                        {/* ✅ ENHANCED PRICE CALCULATION WITH PRODUCT NAME */}
                                         <div className="bg-blue-50 p-2 rounded">
                                             <div className="font-medium text-blue-800 mb-1">💰 Price Calculation:</div>
                                             {(() => {
@@ -724,7 +703,6 @@ function RentalDetails({ rentalId, onBack }) {
                                                 const isRecalculated = Math.abs(calculatedAmount - (activity.amount || 0)) > 0.01;
 
                                                 if (rentalTransactions.length > 1 && isRecalculated) {
-                                                    // ✅ MULTI-PERIOD CALCULATION WITH PRODUCT NAME
                                                     return (
                                                         <div className="space-y-1">
                                                             <div className="text-blue-800 font-medium text-center">
@@ -736,7 +714,6 @@ function RentalDetails({ rentalId, onBack }) {
                                                                 let breakdown = [];
                                                                 let remainingQty = activity.quantity;
 
-                                                                // ✅ Get all existing returns to calculate what's already returned from each period
                                                                 const existingReturns = rental.transactions
                                                                     .filter(t => (t.type === 'return' || t.type === 'partial_return') &&
                                                                         t.productId &&
@@ -746,13 +723,11 @@ function RentalDetails({ rentalId, onBack }) {
 
                                                                 let alreadyReturned = existingReturns;
 
-                                                                // ✅ FIFO breakdown calculation (return from oldest rental first)
                                                                 for (let i = 0; i < rentalTransactions.length && remainingQty > 0; i++) {
                                                                     const rentalTx = rentalTransactions[i];
                                                                     const rentalDate = new Date(rentalTx.date);
                                                                     const periodDays = Math.ceil((returnDate - rentalDate) / (1000 * 60 * 60 * 24)) + 1;
 
-                                                                    // Calculate available quantity from this period
                                                                     let availableFromPeriod = rentalTx.quantity;
                                                                     if (alreadyReturned > 0) {
                                                                         if (alreadyReturned >= rentalTx.quantity) {
@@ -781,7 +756,6 @@ function RentalDetails({ rentalId, onBack }) {
                                                         </div>
                                                     );
                                                 } else {
-                                                    // ✅ STANDARD SINGLE-PERIOD CALCULATION WITH PRODUCT NAME
                                                     return (
                                                         <div className="text-center font-semibold text-blue-800">
                                                             {activity.quantity} units of {activity.productName} × {transactionDays} days × ₹{dailyRate.toFixed(2)}/day = ₹{calculatedAmount.toFixed(2)}
@@ -790,11 +764,8 @@ function RentalDetails({ rentalId, onBack }) {
                                                 }
                                             })()}
                                         </div>
-
-
                                     </div>
                                 )}
-
 
                                 {isRental && (
                                     <div className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
@@ -811,7 +782,7 @@ function RentalDetails({ rentalId, onBack }) {
                         </div>
                     </div>
 
-                    <div className="text-right space-y-1">
+                    <div className="text-right space-y-1 w-full sm:w-auto mt-2 sm:mt-0">
                         {isRental && activity.amount > 0 && (
                             <span className="font-bold text-lg text-green-600 block">
                                 ₹{activity.amount.toFixed(2)}
@@ -823,8 +794,6 @@ function RentalDetails({ rentalId, onBack }) {
                                 <span className="font-bold text-lg text-red-600 block">
                                     ₹{(activity.amount || 0).toFixed(2)}
                                 </span>
-
-
                             </div>
                         )}
                     </div>
@@ -836,12 +805,12 @@ function RentalDetails({ rentalId, onBack }) {
             const isRefund = activity.type === 'refund';
 
             return (
-                <div key={`product-payment-${index}`} className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
-                    <div className="flex items-center gap-3">
+                <div key={`product-payment-${index}`} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 bg-blue-50 rounded-lg space-y-2 sm:space-y-0">
+                    <div className="flex items-center gap-3 w-full">
                         <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isRefund ? 'bg-red-100' : 'bg-blue-100'}`}>
                             <FiCreditCard className={`w-4 h-4 ${isRefund ? 'text-red-600' : 'text-blue-600'}`} />
                         </div>
-                        <div className="flex-1">
+                        <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
                                 <span className="text-sm font-semibold text-gray-800">
                                     {isRefund ? 'Refund' : 'Payment received'}
@@ -857,7 +826,7 @@ function RentalDetails({ rentalId, onBack }) {
                             </div>
                         </div>
                     </div>
-                    <div className="text-right">
+                    <div className="text-right w-full sm:w-auto mt-2 sm:mt-0">
                         <span className={`font-bold text-lg ${isRefund ? 'text-red-600' : 'text-green-600'}`}>
                             {isRefund ? '-' : '+'}₹{activity.amount.toFixed(2)}
                         </span>
@@ -869,10 +838,7 @@ function RentalDetails({ rentalId, onBack }) {
         return null;
     };
 
-
-    // Add delete function
     const deleteProduct = async (productItem) => {
-        // Show confirmation dialog
         const confirmed = window.confirm(
             `Are you sure you want to delete "${productItem.productName}" from this rental?\n\n` +
             `This will:\n` +
@@ -884,13 +850,12 @@ function RentalDetails({ rentalId, onBack }) {
 
         if (!confirmed) return;
 
-        // Get reason for deletion
         const reason = prompt(
             "Please provide a reason for deleting this product:",
             "Added by mistake"
         );
 
-        if (reason === null) return; // User cancelled
+        if (reason === null) return;
 
         try {
             setIsSubmitting(true);
@@ -918,7 +883,6 @@ function RentalDetails({ rentalId, onBack }) {
         const isFullyPaid = productBalance <= 0;
         const paidAmount = liveAmount - productBalance;
 
-        // Check if product can be deleted (no returns or payments)
         const hasReturns = rental.transactions.some(t =>
             (t.type === 'return' || t.type === 'partial_return') &&
             t.productId && t.productId.toString() === (productItem.productId._id || productItem.productId).toString()
@@ -933,64 +897,62 @@ function RentalDetails({ rentalId, onBack }) {
         const productActivities = getProductActivities(productItem.productId._id || productItem.productId);
 
         return (
-            <div key={index} className="bg-gray-50 p-8 rounded-lg shadow-xl border border-[#eddbdb]">
-                <div className="flex justify-between items-start mb-4">
-                    <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                            <h4 className="text-lg font-semibold text-gray-800 uppercase">{productItem.productName}</h4>
+            <div key={index} className="bg-gray-50 p-4 sm:p-8 rounded-lg shadow-xl border border-[#eddbdb]">
+                <div className="flex flex-col lg:flex-row justify-between items-start mb-4 space-y-4 lg:space-y-0">
+                    <div className="flex-1 w-full">
+                        <div className="flex flex-wrap items-center gap-2 mb-2">
+                            <h4 className="text-lg font-semibold text-gray-800 uppercase break-words">{productItem.productName}</h4>
                             {isFullyPaid && (
-                                <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs font-medium flex items-center gap-1">
+                                <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs font-medium flex items-center gap-1 whitespace-nowrap">
                                     <FiCheck className="w-3 h-3" />
                                     Fully Paid
                                 </span>
                             )}
                             {productItem.currentQuantity === 0 && (
-                                <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded text-xs font-medium">
+                                <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded text-xs font-medium whitespace-nowrap">
                                     Returned
                                 </span>
                             )}
                             {canDelete && (
-                                <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-xs font-medium">
+                                <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-xs font-medium whitespace-nowrap">
                                     Can Delete
                                 </span>
                             )}
                         </div>
 
-                        <div className="grid grid-cols-2 md:grid-cols-6 gap-2 mt-3 text-sm">
-                            <div>
-                                <span className="text-gray-600">Current Qty</span>
-                                <span className="ml-2 font-semibold text-blue-600">{productItem.currentQuantity} units</span>
+                        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-6 gap-2 mt-3 text-sm">
+                            <div className="bg-white p-2 rounded">
+                                <span className="text-gray-600 text-xs block sm:inline">Current Qty</span>
+                                <span className="ml-0 sm:ml-2 font-semibold text-blue-600 block sm:inline">{productItem.currentQuantity} units</span>
                             </div>
-                            <div>
-                                <span className="text-gray-600">Total Qty</span>
-                                <span className="ml-2 font-semibold">{productItem.quantity} units</span>
+                            <div className="bg-white p-2 rounded">
+                                <span className="text-gray-600 text-xs block sm:inline">Total Qty</span>
+                                <span className="ml-0 sm:ml-2 font-semibold block sm:inline">{productItem.quantity} units</span>
                             </div>
-                            <div>
-                                <span className="text-gray-600">Rate</span>
-                                <span className="ml-2 font-semibold">₹{productItem.rate}/{productItem.rateType}</span>
+                            <div className="bg-white p-2 rounded">
+                                <span className="text-gray-600 text-xs block sm:inline">Rate</span>
+                                <span className="ml-0 sm:ml-2 font-semibold text-xs block sm:inline">₹{productItem.rate}/{productItem.rateType}</span>
                             </div>
-                            <div>
-                                <span className="text-gray-600">Days</span>
-                                <span className="ml-2 font-semibold text-orange-600">{daysRented} days</span>
+                            <div className="bg-white p-2 rounded">
+                                <span className="text-gray-600 text-xs block sm:inline">Days</span>
+                                <span className="ml-0 sm:ml-2 font-semibold text-orange-600 block sm:inline">{daysRented} days</span>
                             </div>
                         </div>
                     </div>
 
-                    {/* Action buttons with Delete option */}
-                    <div className="flex flex-col gap-2 ml-4">
-                        {/* Primary Actions Row */}
-                        <div className="flex gap-2">
+                    <div className="flex flex-col gap-2 w-full lg:w-auto lg:ml-4">
+                        <div className="flex flex-wrap gap-2">
                             <button
                                 onClick={() => openModal('return', productItem)}
                                 disabled={productItem.currentQuantity <= 0}
-                                className="cursor-pointer bg-orange-500 hover:bg-orange-600 disabled:bg-gray-300 text-white px-3 py-1 rounded text-sm transition-colors flex items-center gap-1"
+                                className="cursor-pointer bg-orange-500 hover:bg-orange-600 disabled:bg-gray-300 text-white px-3 py-1 rounded text-sm transition-colors flex items-center gap-1 flex-1 sm:flex-none justify-center"
                             >
                                 <FiMinus className="w-3 h-3" />
                                 Return
                             </button>
                             <button
                                 onClick={() => openModal('add-rental', productItem)}
-                                className="cursor-pointer bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm transition-colors flex items-center gap-1"
+                                className="cursor-pointer bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm transition-colors flex items-center gap-1 flex-1 sm:flex-none justify-center"
                             >
                                 <FiPlus className="w-3 h-3" />
                                 Add More
@@ -999,7 +961,7 @@ function RentalDetails({ rentalId, onBack }) {
                             {!isFullyPaid && (
                                 <button
                                     onClick={() => openModal('payment', productItem)}
-                                    className="cursor-pointer bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm transition-colors flex items-center gap-1"
+                                    className="cursor-pointer bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm transition-colors flex items-center gap-1 flex-1 sm:flex-none justify-center"
                                 >
                                     <FiDollarSign className="w-3 h-3" />
                                     Pay
@@ -1007,16 +969,12 @@ function RentalDetails({ rentalId, onBack }) {
                             )}
                         </div>
 
-                        {/* Secondary Actions Row */}
                         <div className="flex gap-2">
-
-
-                            {/* ✅ DELETE BUTTON */}
                             {canDelete ? (
                                 <button
                                     onClick={() => deleteProduct(productItem)}
                                     disabled={isSubmitting}
-                                    className="bg-red-500 hover:bg-red-600 disabled:bg-gray-300 text-white px-3 py-1 rounded text-sm transition-colors flex items-center gap-1"
+                                    className="bg-red-500 hover:bg-red-600 disabled:bg-gray-300 text-white px-3 py-1 rounded text-sm transition-colors flex items-center gap-1 flex-1 justify-center"
                                     title="Delete this product (only if no returns or payments made)"
                                 >
                                     {isSubmitting ? (
@@ -1029,7 +987,7 @@ function RentalDetails({ rentalId, onBack }) {
                             ) : (
                                 <button
                                     disabled
-                                    className="bg-gray-300 text-gray-500 px-3 py-1 rounded text-sm cursor-not-allowed flex items-center gap-1"
+                                    className="bg-gray-300 text-gray-500 px-3 py-1 rounded text-sm cursor-not-allowed flex items-center gap-1 flex-1 justify-center"
                                     title={
                                         hasReturns ? "Cannot delete: Product has return transactions" :
                                             hasPayments ? "Cannot delete: Product has payment transactions" :
@@ -1044,21 +1002,20 @@ function RentalDetails({ rentalId, onBack }) {
                     </div>
                 </div>
 
-                {/* Rest of your existing product card content */}
                 <div className="mt-4 p-4 bg-white rounded-2xl shadow-xl shadow-gray-200">
                     <h5 className="text-base font-semibold text-gray-700 mb-3">Payment Summary</h5>
-                    <div className="grid grid-cols-3 gap-4 text-sm">
-                        <div className="text-center">
-                            <div className="text-gray-600 text-sm font-medium">Total Amount</div>
-                            <div className="font-bold text-lg text-purple-600">₹{liveAmount.toFixed(2)}</div>
+                    <div className="grid grid-cols-3 gap-2 sm:gap-4 text-sm">
+                        <div className="text-center p-2 bg-gray-50 rounded">
+                            <div className="text-gray-600 text-xs sm:text-sm font-medium">Total Amount</div>
+                            <div className="font-bold text-sm sm:text-lg text-purple-600">₹{liveAmount.toFixed(2)}</div>
                         </div>
-                        <div className="text-center">
-                            <div className="text-gray-600 text-sm font-medium">Paid Amount</div>
-                            <div className="font-bold text-lg text-green-600">₹{paidAmount.toFixed(2)}</div>
+                        <div className="text-center p-2 bg-gray-50 rounded">
+                            <div className="text-gray-600 text-xs sm:text-sm font-medium">Paid Amount</div>
+                            <div className="font-bold text-sm sm:text-lg text-green-600">₹{paidAmount.toFixed(2)}</div>
                         </div>
-                        <div className="text-center">
-                            <div className="text-gray-600 text-sm font-medium">Balance</div>
-                            <div className={`font-bold text-lg ${isFullyPaid ? 'text-green-600' : 'text-red-600'}`}>
+                        <div className="text-center p-2 bg-gray-50 rounded">
+                            <div className="text-gray-600 text-xs sm:text-sm font-medium">Balance</div>
+                            <div className={`font-bold text-sm sm:text-lg ${isFullyPaid ? 'text-green-600' : 'text-red-600'}`}>
                                 ₹{productBalance.toFixed(2)}
                             </div>
                         </div>
@@ -1077,7 +1034,7 @@ function RentalDetails({ rentalId, onBack }) {
                     </div>
                 </div>
 
-                <div className="mt-4 p-5 bg-white rounded-2xl shadow-xl shadow-gray-200">
+                <div className="mt-4 p-3 sm:p-5 bg-white rounded-2xl shadow-xl shadow-gray-200">
                     <div className="flex items-center justify-between mb-3">
                         <h5 className="text-sm font-medium text-gray-700">Product Activity History</h5>
                         <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
@@ -1085,7 +1042,7 @@ function RentalDetails({ rentalId, onBack }) {
                         </span>
                     </div>
 
-                    <div className="space-y-2 overflow-y-auto">
+                    <div className="space-y-2 max-h-96 overflow-y-auto">
                         {productActivities.length > 0 ? (
                             productActivities.map((activity, index) =>
                                 renderProductActivityItem(activity, index)
@@ -1108,8 +1065,8 @@ function RentalDetails({ rentalId, onBack }) {
 
     if (!rental) {
         return (
-            <div className="p-6 bg-gradient-to-br from-blue-50 to-indigo-50 min-h-screen">
-                <div className="bg-white rounded-xl shadow-lg p-8 text-center">
+            <div className="p-4 sm:p-6 bg-gradient-to-br from-blue-50 to-indigo-50 min-h-screen">
+                <div className="bg-white rounded-xl shadow-lg p-6 sm:p-8 text-center">
                     <h2 className="text-xl font-semibold text-gray-800 mb-4">Rental Not Found</h2>
                     <button
                         onClick={onBack}
@@ -1137,21 +1094,21 @@ function RentalDetails({ rentalId, onBack }) {
     };
 
     return (
-        <div className="p-6 bg-gradient-to-br from-rose-50 to-pink-50 min-h-screen">
+        <div className="p-4 sm:p-6 bg-gradient-to-br from-rose-50 to-pink-50 min-h-screen">
             {/* Header */}
-            <div className="mb-8">
-                <div className="flex items-center gap-4 mb-4">
+            <div className="mb-6 sm:mb-8">
+                <div className="flex items-center gap-3 sm:gap-4 mb-4">
                     <button
                         onClick={onBack}
                         className="bg-white hover:bg-gray-50 p-2 rounded-lg shadow transition-colors"
                     >
                         <FiArrowLeft className="w-5 h-5 text-gray-600" />
                     </button>
-                    <div>
-                        <h2 className="text-3xl font-bold text-[#b86969]">
+                    <div className="min-w-0 flex-1">
+                        <h2 className="text-2xl sm:text-3xl font-bold text-[#b86969] break-words">
                             Rental Details
                         </h2>
-                        <p className="text-gray-600">
+                        <p className="text-sm sm:text-base text-gray-600 break-words">
                             <span className="uppercase font-bold">{rental.customerName}</span>'s rental management
                         </p>
                     </div>
@@ -1159,25 +1116,24 @@ function RentalDetails({ rentalId, onBack }) {
             </div>
 
             {/* Customer Information Card */}
-            <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
-                <div className="flex items-center justify-between mb-4">
+            <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 mb-6">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 space-y-3 sm:space-y-0">
                     <h3 className="text-lg font-semibold text-gray-800">Customer Information</h3>
-                    <div className="flex gap-1">
+                    <div className="flex flex-wrap gap-1 w-full sm:w-auto">
                         {!isEditingCustomer && (
                             <button
                                 onClick={startEditingCustomer}
-                                className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm transition-colors flex items-center gap-1"
+                                className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm transition-colors flex items-center gap-1 flex-1 sm:flex-none justify-center"
                             >
                                 <FiEdit className="w-3 h-3" />
                                 Edit
                             </button>
                         )}
 
-                        {/* ✅ DELETE RENTAL BUTTON */}
                         <button
                             onClick={deleteEntireRental}
                             disabled={isSubmitting}
-                            className="bg-red-500 hover:bg-red-600 disabled:bg-gray-300 text-white px-3 py-1 rounded text-sm transition-colors flex items-center gap-1"
+                            className="bg-red-500 hover:bg-red-600 disabled:bg-gray-300 text-white px-3 py-1 rounded text-sm transition-colors flex items-center gap-1 flex-1 sm:flex-none justify-center"
                             title="Delete entire rental (will return all products to inventory)"
                         >
                             {isSubmitting ? (
@@ -1204,7 +1160,7 @@ function RentalDetails({ rentalId, onBack }) {
                                     value={customerEditData.customerName}
                                     onChange={handleCustomerEditChange}
                                     required
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
                                     placeholder="Enter customer name"
                                 />
                                 {!customerEditData.customerName.trim() && (
@@ -1222,7 +1178,7 @@ function RentalDetails({ rentalId, onBack }) {
                                     value={customerEditData.customerPhone}
                                     onChange={handleCustomerEditChange}
                                     required
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
                                     placeholder="Enter phone number"
                                 />
                                 {!customerEditData.customerPhone.trim() && (
@@ -1240,17 +1196,16 @@ function RentalDetails({ rentalId, onBack }) {
                                 value={customerEditData.customerAddress}
                                 onChange={handleCustomerEditChange}
                                 rows="3"
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
                                 placeholder="Enter customer address"
                             />
                         </div>
 
-                        {/* Edit Action Buttons */}
-                        <div className="flex gap-3 pt-2">
+                        <div className="flex flex-col sm:flex-row gap-3 pt-2">
                             <button
                                 onClick={saveCustomerEdit}
                                 disabled={isSubmitting || !customerEditData.customerName.trim() || !customerEditData.customerPhone.trim()}
-                                className="bg-green-500 hover:bg-green-600 disabled:bg-gray-300 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
+                                className="bg-green-500 hover:bg-green-600 disabled:bg-gray-300 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2 justify-center"
                             >
                                 {isSubmitting ? (
                                     <LoadingSpinner size="sm" color="white" />
@@ -1262,14 +1217,13 @@ function RentalDetails({ rentalId, onBack }) {
                             <button
                                 onClick={cancelCustomerEdit}
                                 disabled={isSubmitting}
-                                className="bg-gray-500 hover:bg-gray-600 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
+                                className="bg-gray-500 hover:bg-gray-600 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2 justify-center"
                             >
                                 <FiX className="w-4 h-4" />
                                 Cancel
                             </button>
                         </div>
 
-                        {/* Preview of changes */}
                         <div className="mt-3 p-3 bg-blue-50 rounded-lg">
                             <p className="text-sm font-medium text-blue-800 mb-2">Preview Changes:</p>
                             <div className="text-sm space-y-1">
@@ -1280,33 +1234,33 @@ function RentalDetails({ rentalId, onBack }) {
                         </div>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                         <div className="flex items-center gap-3">
-                            <div className="bg-blue-100 p-2 rounded-full">
+                            <div className="bg-blue-100 p-2 rounded-full flex-shrink-0">
                                 <FiUser className="w-5 h-5 text-blue-600" />
                             </div>
-                            <div>
+                            <div className="min-w-0 flex-1">
                                 <p className="text-sm text-gray-600">Customer Name</p>
-                                <p className="font-semibold uppercase">{rental.customerName}</p>
+                                <p className="font-semibold uppercase break-words">{rental.customerName}</p>
                             </div>
                         </div>
                         <div className="flex items-center gap-3">
-                            <div className="bg-green-100 p-2 rounded-full">
+                            <div className="bg-green-100 p-2 rounded-full flex-shrink-0">
                                 <FiPhone className="w-5 h-5 text-green-600" />
                             </div>
-                            <div>
+                            <div className="min-w-0 flex-1">
                                 <p className="text-sm text-gray-600">Phone Number</p>
-                                <p className="font-semibold">{rental.customerPhone || 'Not provided'}</p>
+                                <p className="font-semibold break-words">{rental.customerPhone || 'Not provided'}</p>
                             </div>
                         </div>
                         {rental.customerAddress && (
                             <div className="md:col-span-2 flex items-start gap-3">
-                                <div className="bg-purple-100 p-2 rounded-full">
+                                <div className="bg-purple-100 p-2 rounded-full flex-shrink-0">
                                     <FiUser className="w-5 h-5 text-purple-600" />
                                 </div>
-                                <div>
+                                <div className="min-w-0 flex-1">
                                     <p className="text-sm text-gray-600">Address</p>
-                                    <p className="font-semibold">{rental.customerAddress}</p>
+                                    <p className="font-semibold break-words">{rental.customerAddress}</p>
                                 </div>
                             </div>
                         )}
@@ -1314,16 +1268,15 @@ function RentalDetails({ rentalId, onBack }) {
                 )}
             </div>
 
-
             {/* Summary Cards */}
             <div className="w-full flex items-center justify-center mb-5">
-                <div className="w-full flex flex-row gap-[10%] justify-center">
-                    <div className="bg-white rounded-xl shadow-lg p-4 px-10">
+                <div className="w-full grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-[10%] max-w-6xl justify-center">
+                    <div className="bg-white rounded-xl shadow-lg p-4 px-6 sm:px-10">
                         <div className="flex items-center gap-3">
-                            <div className="bg-blue-100 p-2 rounded-full">
+                            <div className="bg-blue-100 p-2 rounded-full flex-shrink-0">
                                 <FiPackage className="w-5 h-5 text-blue-600" />
                             </div>
-                            <div>
+                            <div className="min-w-0 flex-1">
                                 <p className="text-xs text-gray-600">Active Products</p>
                                 <p className="text-lg font-bold text-gray-900">
                                     {(rental.productItems || []).filter(item => item.currentQuantity > 0).length}
@@ -1332,28 +1285,28 @@ function RentalDetails({ rentalId, onBack }) {
                         </div>
                     </div>
 
-                    <div className="bg-white rounded-xl shadow-lg p-4 px-10">
+                    <div className="bg-white rounded-xl shadow-lg p-4 px-6 sm:px-10">
                         <div className="flex items-center gap-3">
-                            <div className="bg-indigo-100 p-2 rounded-full">
+                            <div className="bg-indigo-100 p-2 rounded-full flex-shrink-0">
                                 <FiDollarSign className="w-5 h-5 text-indigo-600" />
                             </div>
-                            <div>
+                            <div className="min-w-0 flex-1">
                                 <p className="text-xs text-gray-600">Total Rental Amount</p>
-                                <p className="text-lg font-bold text-indigo-600">
+                                <p className="text-lg font-bold text-indigo-600 break-words">
                                     ₹{calculateTotalRentalAmount().toFixed(2)}
                                 </p>
                             </div>
                         </div>
                     </div>
 
-                    <div className="bg-white rounded-xl shadow-lg p-4 px-10">
+                    <div className="bg-white rounded-xl shadow-lg p-4 px-6 sm:px-10">
                         <div className="flex items-center gap-3">
-                            <div className="bg-red-100 p-2 rounded-full">
+                            <div className="bg-red-100 p-2 rounded-full flex-shrink-0">
                                 <FiDollarSign className="w-5 h-5 text-red-600" />
                             </div>
-                            <div>
+                            <div className="min-w-0 flex-1">
                                 <p className="text-xs text-gray-600">Total Balance</p>
-                                <p className="text-lg font-bold text-red-600">
+                                <p className="text-lg font-bold text-red-600 break-words">
                                     ₹{calculateTotalBalance().toFixed(2)}
                                 </p>
                             </div>
@@ -1362,24 +1315,22 @@ function RentalDetails({ rentalId, onBack }) {
                 </div>
             </div>
 
-            {/* Products Section with Updated Button */}
-            <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
-                <div className="flex items-center justify-between mb-6">
+            {/* Products Section */}
+            <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 mb-6">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 space-y-4 sm:space-y-0">
                     <h3 className="text-lg font-semibold text-gray-800">Rented Products</h3>
-                    <div className="flex gap-2">
-                        {/* Multiple Products Button */}
+                    <div className="flex gap-2 w-full sm:w-auto">
                         <button
                             onClick={() => openModal('add-products-bulk')}
-                            className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
+                            className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2 flex-1 sm:flex-none justify-center"
                         >
                             <FiPlus className="w-4 h-4" />
                             Add Products
                         </button>
-
                     </div>
                 </div>
 
-                <div className="grid gap-6">
+                <div className="grid gap-4 sm:gap-6">
                     {(rental.productItems || []).map((productItem, index) =>
                         renderProductCard(productItem, index)
                     )}
@@ -1387,32 +1338,28 @@ function RentalDetails({ rentalId, onBack }) {
             </div>
 
             {/* General Actions */}
-            <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
+            <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 mb-6">
                 <h3 className="text-lg font-semibold text-gray-800 mb-4">Payment Actions</h3>
-                <div className="flex flex-wrap gap-4">
+                <div className="flex flex-col sm:flex-row flex-wrap gap-4">
                     <button
                         onClick={() => openModal('general-payment')}
                         disabled={calculateTotalBalance() <= 0}
-                        className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 disabled:bg-gray-300 text-white px-6 py-3 rounded-lg transition-all flex items-center gap-2"
+                        className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 disabled:bg-gray-300 text-white px-4 sm:px-6 py-3 rounded-lg transition-all flex items-center gap-2 justify-center flex-1 sm:flex-none"
                     >
                         <FiDollarSign className="w-5 h-5" />
-                        Payment & Discount (Balance: ₹{calculateTotalBalance().toFixed(2)})
+                        <span className="break-words text-sm sm:text-base">Payment & Discount (Balance: ₹{calculateTotalBalance().toFixed(2)})</span>
                     </button>
 
-                    {/* WhatsApp Bill Button */}
                     <button
                         onClick={() => setShowWhatsAppBill(true)}
-                        className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white px-6 py-3 rounded-lg transition-all flex items-center gap-2"
+                        className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white px-4 sm:px-6 py-3 rounded-lg transition-all flex items-center gap-2 justify-center flex-1 sm:flex-none"
                     >
                         <FiMessageSquare className="w-5 h-5" />
-                         Send Bill to WhatsApp
+                        <span className="whitespace-nowrap text-sm sm:text-base">Send Bill to WhatsApp</span>
                     </button>
-
-
                 </div>
             </div>
 
-            {/* Add WhatsApp Bill Modal */}
             <WhatsAppBill
                 rental={rental}
                 isOpen={showWhatsAppBill}
@@ -1421,10 +1368,10 @@ function RentalDetails({ rentalId, onBack }) {
 
             {/* Enhanced Modal with Multiple Products Support */}
             {isModalOpen && (
-                <div className="fixed inset-0 bg-black/50 bg-opacity-50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
-                        <div className="flex items-center justify-between p-6 border-b">
-                            <h3 className="text-xl font-semibold text-gray-800">
+                <div className="fixed inset-0 bg-black/50 bg-opacity-50 flex items-start sm:items-center justify-center z-50 p-2 sm:p-4 overflow-y-auto">
+                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden mt-4 sm:mt-0">
+                        <div className="flex items-center justify-between p-4 sm:p-6 border-b">
+                            <h3 className="text-lg sm:text-xl font-semibold text-gray-800 break-words">
                                 {modalType === 'add-products-bulk' ? 'Add Multiple Products' :
                                     modalType === 'add-product' ? 'Add Single Product' :
                                         modalType === 'general-payment' ? 'Payment & Discount' :
@@ -1432,19 +1379,19 @@ function RentalDetails({ rentalId, onBack }) {
                             </h3>
                             <button
                                 onClick={closeModal}
-                                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                                className="p-2 hover:bg-gray-100 rounded-full transition-colors flex-shrink-0"
                             >
                                 <FiX className="w-5 h-5 text-gray-500" />
                             </button>
                         </div>
 
-                        <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
+                        <div className="p-4 sm:p-6 overflow-y-auto max-h-[calc(95vh-140px)] sm:max-h-[calc(90vh-140px)]">
                             <form onSubmit={handleSubmit} className="space-y-4">
                                 {/* Multiple Products Modal Content */}
                                 {modalType === 'add-products-bulk' && (
                                     <>
                                         <div className="mb-4 p-3 bg-purple-50 rounded-lg">
-                                            <p className="text-sm text-purple-800">
+                                            <p className="text-sm text-purple-800 break-words">
                                                 Adding multiple products to <strong>{rental.customerName}'s</strong> rental.
                                             </p>
                                             <p className="text-sm text-purple-600 mt-1">
@@ -1453,20 +1400,20 @@ function RentalDetails({ rentalId, onBack }) {
                                         </div>
 
                                         <div className="space-y-4">
-                                            <div className="flex items-center justify-between">
+                                            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-2 sm:space-y-0">
                                                 <h4 className="font-medium text-gray-700">Products to Add</h4>
                                                 <button
                                                     type="button"
                                                     onClick={addProductRow}
-                                                    className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm flex items-center gap-1"
+                                                    className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm flex items-center gap-1 w-full sm:w-auto justify-center"
                                                 >
                                                     <FiPlus className="w-3 h-3" /> Add Product
                                                 </button>
                                             </div>
 
-                                            <div className=" space-y-4">
+                                            <div className="space-y-4">
                                                 {formData.multipleProducts.map((productRow, index) => (
-                                                    <div key={productRow.id} className="bg-gray-50 p-4 rounded-lg border">
+                                                    <div key={productRow.id} className="bg-gray-50 p-3 sm:p-4 rounded-lg border">
                                                         <div className="flex items-center justify-between mb-3">
                                                             <span className="text-sm font-medium text-gray-600">
                                                                 Product #{index + 1}
@@ -1482,7 +1429,6 @@ function RentalDetails({ rentalId, onBack }) {
                                                             )}
                                                         </div>
 
-                                                        {/* Product Selection */}
                                                         <div className="mb-3">
                                                             <label className="block text-sm font-medium text-gray-700 mb-2">
                                                                 Select Product
@@ -1492,12 +1438,11 @@ function RentalDetails({ rentalId, onBack }) {
                                                                     value={productRow.productId}
                                                                     onChange={(e) => updateProductRow(productRow.id, 'productId', e.target.value)}
                                                                     required
-                                                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white cursor-pointer"
+                                                                    className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white cursor-pointer text-sm"
                                                                 >
                                                                     <option value="">Choose a product</option>
                                                                     {products
                                                                         .filter(product =>
-                                                                            // Filter out products already in rental and already selected in other rows
                                                                             !rental.productItems.some(item =>
                                                                                 (item.productId._id || item.productId).toString() === product._id.toString()
                                                                             ) &&
@@ -1519,8 +1464,7 @@ function RentalDetails({ rentalId, onBack }) {
                                                             </div>
                                                         </div>
 
-                                                        {/* Quantity, Days, and Date in a grid */}
-                                                        <div className="grid grid-cols-3 gap-3">
+                                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                                                             <div>
                                                                 <label className="block text-sm font-medium text-gray-700 mb-2">
                                                                     Quantity
@@ -1536,7 +1480,7 @@ function RentalDetails({ rentalId, onBack }) {
                                                                             : 1
                                                                     }
                                                                     required
-                                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
                                                                     placeholder="Qty"
                                                                 />
                                                             </div>
@@ -1550,7 +1494,7 @@ function RentalDetails({ rentalId, onBack }) {
                                                                     value={productRow.days}
                                                                     onChange={(e) => updateProductRow(productRow.id, 'days', e.target.value)}
                                                                     min="1"
-                                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
                                                                     placeholder="Days"
                                                                 />
                                                             </div>
@@ -1566,24 +1510,23 @@ function RentalDetails({ rentalId, onBack }) {
                                                                     onChange={(e) => updateProductRow(productRow.id, 'startDate', e.target.value)}
                                                                     max={new Date().toISOString().split('T')[0]}
                                                                     required
-                                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
                                                                 />
                                                             </div>
                                                         </div>
 
-                                                        {/* Product Info Display */}
                                                         {productRow.productId && (
                                                             <div className="mt-3 p-2 bg-white rounded border">
                                                                 {(() => {
                                                                     const selectedProduct = products.find(p => p._id === productRow.productId);
                                                                     return selectedProduct ? (
                                                                         <div className="text-xs text-gray-600 space-y-1">
-                                                                            <div className="flex justify-between">
+                                                                            <div className="flex flex-col sm:flex-row justify-between space-y-1 sm:space-y-0">
                                                                                 <span>Rate: ₹{selectedProduct.rate}/{selectedProduct.rateType}</span>
                                                                                 <span>Available: {selectedProduct.quantity} units</span>
                                                                             </div>
                                                                             {productRow.days && (
-                                                                                <div className="text-blue-600 font-medium">
+                                                                                <div className="text-blue-600 font-medium break-words">
                                                                                     Estimated Cost: ₹{(
                                                                                         selectedProduct.rateType === 'daily'
                                                                                             ? selectedProduct.rate * productRow.days * productRow.quantity
@@ -1602,7 +1545,6 @@ function RentalDetails({ rentalId, onBack }) {
                                                 ))}
                                             </div>
 
-                                            {/* Common Notes for all products */}
                                             <div>
                                                 <label className="block text-sm font-medium text-gray-700 mb-2">
                                                     Notes (Applied to all products)
@@ -1612,12 +1554,11 @@ function RentalDetails({ rentalId, onBack }) {
                                                     value={formData.notes}
                                                     onChange={handleChange}
                                                     rows="2"
-                                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
                                                     placeholder="Additional notes for all products..."
                                                 />
                                             </div>
 
-                                            {/* Summary */}
                                             <div className="bg-blue-50 p-3 rounded-lg">
                                                 <p className="text-sm font-medium text-blue-800 mb-1">Summary</p>
                                                 <div className="text-sm text-blue-700">
@@ -1633,7 +1574,7 @@ function RentalDetails({ rentalId, onBack }) {
                                 {modalType === 'add-product' && (
                                     <>
                                         <div className="mb-4 p-3 bg-blue-50 rounded-lg">
-                                            <p className="text-sm text-blue-800">
+                                            <p className="text-sm text-blue-800 break-words">
                                                 Adding new product to <strong>{rental.customerName}'s</strong> rental.
                                             </p>
                                         </div>
@@ -1648,7 +1589,7 @@ function RentalDetails({ rentalId, onBack }) {
                                                     value={formData.newProductId}
                                                     onChange={handleChange}
                                                     required
-                                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 appearance-none"
+                                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 appearance-none text-sm sm:text-base"
                                                 >
                                                     <option value="">Choose a product</option>
                                                     {products
@@ -1670,7 +1611,7 @@ function RentalDetails({ rentalId, onBack }) {
                                             </div>
                                         </div>
 
-                                        <div className="grid grid-cols-3 gap-4">
+                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                             <div>
                                                 <label className="block text-sm font-medium text-gray-700 mb-2">
                                                     Quantity
@@ -1682,7 +1623,7 @@ function RentalDetails({ rentalId, onBack }) {
                                                     onChange={handleChange}
                                                     min="1"
                                                     required
-                                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
                                                 />
                                             </div>
 
@@ -1696,7 +1637,7 @@ function RentalDetails({ rentalId, onBack }) {
                                                     value={formData.newProductDays}
                                                     onChange={handleChange}
                                                     min="1"
-                                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
                                                 />
                                             </div>
 
@@ -1712,7 +1653,7 @@ function RentalDetails({ rentalId, onBack }) {
                                                     onChange={handleChange}
                                                     max={new Date().toISOString().split('T')[0]}
                                                     required
-                                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
                                                 />
                                             </div>
                                         </div>
@@ -1726,7 +1667,7 @@ function RentalDetails({ rentalId, onBack }) {
                                             <p className="text-sm text-green-800">
                                                 <strong>Payment & Discount</strong>
                                             </p>
-                                            <p className="text-lg font-bold text-green-900 mt-2">
+                                            <p className="text-lg font-bold text-green-900 mt-2 break-words">
                                                 Current Total Balance: ₹{calculateTotalBalance().toFixed(2)}
                                             </p>
                                         </div>
@@ -1744,7 +1685,7 @@ function RentalDetails({ rentalId, onBack }) {
                                                 min="0.01"
                                                 max={calculateTotalBalance() - (parseFloat(formData.discountAmount) || 0)}
                                                 required
-                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-sm sm:text-base"
                                                 placeholder="Enter payment amount"
                                             />
                                         </div>
@@ -1761,7 +1702,7 @@ function RentalDetails({ rentalId, onBack }) {
                                                 step="0.01"
                                                 min="0"
                                                 max={calculateTotalBalance() - (parseFloat(formData.amount) || 0)}
-                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-sm sm:text-base"
                                                 placeholder="Enter discount amount (default: 0)"
                                             />
                                         </div>
@@ -1774,7 +1715,7 @@ function RentalDetails({ rentalId, onBack }) {
                                                 name="paymentType"
                                                 value={formData.paymentType}
                                                 onChange={handleChange}
-                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-sm sm:text-base"
                                             >
                                                 <option value="general">General Payment</option>
                                                 <option value="partial_payment">Partial Payment</option>
@@ -1791,7 +1732,7 @@ function RentalDetails({ rentalId, onBack }) {
                                                 value={formData.notes}
                                                 onChange={handleChange}
                                                 rows="2"
-                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-sm sm:text-base"
                                                 placeholder="Payment method, reference, etc."
                                             />
                                         </div>
@@ -1806,7 +1747,7 @@ function RentalDetails({ rentalId, onBack }) {
                                                     value={formData.discountNotes}
                                                     onChange={handleChange}
                                                     rows="2"
-                                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-sm sm:text-base"
                                                     placeholder="Reason for discount, special offer, etc."
                                                 />
                                             </div>
@@ -1820,7 +1761,7 @@ function RentalDetails({ rentalId, onBack }) {
                                                 <p className="font-medium border-t pt-1">
                                                     📊 Total Reduction: ₹{((parseFloat(formData.amount) || 0) + (parseFloat(formData.discountAmount) || 0)).toFixed(2)}
                                                 </p>
-                                                <p className="font-medium text-green-700">
+                                                <p className="font-medium text-green-700 break-words">
                                                     🎯 New Balance: ₹{(calculateTotalBalance() - (parseFloat(formData.amount) || 0) - (parseFloat(formData.discountAmount) || 0)).toFixed(2)}
                                                 </p>
                                             </div>
@@ -1828,11 +1769,11 @@ function RentalDetails({ rentalId, onBack }) {
                                     </>
                                 )}
 
-                                {/* Other existing modal types (return, add-rental, payment, etc.) would go here */}
+                                {/* Other existing modal types */}
                                 {modalType === 'return' && (
                                     <>
                                         <div className="mb-4 p-3 bg-blue-50 rounded-lg">
-                                            <p className="text-sm text-blue-800">
+                                            <p className="text-sm text-blue-800 break-words">
                                                 Returning <strong>{selectedProductItem?.productName}</strong>
                                             </p>
                                             <div className="text-sm text-blue-700 mt-1 space-y-1">
@@ -1842,7 +1783,7 @@ function RentalDetails({ rentalId, onBack }) {
                                             </div>
                                         </div>
 
-                                        <div>
+                                        <div className="mb-4">
                                             <label className="block text-sm font-medium text-gray-700 mb-2">
                                                 Return Quantity (max: {selectedProductItem?.currentQuantity || 0})
                                             </label>
@@ -1854,11 +1795,11 @@ function RentalDetails({ rentalId, onBack }) {
                                                 max={selectedProductItem?.currentQuantity || 0}
                                                 min="1"
                                                 required
-                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
                                             />
                                         </div>
 
-                                        <div>
+                                        <div className="mb-4">
                                             <label className="block text-sm font-medium text-gray-700 mb-2">
                                                 <FiCalendar className="w-4 h-4 inline mr-1" />
                                                 Return Date
@@ -1870,7 +1811,7 @@ function RentalDetails({ rentalId, onBack }) {
                                                 onChange={handleChange}
                                                 max={new Date().toISOString().split('T')[0]}
                                                 required
-                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
                                             />
                                             <p className="text-xs text-gray-500 mt-1">
                                                 Select the date when the product was returned
@@ -1882,12 +1823,12 @@ function RentalDetails({ rentalId, onBack }) {
                                 {modalType === 'add-rental' && (
                                     <>
                                         <div className="mb-4 p-3 bg-green-50 rounded-lg">
-                                            <p className="text-sm text-green-800">
+                                            <p className="text-sm text-green-800 break-words">
                                                 Adding more <strong>{selectedProductItem?.productName}</strong>
                                             </p>
                                         </div>
 
-                                        <div>
+                                        <div className="mb-4">
                                             <label className="block text-sm font-medium text-gray-700 mb-2">
                                                 Additional Quantity
                                             </label>
@@ -1898,11 +1839,11 @@ function RentalDetails({ rentalId, onBack }) {
                                                 onChange={handleChange}
                                                 min="1"
                                                 required
-                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
                                             />
                                         </div>
 
-                                        <div>
+                                        <div className="mb-4">
                                             <label className="block text-sm font-medium text-gray-700 mb-2">
                                                 <FiCalendar className="w-4 h-4 inline mr-1" />
                                                 Start Date
@@ -1914,7 +1855,7 @@ function RentalDetails({ rentalId, onBack }) {
                                                 onChange={handleChange}
                                                 max={new Date().toISOString().split('T')[0]}
                                                 required
-                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
                                             />
                                         </div>
                                     </>
@@ -1923,7 +1864,7 @@ function RentalDetails({ rentalId, onBack }) {
                                 {modalType === 'payment' && (
                                     <>
                                         <div className="mb-4 p-3 bg-green-50 rounded-lg">
-                                            <p className="text-sm text-green-800">
+                                            <p className="text-sm text-green-800 break-words">
                                                 Making payment for <strong>{selectedProductItem?.productName}</strong>
                                             </p>
                                             <p className="text-sm text-green-700 mt-1">
@@ -1931,7 +1872,7 @@ function RentalDetails({ rentalId, onBack }) {
                                             </p>
                                         </div>
 
-                                        <div>
+                                        <div className="mb-4">
                                             <label className="block text-sm font-medium text-gray-700 mb-2">
                                                 Payment Amount
                                             </label>
@@ -1944,12 +1885,12 @@ function RentalDetails({ rentalId, onBack }) {
                                                 min="0.01"
                                                 max={calculateProductBalance(selectedProductItem)}
                                                 required
-                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
                                                 placeholder="Enter payment amount"
                                             />
                                         </div>
 
-                                        <div>
+                                        <div className="mb-4">
                                             <label className="block text-sm font-medium text-gray-700 mb-2">
                                                 Payment Type
                                             </label>
@@ -1957,7 +1898,7 @@ function RentalDetails({ rentalId, onBack }) {
                                                 name="paymentType"
                                                 value={formData.paymentType}
                                                 onChange={handleChange}
-                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
                                             >
                                                 <option value="product_payment">Product Payment</option>
                                                 <option value="partial_payment">Partial Payment</option>
@@ -1976,13 +1917,13 @@ function RentalDetails({ rentalId, onBack }) {
                                         value={formData.notes}
                                         onChange={handleChange}
                                         rows="3"
-                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
                                         placeholder="Additional notes..."
                                     />
                                 </div>
 
                                 {/* Action Buttons */}
-                                <div className="flex gap-3 pt-4">
+                                <div className="flex flex-col sm:flex-row gap-3 pt-4">
                                     <button
                                         type="button"
                                         onClick={closeModal}
@@ -1996,12 +1937,14 @@ function RentalDetails({ rentalId, onBack }) {
                                         className="flex-1 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white px-4 py-2 rounded-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                                     >
                                         {isSubmitting && <LoadingSpinner size="sm" color="gray" />}
-                                        {modalType === 'add-products-bulk' && 'Add All Products'}
-                                        {modalType === 'add-product' && 'Add Product'}
-                                        {modalType === 'general-payment' && 'Process Payment'}
-                                        {modalType === 'return' && 'Process Return'}
-                                        {modalType === 'add-rental' && 'Add Quantity'}
-                                        {modalType === 'payment' && 'Add Payment'}
+                                        <span className="break-words">
+                                            {modalType === 'add-products-bulk' && 'Add All Products'}
+                                            {modalType === 'add-product' && 'Add Product'}
+                                            {modalType === 'general-payment' && 'Process Payment'}
+                                            {modalType === 'return' && 'Process Return'}
+                                            {modalType === 'add-rental' && 'Add Quantity'}
+                                            {modalType === 'payment' && 'Add Payment'}
+                                        </span>
                                     </button>
                                 </div>
                             </form>
