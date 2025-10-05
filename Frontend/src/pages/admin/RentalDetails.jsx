@@ -17,12 +17,14 @@ import {
     FiCheck,
     FiEdit,    // ✅ Add this
     FiSave,    // ✅ Add this
-    FiTrash2
+    FiTrash2,
+    FiMessageSquare
 
 } from "react-icons/fi";
 import PageLoading from "../../components/commonComp/PageLoading";
 import LoadingSpinner from "../../components/commonComp/LoadingSpinner";
 import axiosInstance from "../../../axiosCreate";
+import WhatsAppBill from "../../components/WhatsAppBill";
 
 function RentalDetails({ rentalId, onBack }) {
     const [rental, setRental] = useState(null);
@@ -33,6 +35,7 @@ function RentalDetails({ rentalId, onBack }) {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [liveBalance, setLiveBalance] = useState(0);
+    const [showWhatsAppBill, setShowWhatsAppBill] = useState(false);
 
     const [formData, setFormData] = useState({
         productId: '',
@@ -670,130 +673,127 @@ function RentalDetails({ rentalId, onBack }) {
                             <div className="text-sm text-gray-600 mt-1 space-y-1">
                                 <div className="font-medium">{activity.displayDate}</div>
 
-                              {isReturn && transactionDays > 0 && (
-    <div className="bg-white p-3 rounded border text-xs space-y-2">
-        {/* ✅ RENTAL PERIOD CALCULATION */}
-        <div className="bg-orange-50 p-2 rounded">
-            <div className="font-medium text-orange-800 mb-1">📅 Rental Period Calculation:</div>
-            <div className="space-y-1 text-orange-700">
-                {(() => {
-                    const rentalTransactions = rental.transactions
-                        .filter(t => t.type === 'rental' && 
-                                   t.productId && 
-                                   t.productId.toString() === activity.productId.toString())
-                        .sort((a, b) => new Date(a.date) - new Date(b.date));
-                    
-                    if (rentalTransactions.length > 1) {
-                        return (
-                            <>
-                                <div>• Rented on multiple dates:</div>
-                                {rentalTransactions.map((rt, index) => (
-                                    <div key={index} className="ml-4">
-                                        - {new Date(rt.date).toLocaleDateString()}: {rt.quantity} units of {activity.productName}
-                                    </div>
-                                ))}
-                                <div>• Returned on: {activity.displayDate}</div>
-                            </>
-                        );
-                    } else {
-                        return (
-                            <>
-                                <div>• Rented on: {new Date(rentalTransactions[0]?.date).toLocaleDateString()}</div>
-                                <div>• Returned on: {activity.displayDate}</div>
-                                <div className="font-semibold">• Total days: {transactionDays} days (inclusive)</div>
-                            </>
-                        );
-                    }
-                })()}
-            </div>
-        </div>
+                                {isReturn && transactionDays > 0 && (
+                                    <div className="bg-white p-3 rounded border text-xs space-y-2">
+                                        {/* ✅ RENTAL PERIOD CALCULATION */}
+                                        <div className="bg-orange-50 p-2 rounded">
+                                            <div className="font-medium text-orange-800 mb-1">📅 Rental Period Calculation:</div>
+                                            <div className="space-y-1 text-orange-700">
+                                                {(() => {
+                                                    const rentalTransactions = rental.transactions
+                                                        .filter(t => t.type === 'rental' &&
+                                                            t.productId &&
+                                                            t.productId.toString() === activity.productId.toString())
+                                                        .sort((a, b) => new Date(a.date) - new Date(b.date));
 
-        {/* ✅ ENHANCED PRICE CALCULATION WITH PRODUCT NAME */}
-        <div className="bg-blue-50 p-2 rounded">
-            <div className="font-medium text-blue-800 mb-1">💰 Price Calculation:</div>
-            {(() => {
-                const rentalTransactions = rental.transactions
-                    .filter(t => t.type === 'rental' && 
-                               t.productId && 
-                               t.productId.toString() === activity.productId.toString())
-                    .sort((a, b) => new Date(a.date) - new Date(b.date));
-                
-                const isRecalculated = Math.abs(calculatedAmount - (activity.amount || 0)) > 0.01;
-                
-                if (rentalTransactions.length > 1 && isRecalculated) {
-                    // ✅ MULTI-PERIOD CALCULATION WITH PRODUCT NAME
-                    return (
-                        <div className="space-y-1">
-                            <div className="text-blue-800 font-medium text-center">
-                                {activity.quantity} units of {activity.productName} split:
-                            </div>
-                            
-                            {(() => {
-                                const returnDate = new Date(activity.date);
-                                let breakdown = [];
-                                let remainingQty = activity.quantity;
-                                
-                                // ✅ Get all existing returns to calculate what's already returned from each period
-                                const existingReturns = rental.transactions
-                                    .filter(t => (t.type === 'return' || t.type === 'partial_return') && 
-                                               t.productId && 
-                                               t.productId.toString() === activity.productId.toString() &&
-                                               new Date(t.date) < returnDate)
-                                    .reduce((sum, tx) => sum + tx.quantity, 0);
-                                
-                                let alreadyReturned = existingReturns;
-                                
-                                // ✅ FIFO breakdown calculation (return from oldest rental first)
-                                for (let i = 0; i < rentalTransactions.length && remainingQty > 0; i++) {
-                                    const rentalTx = rentalTransactions[i];
-                                    const rentalDate = new Date(rentalTx.date);
-                                    const periodDays = Math.ceil((returnDate - rentalDate) / (1000 * 60 * 60 * 24)) + 1;
-                                    
-                                    // Calculate available quantity from this period
-                                    let availableFromPeriod = rentalTx.quantity;
-                                    if (alreadyReturned > 0) {
-                                        if (alreadyReturned >= rentalTx.quantity) {
-                                            availableFromPeriod = 0;
-                                            alreadyReturned -= rentalTx.quantity;
-                                        } else {
-                                            availableFromPeriod = rentalTx.quantity - alreadyReturned;
-                                            alreadyReturned = 0;
-                                        }
-                                    }
-                                    
-                                    const qtyFromPeriod = Math.min(remainingQty, availableFromPeriod);
-                                    
-                                    if (qtyFromPeriod > 0) {
-                                        breakdown.push(`${qtyFromPeriod} units×${periodDays} days`);
-                                        remainingQty -= qtyFromPeriod;
-                                    }
-                                }
-                                
-                                return (
-                                    <div className="text-center font-semibold text-blue-800 bg-white p-2 rounded">
-                                        ({breakdown.join(' + ')}) × ₹{dailyRate.toFixed(2)}/day = ₹{(activity.amount || 0).toFixed(2)}
-                                    </div>
-                                );
-                            })()}
-                        </div>
-                    );
-                } else {
-                    // ✅ STANDARD SINGLE-PERIOD CALCULATION WITH PRODUCT NAME
-                    return (
-                        <div className="text-center font-semibold text-blue-800">
-                            {activity.quantity} units of {activity.productName} × {transactionDays} days × ₹{dailyRate.toFixed(2)}/day = ₹{calculatedAmount.toFixed(2)}
-                        </div>
-                    );
-                }
-            })()}
-        </div>
+                                                    if (rentalTransactions.length > 1) {
+                                                        return (
+                                                            <>
+                                                                <div>• Rented on multiple dates:</div>
+                                                                {rentalTransactions.map((rt, index) => (
+                                                                    <div key={index} className="ml-4">
+                                                                        - {new Date(rt.date).toLocaleDateString()}: {rt.quantity} units of {activity.productName}
+                                                                    </div>
+                                                                ))}
+                                                                <div>• Returned on: {activity.displayDate}</div>
+                                                            </>
+                                                        );
+                                                    } else {
+                                                        return (
+                                                            <>
+                                                                <div>• Rented on: {new Date(rentalTransactions[0]?.date).toLocaleDateString()}</div>
+                                                                <div>• Returned on: {activity.displayDate}</div>
+                                                                <div className="font-semibold">• Total days: {transactionDays} days (inclusive)</div>
+                                                            </>
+                                                        );
+                                                    }
+                                                })()}
+                                            </div>
+                                        </div>
 
-        {/* ✅ RETURN PROCESSING NOTE */}
-        <div className="text-green-700 text-xs italic">
-            📝 Return processed for {activity.productName}
-        </div>
-    </div>
-)}
+                                        {/* ✅ ENHANCED PRICE CALCULATION WITH PRODUCT NAME */}
+                                        <div className="bg-blue-50 p-2 rounded">
+                                            <div className="font-medium text-blue-800 mb-1">💰 Price Calculation:</div>
+                                            {(() => {
+                                                const rentalTransactions = rental.transactions
+                                                    .filter(t => t.type === 'rental' &&
+                                                        t.productId &&
+                                                        t.productId.toString() === activity.productId.toString())
+                                                    .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+                                                const isRecalculated = Math.abs(calculatedAmount - (activity.amount || 0)) > 0.01;
+
+                                                if (rentalTransactions.length > 1 && isRecalculated) {
+                                                    // ✅ MULTI-PERIOD CALCULATION WITH PRODUCT NAME
+                                                    return (
+                                                        <div className="space-y-1">
+                                                            <div className="text-blue-800 font-medium text-center">
+                                                                {activity.quantity} units of {activity.productName} split:
+                                                            </div>
+
+                                                            {(() => {
+                                                                const returnDate = new Date(activity.date);
+                                                                let breakdown = [];
+                                                                let remainingQty = activity.quantity;
+
+                                                                // ✅ Get all existing returns to calculate what's already returned from each period
+                                                                const existingReturns = rental.transactions
+                                                                    .filter(t => (t.type === 'return' || t.type === 'partial_return') &&
+                                                                        t.productId &&
+                                                                        t.productId.toString() === activity.productId.toString() &&
+                                                                        new Date(t.date) < returnDate)
+                                                                    .reduce((sum, tx) => sum + tx.quantity, 0);
+
+                                                                let alreadyReturned = existingReturns;
+
+                                                                // ✅ FIFO breakdown calculation (return from oldest rental first)
+                                                                for (let i = 0; i < rentalTransactions.length && remainingQty > 0; i++) {
+                                                                    const rentalTx = rentalTransactions[i];
+                                                                    const rentalDate = new Date(rentalTx.date);
+                                                                    const periodDays = Math.ceil((returnDate - rentalDate) / (1000 * 60 * 60 * 24)) + 1;
+
+                                                                    // Calculate available quantity from this period
+                                                                    let availableFromPeriod = rentalTx.quantity;
+                                                                    if (alreadyReturned > 0) {
+                                                                        if (alreadyReturned >= rentalTx.quantity) {
+                                                                            availableFromPeriod = 0;
+                                                                            alreadyReturned -= rentalTx.quantity;
+                                                                        } else {
+                                                                            availableFromPeriod = rentalTx.quantity - alreadyReturned;
+                                                                            alreadyReturned = 0;
+                                                                        }
+                                                                    }
+
+                                                                    const qtyFromPeriod = Math.min(remainingQty, availableFromPeriod);
+
+                                                                    if (qtyFromPeriod > 0) {
+                                                                        breakdown.push(`${qtyFromPeriod} units×${periodDays} days`);
+                                                                        remainingQty -= qtyFromPeriod;
+                                                                    }
+                                                                }
+
+                                                                return (
+                                                                    <div className="text-center font-semibold text-blue-800 bg-white p-2 rounded">
+                                                                        ({breakdown.join(' + ')}) × ₹{dailyRate.toFixed(2)}/day = ₹{(activity.amount || 0).toFixed(2)}
+                                                                    </div>
+                                                                );
+                                                            })()}
+                                                        </div>
+                                                    );
+                                                } else {
+                                                    // ✅ STANDARD SINGLE-PERIOD CALCULATION WITH PRODUCT NAME
+                                                    return (
+                                                        <div className="text-center font-semibold text-blue-800">
+                                                            {activity.quantity} units of {activity.productName} × {transactionDays} days × ₹{dailyRate.toFixed(2)}/day = ₹{calculatedAmount.toFixed(2)}
+                                                        </div>
+                                                    );
+                                                }
+                                            })()}
+                                        </div>
+
+
+                                    </div>
+                                )}
 
 
                                 {isRental && (
@@ -824,7 +824,7 @@ function RentalDetails({ rentalId, onBack }) {
                                     ₹{(activity.amount || 0).toFixed(2)}
                                 </span>
 
-                                
+
                             </div>
                         )}
                     </div>
@@ -1398,8 +1398,26 @@ function RentalDetails({ rentalId, onBack }) {
                         <FiDollarSign className="w-5 h-5" />
                         Payment & Discount (Balance: ₹{calculateTotalBalance().toFixed(2)})
                     </button>
+
+                    {/* WhatsApp Bill Button */}
+                    <button
+                        onClick={() => setShowWhatsAppBill(true)}
+                        className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white px-6 py-3 rounded-lg transition-all flex items-center gap-2"
+                    >
+                        <FiMessageSquare className="w-5 h-5" />
+                        📱 Send Bill to WhatsApp
+                    </button>
+
+
                 </div>
             </div>
+
+            {/* Add WhatsApp Bill Modal */}
+            <WhatsAppBill
+                rental={rental}
+                isOpen={showWhatsAppBill}
+                onClose={() => setShowWhatsAppBill(false)}
+            />
 
             {/* Enhanced Modal with Multiple Products Support */}
             {isModalOpen && (

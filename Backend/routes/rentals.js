@@ -301,13 +301,6 @@ const calculateRentalAmounts = (rental) => {
 };
 
 
-
-
-
-
-
-
-
 // ✅ ALL GET ROUTES (UNCHANGED)
 router.get("/", async (req, res) => {
   try {

@@ -1,3 +1,4 @@
+// index.js - ADD WHATSAPP STARTUP
 const express = require("express");
 const cors = require("cors");
 const mongoose = require("mongoose");
@@ -20,6 +21,9 @@ const { router: authRoutes, createDefaultAdmin } = require('./routes/userRoutes'
 
 // ✅ Import your auth middleware
 const authMiddleware = require('./middleware/auth');
+
+// ✅ IMPORT WHATSAPP SERVICE
+const whatsappService = require('./services/whatsappService');
 
 // ✅ Database connection
 const connectDB = async () => {
@@ -69,6 +73,8 @@ app.get('/api/health', (req, res) => {
 app.use('/api/products', authMiddleware, require('./routes/productRoutes'));
 app.use('/api/rentals', authMiddleware, require('./routes/rentals'));
 app.use('/api/analytics', authMiddleware, require('./routes/analytics'));
+const whatsappRoutes = require('./routes/whatsapp');
+app.use('/api/whatsapp', whatsappRoutes);
 
 // ✅ 404 fallback
 app.use('*', (req, res) => {
@@ -77,10 +83,23 @@ app.use('*', (req, res) => {
 });
 
 const PORT = process.env.PORT || 8000;
-app.listen(PORT, () => {
+
+// ✅ ADD WHATSAPP STARTUP HERE
+app.listen(PORT, async () => {
   console.log(`Server running on port ${PORT}`);
   console.log('🔐 Authentication middleware applied to:');
   console.log('   - /api/products/*');
   console.log('   - /api/rentals/*');
   console.log('   - /api/analytics/*');
+  
+  // ✅ START WHATSAPP SERVICE AFTER 3 SECONDS
+  setTimeout(async () => {
+    try {
+      console.log('\n🟢 Starting WhatsApp service...');
+      console.log('📱 Preparing to generate QR code...');
+      await whatsappService.start();
+    } catch (error) {
+      console.error('❌ Failed to start WhatsApp service:', error.message);
+    }
+  }, 3000);
 });
