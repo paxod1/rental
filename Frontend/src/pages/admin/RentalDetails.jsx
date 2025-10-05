@@ -1405,7 +1405,7 @@ function RentalDetails({ rentalId, onBack }) {
                         className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white px-6 py-3 rounded-lg transition-all flex items-center gap-2"
                     >
                         <FiMessageSquare className="w-5 h-5" />
-                        📱 Send Bill to WhatsApp
+                         Send Bill to WhatsApp
                     </button>
 
 
