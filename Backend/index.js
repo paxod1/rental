@@ -85,21 +85,18 @@ app.use('*', (req, res) => {
 const PORT = process.env.PORT || 8000;
 
 // ✅ ADD WHATSAPP STARTUP HERE
+// index.js - CLEAN ULTRAMSG STARTUP
 app.listen(PORT, async () => {
   console.log(`Server running on port ${PORT}`);
-  console.log('🔐 Authentication middleware applied to:');
-  console.log('   - /api/products/*');
-  console.log('   - /api/rentals/*');
-  console.log('   - /api/analytics/*');
+  console.log('🔐 Authentication middleware applied to protected routes');
   
-  // ✅ START WHATSAPP SERVICE AFTER 3 SECONDS
-  setTimeout(async () => {
-    try {
-      console.log('\n🟢 Starting WhatsApp service...');
-      console.log('📱 Preparing to generate QR code...');
-      await whatsappService.start();
-    } catch (error) {
-      console.error('❌ Failed to start WhatsApp service:', error.message);
-    }
-  }, 3000);
+  // ✅ ULTRAMSG WHATSAPP STARTUP
+  try {
+    console.log('\n🟢 Starting UltraMsg WhatsApp service...');
+    await whatsappService.start();
+    console.log('🎉 WhatsApp billing system ready!');
+  } catch (error) {
+    console.error('❌ WhatsApp service failed:', error.message);
+    console.log('   You can still use your rental system - WhatsApp will be unavailable');
+  }
 });

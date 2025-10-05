@@ -1,219 +1,123 @@
-// services/whatsappService.js - STABLE CONNECTION VERSION
-const { makeWASocket, DisconnectReason, useMultiFileAuthState } = require('@whiskeysockets/baileys');
-const { Boom } = require('@hapi/boom');
-const P = require('pino');
+// services/whatsappService.js - ULTRAMSG COMPLETE SETUP
+const axios = require('axios');
 
 class WhatsAppService {
     constructor() {
-        this.sock = null;
-        this.isConnected = false;
-        this.qrCode = '';
-        this.connectionStatus = 'disconnected';
-        this.initializationInProgress = false;
-        this.reconnectAttempts = 0;
-        this.maxReconnectAttempts = 5;
-        this.reconnectTimeout = null;
-    }
-
-    async initialize() {
-        // ✅ PREVENT MULTIPLE INITIALIZATIONS
-        if (this.initializationInProgress) {
-            console.log('⏳ WhatsApp initialization already in progress, skipping...');
-            return;
-        }
-
-        // ✅ CHECK MAX RECONNECT ATTEMPTS
-        if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-            console.log('❌ Max reconnection attempts reached. Please restart manually.');
-            this.connectionStatus = 'max_attempts_reached';
-            return;
-        }
-
-        try {
-            this.initializationInProgress = true;
-            this.reconnectAttempts++;
-            
-            console.log(`🔄 Initializing WhatsApp service... (Attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
-            
-            // ✅ CLEAR PREVIOUS TIMEOUTS
-            if (this.reconnectTimeout) {
-                clearTimeout(this.reconnectTimeout);
-                this.reconnectTimeout = null;
-            }
-            
-            const { state, saveCreds } = await useMultiFileAuthState('baileys_auth_info');
-            
-            const logger = P({ level: 'silent' });
-            
-            // ✅ IMPROVED SOCKET CONFIGURATION
-            this.sock = makeWASocket({
-                auth: state,
-                logger: logger,
-                browser: ["Rental Management", "Chrome", "1.0.0"],
-                markOnlineOnConnect: false, // ✅ PREVENT AUTO ONLINE STATUS
-                connectTimeoutMs: 20000, // ✅ SHORTER TIMEOUT
-                defaultQueryTimeoutMs: 60000,
-                retryRequestDelayMs: 2000,
-                maxMsgRetryCount: 3,
-                keepAliveIntervalMs: 30000,
-            });
-
-            this.sock.ev.on('connection.update', (update) => {
-                const { connection, lastDisconnect, qr } = update;
-                
-                console.log(`📡 Connection update: ${connection} (Attempt ${this.reconnectAttempts})`);
-                
-                if (qr && !this.qrCode) {
-                    this.qrCode = qr;
-                    console.log('\n🎉 QR CODE GENERATED!');
-                    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-                    console.log('📲 SCAN THIS QR CODE WITH WHATSAPP (+91-9961964928):');
-                    console.log('   1. Open WhatsApp on phone +91-9961964928');
-                    console.log('   2. Go to Settings > Linked Devices'); 
-                    console.log('   3. Tap "Link a Device"');
-                    console.log('   4. Scan the QR code below:');
-                    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-                    
-                    try {
-                        const QRCode = require('qrcode-terminal');
-                        QRCode.generate(qr, { small: true });
-                        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-                        console.log('✅ QR Code displayed above - please scan it!');
-                    } catch (qrError) {
-                        console.error('❌ Failed to display QR code:', qrError.message);
-                    }
-                    
-                    this.connectionStatus = 'waiting_for_qr';
-                }
-                
-                if (connection === 'close') {
-                    this.initializationInProgress = false;
-                    
-                    const statusCode = lastDisconnect?.error instanceof Boom 
-                        ? lastDisconnect.error.output?.statusCode 
-                        : null;
-                    
-                    console.log('❌ WhatsApp connection closed');
-                    if (lastDisconnect?.error) {
-                        console.log('   Reason:', lastDisconnect.error.message);
-                        console.log('   Status Code:', statusCode);
-                    }
-                    
-                    this.isConnected = false;
-                    this.connectionStatus = 'disconnected';
-                    this.qrCode = '';
-                    
-                    // ✅ IMPROVED RECONNECTION LOGIC
-                    const shouldReconnect = statusCode !== DisconnectReason.loggedOut 
-                        && statusCode !== DisconnectReason.banned
-                        && this.reconnectAttempts < this.maxReconnectAttempts;
-                    
-                    if (shouldReconnect) {
-                        const delay = Math.min(5000 * this.reconnectAttempts, 30000); // Progressive delay
-                        console.log(`🔄 Will attempt to reconnect in ${delay/1000} seconds... (${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
-                        
-                        this.reconnectTimeout = setTimeout(() => {
-                            if (!this.isConnected && !this.initializationInProgress) {
-                                this.initialize();
-                            }
-                        }, delay);
-                    } else {
-                        if (statusCode === DisconnectReason.loggedOut) {
-                            console.log('⚠️  WhatsApp logged out. Need to scan QR code again.');
-                            this.connectionStatus = 'logged_out';
-                            this.reconnectAttempts = 0; // Reset for manual restart
-                        } else if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-                            console.log('❌ Max reconnection attempts reached. Please restart service manually.');
-                            this.connectionStatus = 'max_attempts_reached';
-                        }
-                    }
-                    
-                } else if (connection === 'connecting') {
-                    console.log(`🔄 Connecting to WhatsApp... (Attempt ${this.reconnectAttempts})`);
-                    this.connectionStatus = 'connecting';
-                    
-                } else if (connection === 'open') {
-                    this.initializationInProgress = false;
-                    this.reconnectAttempts = 0; // ✅ RESET ON SUCCESS
-                    
-                    console.log('🎉 WhatsApp connected successfully!');
-                    console.log('📱 Ready to send automatic messages');
-                    console.log('✅ Connection stable and ready for use');
-                    
-                    this.isConnected = true;
-                    this.connectionStatus = 'connected';
-                    this.qrCode = '';
-                    
-                    // ✅ CLEAR ANY PENDING RECONNECTION
-                    if (this.reconnectTimeout) {
-                        clearTimeout(this.reconnectTimeout);
-                        this.reconnectTimeout = null;
-                    }
-                }
-            });
-
-            this.sock.ev.on('creds.update', saveCreds);
-
-        } catch (error) {
-            this.initializationInProgress = false;
-            console.error('❌ WhatsApp service initialization error:', error.message);
-            this.connectionStatus = 'error';
-            
-            // ✅ RETRY ON ERROR WITH DELAY
-            if (this.reconnectAttempts < this.maxReconnectAttempts) {
-                const delay = 5000;
-                console.log(`🔄 Retrying initialization in ${delay/1000} seconds...`);
-                this.reconnectTimeout = setTimeout(() => {
-                    if (!this.isConnected) {
-                        this.initialize();
-                    }
-                }, delay);
-            }
-        }
+        // ✅ YOUR COMPLETE ULTRAMSG CREDENTIALS
+        this.instanceId = 'instance145086';                    // ✅ Your instance
+        this.token = 'wpaqeqfx896rji54';                       // ✅ Your token
+        this.apiUrl = 'https://api.ultramsg.com/instance145086'; // ✅ Your API URL
+        
+        this.isConnected = true;  // Ready for API calls
+        this.connectionStatus = 'configured';
+        
+        console.log('✅ UltraMsg WhatsApp API fully configured!');
+        console.log('🆔 Instance: instance145086');
+        console.log('🔑 Token: wpaq... (configured)');
+        console.log('💰 Plan: FREE (1000 messages/month)');
     }
 
     async sendMessage(phoneNumber, message) {
-        if (!this.isConnected) {
-            throw new Error('WhatsApp not connected. Please scan QR code first.');
-        }
-
         try {
+            // Format phone number for India (+91)
             let formattedNumber = phoneNumber.replace(/[^\d]/g, '');
-            
             if (formattedNumber.length === 10) {
                 formattedNumber = '91' + formattedNumber;
             }
             
-            const jid = formattedNumber + '@s.whatsapp.net';
+            console.log(`📤 Sending UltraMsg WhatsApp bill to +${formattedNumber}...`);
+            console.log(`🔗 API: ${this.apiUrl}/messages/chat`);
             
-            console.log(`📤 Sending message to +${formattedNumber}...`);
-            
-            const result = await this.sock.sendMessage(jid, { 
-                text: message 
+            // UltraMsg API call
+            const response = await axios.post(`${this.apiUrl}/messages/chat`, {
+                to: formattedNumber,
+                body: message,
+                priority: 1,
+                referenceId: `edasserikkudiyil_${Date.now()}`
+            }, {
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                params: {
+                    token: this.token
+                },
+                timeout: 30000
             });
             
-            console.log(`✅ Message sent successfully to +${formattedNumber}`);
-            console.log(`   Message ID: ${result.key.id}`);
+            console.log('📡 UltraMsg API Response:', response.data);
+            
+            // Check if message sent successfully
+            if (response.data.sent === 'true' || response.data.sent === true) {
+                console.log(`✅ WhatsApp bill sent successfully via UltraMsg!`);
+                console.log(`   Message ID: ${response.data.id}`);
+                console.log(`   Customer: +${formattedNumber}`);
+                console.log(`   Provider: UltraMsg FREE`);
+                
+                return {
+                    success: true,
+                    messageId: response.data.id,
+                    timestamp: Date.now(),
+                    phoneNumber: formattedNumber,
+                    provider: 'ultramsg_free',
+                    instance: this.instanceId,
+                    cost: 'FREE'
+                };
+            } else {
+                const errorMsg = response.data.error || response.data.message || 'Unknown error';
+                throw new Error(`UltraMsg send failed: ${errorMsg}`);
+            }
+            
+        } catch (error) {
+            console.error(`❌ UltraMsg WhatsApp Error:`, error.message);
+            
+            if (error.response) {
+                console.error('   API Status:', error.response.status);
+                console.error('   API Response:', error.response.data);
+                
+                // Handle specific UltraMsg errors
+                if (error.response.status === 401) {
+                    throw new Error('UltraMsg: Invalid token. Please check your credentials.');
+                } else if (error.response.status === 402) {
+                    throw new Error('UltraMsg: Monthly limit reached (1000 free messages used).');
+                } else if (error.response.status === 400) {
+                    const apiError = error.response.data.error || error.response.data.message;
+                    if (apiError && apiError.includes('not_connected')) {
+                        throw new Error('WhatsApp not connected to UltraMsg. Please connect your WhatsApp (+91-9961964928) in dashboard.');
+                    } else {
+                        throw new Error(`UltraMsg API Error: ${apiError}`);
+                    }
+                } else {
+                    throw new Error(`UltraMsg HTTP ${error.response.status}: ${error.response.data.error || error.message}`);
+                }
+            } else if (error.code === 'ECONNABORTED') {
+                throw new Error('UltraMsg API timeout. Please try again.');
+            } else {
+                throw new Error(`Network Error: ${error.message}`);
+            }
+        }
+    }
+
+    // Test connection with UltraMsg
+    async testConnection() {
+        try {
+            const response = await axios.get(`${this.apiUrl}/instance/status`, {
+                params: { token: this.token },
+                timeout: 10000
+            });
             
             return {
                 success: true,
-                messageId: result.key.id,
-                timestamp: result.messageTimestamp || Date.now(),
-                phoneNumber: formattedNumber
+                status: response.data.accountStatus || 'active',
+                phone: response.data.phone || 'not_connected_yet',
+                messagesUsed: response.data.messagesUsed || 0,
+                messagesLimit: response.data.messagesLimit || 1000
             };
-            
         } catch (error) {
-            console.error(`❌ Failed to send message to ${phoneNumber}:`, error.message);
-            
-            if (error.output?.statusCode === 401) {
-                this.isConnected = false;
-                this.connectionStatus = 'session_expired';
-                throw new Error('WhatsApp session expired. Please scan QR code again.');
-            } else if (error.output?.statusCode === 404) {
-                throw new Error('Phone number not found on WhatsApp.');
-            } else {
-                throw new Error(`Failed to send WhatsApp message: ${error.message}`);
-            }
+            console.error('UltraMsg connection test failed:', error.message);
+            return {
+                success: false,
+                error: error.message
+            };
         }
     }
 
@@ -221,62 +125,64 @@ class WhatsAppService {
         return {
             connected: this.isConnected,
             status: this.connectionStatus,
-            qrCode: this.qrCode,
-            hasQR: !!this.qrCode,
-            initializing: this.initializationInProgress,
-            reconnectAttempts: this.reconnectAttempts,
-            maxReconnectAttempts: this.maxReconnectAttempts
+            provider: 'ultramsg',
+            instance: this.instanceId,
+            plan: 'FREE',
+            monthlyLimit: '1000 messages',
+            apiUrl: this.apiUrl,
+            tokenLength: this.token.length,
+            expiresOn: '2025-10-07'
         };
     }
 
-    async disconnect() {
-        try {
-            // ✅ CLEAR TIMEOUTS
-            if (this.reconnectTimeout) {
-                clearTimeout(this.reconnectTimeout);
-                this.reconnectTimeout = null;
-            }
-            
-            if (this.sock) {
-                console.log('🔌 Disconnecting WhatsApp...');
-                await this.sock.logout();
-            }
-            
-            this.isConnected = false;
-            this.connectionStatus = 'disconnected';
-            this.qrCode = '';
-            this.initializationInProgress = false;
-            this.reconnectAttempts = 0;
-            
-            console.log('✅ WhatsApp disconnected successfully');
-        } catch (error) {
-            console.error('❌ Error disconnecting WhatsApp:', error.message);
-        }
-    }
-
     async start() {
-        if (this.connectionStatus === 'max_attempts_reached') {
-            console.log('🔄 Resetting reconnection attempts...');
-            this.reconnectAttempts = 0;
-        }
-        
-        if (!this.isConnected && !this.initializationInProgress) {
-            console.log('🚀 Starting WhatsApp service...');
-            await this.initialize();
-        } else if (this.initializationInProgress) {
-            console.log('⏳ WhatsApp service is already starting...');
-        } else if (this.isConnected) {
-            console.log('✅ WhatsApp service is already connected');
+        try {
+            console.log('🚀 Starting UltraMsg WhatsApp API service...');
+            console.log(`📊 Instance: ${this.instanceId}`);
+            console.log(`🔗 API URL: ${this.apiUrl}`);
+            console.log(`🔑 Token: ${this.token.substring(0, 4)}...${this.token.substring(this.token.length-4)}`);
+            
+            // Test connection
+            const connectionTest = await this.testConnection();
+            
+            if (connectionTest.success) {
+                console.log('✅ UltraMsg API connection successful!');
+                console.log(`📱 WhatsApp Status: ${connectionTest.phone || 'Ready to connect'}`);
+                console.log(`💰 Messages Used: ${connectionTest.messagesUsed}/${connectionTest.messagesLimit}`);
+                console.log('🎯 Ready to send automatic WhatsApp bills!');
+                
+                if (connectionTest.phone === 'not_connected_yet') {
+                    console.log('');
+                    console.log('📋 NEXT STEP: Connect Your WhatsApp');
+                    console.log('   1. Go to UltraMsg dashboard');
+                    console.log('   2. Click on instance145086');
+                    console.log('   3. Connect WhatsApp +91-9961964928');
+                    console.log('   4. Scan QR code once');
+                    console.log('   5. Start sending automatic bills!');
+                }
+                
+                return true;
+            } else {
+                console.error('❌ UltraMsg connection test failed:', connectionTest.error);
+                throw new Error(connectionTest.error);
+            }
+            
+        } catch (error) {
+            console.error('❌ UltraMsg startup failed:', error.message);
+            this.isConnected = false;
+            this.connectionStatus = 'error';
+            throw error;
         }
     }
 
-    // ✅ MANUAL RESET METHOD
-    async reset() {
-        console.log('🔄 Resetting WhatsApp service...');
-        await this.disconnect();
-        this.reconnectAttempts = 0;
-        this.connectionStatus = 'disconnected';
-        await this.start();
+    async disconnect() {
+        console.log('ℹ️  UltraMsg WhatsApp service stopped');
+        return true;
+    }
+
+    async restart() {
+        console.log('🔄 Restarting UltraMsg WhatsApp service...');
+        return await this.start();
     }
 }
 
