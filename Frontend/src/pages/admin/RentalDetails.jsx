@@ -637,7 +637,7 @@ function RentalDetails({ rentalId, onBack }) {
 
             return (
                 <div key={`product-transaction-${index}`} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 bg-gray-50 rounded-lg space-y-2 sm:space-y-0">
-                    <div className="flex items-center gap-3 w-full">
+                    <div className="flex items-center gap-2 w-full">
                         <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isRental ? 'bg-green-100' : 'bg-orange-100'}`}>
                             {isRental ? (
                                 <FiArrowUpCircle className="w-4 h-4 text-green-600" />
@@ -828,7 +828,7 @@ function RentalDetails({ rentalId, onBack }) {
                     </div>
                     <div className="text-right w-full sm:w-auto mt-2 sm:mt-0">
                         <span className={`font-bold text-lg ${isRefund ? 'text-red-600' : 'text-green-600'}`}>
-                            {isRefund ? '-' : '+'}₹{activity.amount.toFixed(2)}
+                           ₹{activity.amount.toFixed(2)}
                         </span>
                     </div>
                 </div>
@@ -1042,7 +1042,7 @@ function RentalDetails({ rentalId, onBack }) {
                         </span>
                     </div>
 
-                    <div className="space-y-2 max-h-96 overflow-y-auto">
+                    <div className="space-y-2 ">
                         {productActivities.length > 0 ? (
                             productActivities.map((activity, index) =>
                                 renderProductActivityItem(activity, index)
