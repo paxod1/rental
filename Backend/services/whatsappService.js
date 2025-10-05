@@ -1,7 +1,7 @@
-// services/whatsappService.js - FIXED VERSION
+// services/whatsappService.js - STABLE CONNECTION VERSION
 const { makeWASocket, DisconnectReason, useMultiFileAuthState } = require('@whiskeysockets/baileys');
 const { Boom } = require('@hapi/boom');
-const P = require('pino'); // Add pino logger
+const P = require('pino');
 
 class WhatsAppService {
     constructor() {
@@ -9,86 +9,166 @@ class WhatsAppService {
         this.isConnected = false;
         this.qrCode = '';
         this.connectionStatus = 'disconnected';
-        // Don't initialize immediately - wait for manual call
+        this.initializationInProgress = false;
+        this.reconnectAttempts = 0;
+        this.maxReconnectAttempts = 5;
+        this.reconnectTimeout = null;
     }
 
     async initialize() {
+        // ✅ PREVENT MULTIPLE INITIALIZATIONS
+        if (this.initializationInProgress) {
+            console.log('⏳ WhatsApp initialization already in progress, skipping...');
+            return;
+        }
+
+        // ✅ CHECK MAX RECONNECT ATTEMPTS
+        if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+            console.log('❌ Max reconnection attempts reached. Please restart manually.');
+            this.connectionStatus = 'max_attempts_reached';
+            return;
+        }
+
         try {
-            console.log('🔄 Initializing WhatsApp service...');
+            this.initializationInProgress = true;
+            this.reconnectAttempts++;
+            
+            console.log(`🔄 Initializing WhatsApp service... (Attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+            
+            // ✅ CLEAR PREVIOUS TIMEOUTS
+            if (this.reconnectTimeout) {
+                clearTimeout(this.reconnectTimeout);
+                this.reconnectTimeout = null;
+            }
             
             const { state, saveCreds } = await useMultiFileAuthState('baileys_auth_info');
             
-            // ✅ FIXED: Proper logger configuration
-            const logger = P({ level: 'silent' }); // Silent logger to reduce noise
+            const logger = P({ level: 'silent' });
             
+            // ✅ IMPROVED SOCKET CONFIGURATION
             this.sock = makeWASocket({
                 auth: state,
-                // ✅ REMOVED: printQRInTerminal (deprecated)
                 logger: logger,
-                browser: ["Rental Management", "Chrome", "1.0.0"], // Custom browser info
-                markOnlineOnConnect: true,
+                browser: ["Rental Management", "Chrome", "1.0.0"],
+                markOnlineOnConnect: false, // ✅ PREVENT AUTO ONLINE STATUS
+                connectTimeoutMs: 20000, // ✅ SHORTER TIMEOUT
                 defaultQueryTimeoutMs: 60000,
+                retryRequestDelayMs: 2000,
+                maxMsgRetryCount: 3,
+                keepAliveIntervalMs: 30000,
             });
 
-            // ✅ FIXED: Handle connection updates properly
             this.sock.ev.on('connection.update', (update) => {
                 const { connection, lastDisconnect, qr } = update;
                 
-                if (qr) {
+                console.log(`📡 Connection update: ${connection} (Attempt ${this.reconnectAttempts})`);
+                
+                if (qr && !this.qrCode) {
                     this.qrCode = qr;
-                    console.log('\n📱 QR CODE GENERATED!');
-                    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-                    console.log('📲 SCAN THIS QR CODE WITH YOUR WHATSAPP:');
-                    console.log('   1. Open WhatsApp on your phone (+91-9961964928)');
-                    console.log('   2. Go to Settings > Linked Devices');
+                    console.log('\n🎉 QR CODE GENERATED!');
+                    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                    console.log('📲 SCAN THIS QR CODE WITH WHATSAPP (+91-9961964928):');
+                    console.log('   1. Open WhatsApp on phone +91-9961964928');
+                    console.log('   2. Go to Settings > Linked Devices'); 
                     console.log('   3. Tap "Link a Device"');
-                    console.log('   4. Scan the QR code displayed below');
-                    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                    console.log('   4. Scan the QR code below:');
+                    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
                     
-                    // Display QR code in terminal (manual)
-                    const QRCode = require('qrcode-terminal');
-                    QRCode.generate(qr, { small: true });
+                    try {
+                        const QRCode = require('qrcode-terminal');
+                        QRCode.generate(qr, { small: true });
+                        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                        console.log('✅ QR Code displayed above - please scan it!');
+                    } catch (qrError) {
+                        console.error('❌ Failed to display QR code:', qrError.message);
+                    }
                     
                     this.connectionStatus = 'waiting_for_qr';
                 }
                 
                 if (connection === 'close') {
-                    const shouldReconnect = (lastDisconnect?.error instanceof Boom)?.output?.statusCode !== DisconnectReason.loggedOut;
+                    this.initializationInProgress = false;
+                    
+                    const statusCode = lastDisconnect?.error instanceof Boom 
+                        ? lastDisconnect.error.output?.statusCode 
+                        : null;
                     
                     console.log('❌ WhatsApp connection closed');
                     if (lastDisconnect?.error) {
                         console.log('   Reason:', lastDisconnect.error.message);
+                        console.log('   Status Code:', statusCode);
                     }
                     
                     this.isConnected = false;
                     this.connectionStatus = 'disconnected';
                     this.qrCode = '';
                     
+                    // ✅ IMPROVED RECONNECTION LOGIC
+                    const shouldReconnect = statusCode !== DisconnectReason.loggedOut 
+                        && statusCode !== DisconnectReason.banned
+                        && this.reconnectAttempts < this.maxReconnectAttempts;
+                    
                     if (shouldReconnect) {
-                        console.log('🔄 Attempting to reconnect in 3 seconds...');
-                        setTimeout(() => this.initialize(), 3000);
+                        const delay = Math.min(5000 * this.reconnectAttempts, 30000); // Progressive delay
+                        console.log(`🔄 Will attempt to reconnect in ${delay/1000} seconds... (${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+                        
+                        this.reconnectTimeout = setTimeout(() => {
+                            if (!this.isConnected && !this.initializationInProgress) {
+                                this.initialize();
+                            }
+                        }, delay);
                     } else {
-                        console.log('⚠️  WhatsApp logged out. Please scan QR code again.');
-                        this.connectionStatus = 'logged_out';
+                        if (statusCode === DisconnectReason.loggedOut) {
+                            console.log('⚠️  WhatsApp logged out. Need to scan QR code again.');
+                            this.connectionStatus = 'logged_out';
+                            this.reconnectAttempts = 0; // Reset for manual restart
+                        } else if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+                            console.log('❌ Max reconnection attempts reached. Please restart service manually.');
+                            this.connectionStatus = 'max_attempts_reached';
+                        }
                     }
+                    
                 } else if (connection === 'connecting') {
-                    console.log('🔄 Connecting to WhatsApp...');
+                    console.log(`🔄 Connecting to WhatsApp... (Attempt ${this.reconnectAttempts})`);
                     this.connectionStatus = 'connecting';
+                    
                 } else if (connection === 'open') {
-                    console.log('✅ WhatsApp connected successfully!');
-                    console.log('📱 Ready to send messages automatically');
+                    this.initializationInProgress = false;
+                    this.reconnectAttempts = 0; // ✅ RESET ON SUCCESS
+                    
+                    console.log('🎉 WhatsApp connected successfully!');
+                    console.log('📱 Ready to send automatic messages');
+                    console.log('✅ Connection stable and ready for use');
+                    
                     this.isConnected = true;
                     this.connectionStatus = 'connected';
                     this.qrCode = '';
+                    
+                    // ✅ CLEAR ANY PENDING RECONNECTION
+                    if (this.reconnectTimeout) {
+                        clearTimeout(this.reconnectTimeout);
+                        this.reconnectTimeout = null;
+                    }
                 }
             });
 
-            // ✅ FIXED: Handle credential updates
             this.sock.ev.on('creds.update', saveCreds);
 
         } catch (error) {
+            this.initializationInProgress = false;
             console.error('❌ WhatsApp service initialization error:', error.message);
             this.connectionStatus = 'error';
+            
+            // ✅ RETRY ON ERROR WITH DELAY
+            if (this.reconnectAttempts < this.maxReconnectAttempts) {
+                const delay = 5000;
+                console.log(`🔄 Retrying initialization in ${delay/1000} seconds...`);
+                this.reconnectTimeout = setTimeout(() => {
+                    if (!this.isConnected) {
+                        this.initialize();
+                    }
+                }, delay);
+            }
         }
     }
 
@@ -98,19 +178,16 @@ class WhatsAppService {
         }
 
         try {
-            // Format phone number (remove + and ensure country code)
             let formattedNumber = phoneNumber.replace(/[^\d]/g, '');
             
-            // Add country code if not present
             if (formattedNumber.length === 10) {
-                formattedNumber = '91' + formattedNumber; // India country code
+                formattedNumber = '91' + formattedNumber;
             }
             
             const jid = formattedNumber + '@s.whatsapp.net';
             
             console.log(`📤 Sending message to +${formattedNumber}...`);
             
-            // Send message
             const result = await this.sock.sendMessage(jid, { 
                 text: message 
             });
@@ -128,8 +205,9 @@ class WhatsAppService {
         } catch (error) {
             console.error(`❌ Failed to send message to ${phoneNumber}:`, error.message);
             
-            // Handle specific error types
             if (error.output?.statusCode === 401) {
+                this.isConnected = false;
+                this.connectionStatus = 'session_expired';
                 throw new Error('WhatsApp session expired. Please scan QR code again.');
             } else if (error.output?.statusCode === 404) {
                 throw new Error('Phone number not found on WhatsApp.');
@@ -144,34 +222,63 @@ class WhatsAppService {
             connected: this.isConnected,
             status: this.connectionStatus,
             qrCode: this.qrCode,
-            hasQR: !!this.qrCode
+            hasQR: !!this.qrCode,
+            initializing: this.initializationInProgress,
+            reconnectAttempts: this.reconnectAttempts,
+            maxReconnectAttempts: this.maxReconnectAttempts
         };
     }
 
     async disconnect() {
         try {
+            // ✅ CLEAR TIMEOUTS
+            if (this.reconnectTimeout) {
+                clearTimeout(this.reconnectTimeout);
+                this.reconnectTimeout = null;
+            }
+            
             if (this.sock) {
                 console.log('🔌 Disconnecting WhatsApp...');
                 await this.sock.logout();
-                this.isConnected = false;
-                this.connectionStatus = 'disconnected';
-                this.qrCode = '';
-                console.log('✅ WhatsApp disconnected successfully');
             }
+            
+            this.isConnected = false;
+            this.connectionStatus = 'disconnected';
+            this.qrCode = '';
+            this.initializationInProgress = false;
+            this.reconnectAttempts = 0;
+            
+            console.log('✅ WhatsApp disconnected successfully');
         } catch (error) {
             console.error('❌ Error disconnecting WhatsApp:', error.message);
         }
     }
 
-    // Manual start method
     async start() {
-        if (this.connectionStatus === 'disconnected' || this.connectionStatus === 'error') {
-            await this.initialize();
+        if (this.connectionStatus === 'max_attempts_reached') {
+            console.log('🔄 Resetting reconnection attempts...');
+            this.reconnectAttempts = 0;
         }
+        
+        if (!this.isConnected && !this.initializationInProgress) {
+            console.log('🚀 Starting WhatsApp service...');
+            await this.initialize();
+        } else if (this.initializationInProgress) {
+            console.log('⏳ WhatsApp service is already starting...');
+        } else if (this.isConnected) {
+            console.log('✅ WhatsApp service is already connected');
+        }
+    }
+
+    // ✅ MANUAL RESET METHOD
+    async reset() {
+        console.log('🔄 Resetting WhatsApp service...');
+        await this.disconnect();
+        this.reconnectAttempts = 0;
+        this.connectionStatus = 'disconnected';
+        await this.start();
     }
 }
 
-// Create singleton instance (but don't start automatically)
 const whatsappService = new WhatsAppService();
-
 module.exports = whatsappService;
