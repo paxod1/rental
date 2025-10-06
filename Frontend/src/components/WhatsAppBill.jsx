@@ -88,7 +88,6 @@ const WhatsAppBill = ({ rental, isOpen, onClose }) => {
         let billText = `*EDASSERIKKUDIYIL RENTALS PVT LTD*
 
 *INVOICE / BILL RECEIPT*
-
 *Date:* ${currentDate}
 *Customer:* ${rental.customerName}
 
