@@ -54,7 +54,6 @@ function RentalHistory() {
 
   const fetchRentalHistory = async () => {
     try {
-
       const response = await axiosInstance.get("/api/rentals/all-history", {
         params: {
           page: currentPage,
@@ -221,7 +220,7 @@ function RentalHistory() {
   }
 
   return (
-    <div className="p-6 bg-gradient-to-br from-rose-50 to-pink-50 min-h-screen">
+    <div className="p-3 sm:p-4 lg:p-6 bg-gradient-to-br from-rose-50 to-pink-50 min-h-screen">
       <Toaster
         position="top-right"
         toastOptions={{
@@ -232,27 +231,27 @@ function RentalHistory() {
       />
 
       {/* Header */}
-      <div className="mb-8">
-        <h2 className="text-3xl font-bold text-gray-800 bg-gradient-to-r from-rose-600 to-pink-600 bg-clip-text text-transparent">
+      <div className="mb-6 sm:mb-8">
+        <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 bg-gradient-to-r from-rose-600 to-pink-600 bg-clip-text text-transparent">
           Rental History
         </h2>
-        <p className="text-gray-600 mt-2">Complete rental records and payment management</p>
+        <p className="text-gray-600 mt-2 text-sm sm:text-base">Complete rental records and payment management</p>
       </div>
 
       {/* Search and Filters */}
-      <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
-        <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-4">
-          <div className="relative flex-1 max-w-md">
-            <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+      <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 mb-4 sm:mb-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+          <div className="relative flex-1 max-w-md w-full">
+            <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 sm:w-5 sm:h-5" />
             <input
               type="text"
               placeholder="Search by customer name or phone..."
               value={searchTerm}
               onChange={handleSearch}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent"
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent text-sm sm:text-base"
             />
           </div>
-          <div className="text-sm text-gray-600">
+          <div className="text-xs sm:text-sm text-gray-600 whitespace-nowrap">
             Total: {totalRentals} rentals
           </div>
         </div>
@@ -261,7 +260,7 @@ function RentalHistory() {
         <div className="flex flex-wrap gap-2">
           <button
             onClick={() => handleStatusFilter('all')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${statusFilter === 'all'
+            className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all ${statusFilter === 'all'
               ? 'bg-rose-500 text-white'
               : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
               }`}
@@ -270,7 +269,7 @@ function RentalHistory() {
           </button>
           <button
             onClick={() => handleStatusFilter('completed')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${statusFilter === 'completed'
+            className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all ${statusFilter === 'completed'
               ? 'bg-green-500 text-white'
               : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
               }`}
@@ -279,17 +278,18 @@ function RentalHistory() {
           </button>
           <button
             onClick={() => handleStatusFilter('pending_payment')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${statusFilter === 'pending_payment'
+            className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all ${statusFilter === 'pending_payment'
               ? 'bg-red-500 text-white'
               : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
               }`}
           >
-            Pending Payment
+            <span className="hidden sm:inline">Pending Payment</span>
+            <span className="sm:hidden">Pending</span>
           </button>
         </div>
       </div>
 
-      {/* Rental History Table */}
+      {/* Rental History Table/Cards */}
       {rentals.length === 0 ? (
         <div className="bg-white rounded-xl shadow-xl">
           <EmptyState
@@ -301,7 +301,126 @@ function RentalHistory() {
         </div>
       ) : (
         <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-          <div className="overflow-x-auto">
+          {/* Mobile Card View */}
+          <div className="block lg:hidden divide-y divide-gray-200">
+            {rentals.map((rental) => {
+              const paymentStatus = getPaymentStatus(rental);
+              return (
+                <div key={rental._id} className="p-4 hover:bg-gray-50">
+                  {/* Customer Header */}
+                  <div className="flex justify-between items-start mb-3">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-gray-900 truncate">
+                        {rental.customerName}
+                      </h3>
+                      {rental.customerPhone && (
+                        <p className="text-sm text-gray-500 truncate">
+                          {rental.customerPhone}
+                        </p>
+                      )}
+                    </div>
+                    <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${paymentStatus.color} ml-2`}>
+                      <paymentStatus.icon className="w-3 h-3" />
+                      <span className="hidden sm:inline">{paymentStatus.text}</span>
+                      <span className="sm:hidden">
+                        {paymentStatus.text === 'Fully Paid' ? 'Paid' : 
+                         paymentStatus.text === 'Partial Payment' ? 'Partial' : 'Pending'}
+                      </span>
+                    </span>
+                  </div>
+
+                  {/* Products Summary */}
+                  <div className="mb-3">
+                    <div className="flex items-center gap-2 mb-1">
+                      <FiPackage className="w-4 h-4 text-gray-400" />
+                      <span className="text-sm font-medium text-gray-700">
+                        {rental.productItems.length} Products
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {rental.productItems.slice(0, 2).map((item, index) => (
+                        <span key={index} className="bg-blue-50 text-blue-700 px-2 py-1 rounded text-xs">
+                          {item.productId?.name || item.productName} ({item.quantity})
+                        </span>
+                      ))}
+                      {rental.productItems.length > 2 && (
+                        <span className="text-xs text-gray-500 px-2 py-1">
+                          +{rental.productItems.length - 2} more
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Financial Summary */}
+                  <div className="mb-3 p-3 bg-gray-50 rounded-lg">
+                    <div className="grid grid-cols-3 gap-2 text-center">
+                      <div>
+                        <p className="text-xs text-gray-500">Total</p>
+                        <p className="font-semibold text-sm">₹{rental.paymentSummary?.totalAmount || rental.totalAmount || 0}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500">Paid</p>
+                        <p className="font-semibold text-sm text-green-600">₹{rental.paymentSummary?.totalPaid || rental.totalPaid || 0}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500">Balance</p>
+                        <p className="font-semibold text-sm text-red-600">₹{rental.paymentSummary?.balanceAmount || rental.balanceAmount || 0}</p>
+                      </div>
+                    </div>
+                    {/* Progress bar */}
+                    <div className="mt-2">
+                      <div className="w-full bg-gray-200 rounded-full h-1">
+                        <div
+                          className="bg-green-500 h-1 rounded-full"
+                          style={{
+                            width: `${rental.paymentSummary?.paymentProgress || 0}%`
+                          }}
+                        ></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Duration */}
+                  <div className="flex items-center gap-2 mb-3 text-sm text-gray-600">
+                    <FiCalendar className="w-4 h-4" />
+                    <span>{calculateDuration(rental.startDate, rental.updatedAt)} days</span>
+                    <span>•</span>
+                    <span>{formatDate(rental.startDate)} - {formatDate(rental.updatedAt)}</span>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => openModal(rental)}
+                      className="flex-1 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white px-3 py-2 rounded text-xs flex items-center justify-center gap-1"
+                    >
+                      <FiEye className="w-3 h-3" />
+                      View
+                    </button>
+                    {(rental.paymentSummary?.balanceAmount || rental.balanceAmount) > 0 && (
+                      <button
+                        onClick={() => openPaymentModal(rental)}
+                        className="flex-1 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white px-3 py-2 rounded text-xs flex items-center justify-center gap-1"
+                      >
+                        <FiCreditCard className="w-3 h-3" />
+                        Pay
+                      </button>
+                    )}
+                    <button
+                      onClick={() => openDeleteModal(rental)}
+                      className="bg-gradient-to-r from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600 text-white px-3 py-2 rounded text-xs flex items-center justify-center gap-1"
+                    >
+                      <FiTrash2 className="w-3 h-3" />
+                      <span className="hidden sm:inline">Delete</span>
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Desktop Table View */}
+          <div className="hidden lg:block overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50">
                 <tr>
@@ -529,27 +648,27 @@ function RentalHistory() {
 
       {/* Payment Modal */}
       {isPaymentModalOpen && selectedRental && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-3 sm:p-4">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
-            <div className="bg-gradient-to-r from-green-500 to-emerald-500 text-white px-6 py-4 rounded-t-xl">
+            <div className="bg-gradient-to-r from-green-500 to-emerald-500 text-white px-4 sm:px-6 py-3 sm:py-4 rounded-t-xl">
               <div className="flex justify-between items-center">
-                <h3 className="text-xl font-semibold">Add Payment</h3>
+                <h3 className="text-lg sm:text-xl font-semibold">Add Payment</h3>
                 <button
                   onClick={closePaymentModal}
                   className="text-white hover:bg-white hover:bg-opacity-20 p-1 rounded transition-colors"
                 >
-                  <FiX className="w-6 h-6" />
+                  <FiX className="w-5 h-5 sm:w-6 sm:h-6" />
                 </button>
               </div>
             </div>
 
-            <form onSubmit={handlePaymentSubmit} className="p-6 space-y-4">
+            <form onSubmit={handlePaymentSubmit} className="p-4 sm:p-6 space-y-4">
               {/* Customer Info */}
-              <div className="bg-gray-50 p-4 rounded-lg">
+              <div className="bg-gray-50 p-3 sm:p-4 rounded-lg">
                 <div className="text-sm text-gray-600">Customer</div>
                 <div className="font-semibold">{selectedRental.customerName}</div>
                 <div className="text-sm text-gray-600 mt-1">
-                  Balance Due: <span className="font-bold text-red-600">${selectedRental.balanceAmount}</span>
+                  Balance Due: <span className="font-bold text-red-600">₹{selectedRental.balanceAmount}</span>
                 </div>
               </div>
 
@@ -567,7 +686,7 @@ function RentalHistory() {
                   min="0.01"
                   max={selectedRental.balanceAmount}
                   required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                  className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-sm sm:text-base"
                   placeholder="Enter payment amount"
                 />
               </div>
@@ -581,7 +700,7 @@ function RentalHistory() {
                   name="paymentType"
                   value={paymentData.paymentType}
                   onChange={handlePaymentChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                  className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-sm sm:text-base"
                 >
                   <option value="partial_payment">Partial Payment</option>
                   <option value="full_payment">Full Payment</option>
@@ -598,24 +717,24 @@ function RentalHistory() {
                   value={paymentData.notes}
                   onChange={handlePaymentChange}
                   rows="3"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                  className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-sm sm:text-base"
                   placeholder="Payment method, reference number, etc."
                 />
               </div>
 
               {/* Action Buttons */}
-              <div className="flex gap-3 pt-4">
+              <div className="flex flex-col sm:flex-row gap-3 pt-4">
                 <button
                   type="button"
                   onClick={closePaymentModal}
-                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm sm:text-base"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="flex-1 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white px-4 py-2 rounded-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                  className="flex-1 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white px-4 py-2 rounded-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50 text-sm sm:text-base"
                 >
                   {isSubmitting && <LoadingSpinner size="sm" color="gray" />}
                   Add Payment
@@ -627,72 +746,69 @@ function RentalHistory() {
       )}
 
       {/* Rental Details Modal */}
-      {/* Enhanced Rental Details Modal for Multiple Products */}
       {isModalOpen && selectedRental && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-3 sm:p-4">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-            <div className="bg-gradient-to-r from-rose-500 to-pink-500 text-white px-6 py-4 rounded-t-xl">
+            <div className="bg-gradient-to-r from-rose-500 to-pink-500 text-white px-4 sm:px-6 py-3 sm:py-4 rounded-t-xl">
               <div className="flex justify-between items-center">
-                <h3 className="text-xl font-semibold">
+                <h3 className="text-lg sm:text-xl font-semibold">
                   Rental Details - {selectedRental.productItems.length} Products
                 </h3>
                 <button
                   onClick={closeModal}
                   className="text-white hover:bg-white hover:bg-opacity-20 p-1 rounded transition-colors"
                 >
-                  <FiX className="w-6 h-6" />
+                  <FiX className="w-5 h-5 sm:w-6 sm:h-6" />
                 </button>
               </div>
             </div>
 
-            <div className="p-6">
-              {/* Customer Info - Same as before */}
-
+            <div className="p-4 sm:p-6">
               {/* Products Information - Enhanced */}
               <div className="mb-6">
-                <h4 className="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
-                  <FiPackage className="w-5 h-5" />
+                <h4 className="text-base sm:text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                  <FiPackage className="w-4 h-4 sm:w-5 sm:h-5" />
                   Products Information ({selectedRental.productItems.length} items)
                 </h4>
 
-                <div className="space-y-4">
+                <div className="space-y-3 sm:space-y-4">
                   {selectedRental.productItems.map((item, index) => {
                     const isReturned = item.currentQuantity === 0;
                     const hasBalance = item.balanceAmount > 0;
 
                     return (
-                      <div key={index} className={`p-4 rounded-lg border-l-4 ${isReturned
+                      <div key={index} className={`p-3 sm:p-4 rounded-lg border-l-4 ${isReturned
                           ? hasBalance
                             ? 'bg-red-50 border-red-400'
                             : 'bg-green-50 border-green-400'
                           : 'bg-blue-50 border-blue-400'
                         }`}>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
                           <div>
-                            <p className="text-sm font-medium text-gray-600">Product</p>
-                            <p className="font-semibold">{item.productId?.name || item.productName}</p>
+                            <p className="text-xs sm:text-sm font-medium text-gray-600">Product</p>
+                            <p className="font-semibold text-sm sm:text-base">{item.productId?.name || item.productName}</p>
                           </div>
                           <div>
-                            <p className="text-sm font-medium text-gray-600">Quantity</p>
-                            <p className="font-semibold">
+                            <p className="text-xs sm:text-sm font-medium text-gray-600">Quantity</p>
+                            <p className="font-semibold text-sm sm:text-base">
                               {item.currentQuantity}/{item.quantity} units
                               {isReturned && <span className="text-green-600 ml-2">(Returned)</span>}
                             </p>
                           </div>
                           <div>
-                            <p className="text-sm font-medium text-gray-600">Amount</p>
-                            <p className="font-semibold">₹{item.amount || 0}</p>
+                            <p className="text-xs sm:text-sm font-medium text-gray-600">Amount</p>
+                            <p className="font-semibold text-sm sm:text-base">₹{item.amount || 0}</p>
                           </div>
                           <div>
-                            <p className="text-sm font-medium text-gray-600">Balance</p>
-                            <p className={`font-semibold ${hasBalance ? 'text-red-600' : 'text-green-600'}`}>
+                            <p className="text-xs sm:text-sm font-medium text-gray-600">Balance</p>
+                            <p className={`font-semibold text-sm sm:text-base ${hasBalance ? 'text-red-600' : 'text-green-600'}`}>
                               ₹{item.balanceAmount || 0}
                             </p>
                           </div>
                         </div>
 
                         {/* Product Status Badge */}
-                        <div className="mt-2 flex justify-between items-center">
+                        <div className="mt-2 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${isReturned
                               ? hasBalance
                                 ? 'bg-red-100 text-red-800'
@@ -706,7 +822,7 @@ function RentalHistory() {
                               : 'Active Rental'}
                           </span>
 
-                          <div className="text-sm text-gray-600">
+                          <div className="text-xs sm:text-sm text-gray-600">
                             ₹{item.rate}/{item.rateType?.replace('ly', '')}
                           </div>
                         </div>
@@ -718,33 +834,33 @@ function RentalHistory() {
 
               {/* Financial Summary - Enhanced */}
               <div className="mb-6">
-                <h4 className="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
-                  <FiDollarSign className="w-5 h-5" />
+                <h4 className="text-base sm:text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                  <FiDollarSign className="w-4 h-4 sm:w-5 sm:h-5" />
                   Financial Summary (All Products)
                 </h4>
-                <div className={`p-6 rounded-lg ${selectedRental.balanceAmount <= 0 ? 'bg-green-50' : 'bg-red-50'}`}>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className={`p-4 sm:p-6 rounded-lg ${selectedRental.balanceAmount <= 0 ? 'bg-green-50' : 'bg-red-50'}`}>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
                     <div className="text-center">
-                      <p className={`text-sm ${selectedRental.balanceAmount <= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      <p className={`text-xs sm:text-sm ${selectedRental.balanceAmount <= 0 ? 'text-green-600' : 'text-red-600'}`}>
                         Total Amount
                       </p>
-                      <p className={`font-bold text-3xl ${selectedRental.balanceAmount <= 0 ? 'text-green-900' : 'text-red-900'}`}>
+                      <p className={`font-bold text-2xl sm:text-3xl ${selectedRental.balanceAmount <= 0 ? 'text-green-900' : 'text-red-900'}`}>
                         ₹{selectedRental.totalAmount || 0}
                       </p>
                     </div>
                     <div className="text-center">
-                      <p className={`text-sm ${selectedRental.balanceAmount <= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      <p className={`text-xs sm:text-sm ${selectedRental.balanceAmount <= 0 ? 'text-green-600' : 'text-red-600'}`}>
                         Total Paid
                       </p>
-                      <p className={`font-bold text-3xl ${selectedRental.balanceAmount <= 0 ? 'text-green-900' : 'text-red-900'}`}>
+                      <p className={`font-bold text-2xl sm:text-3xl ${selectedRental.balanceAmount <= 0 ? 'text-green-900' : 'text-red-900'}`}>
                         ₹{selectedRental.totalPaid || 0}
                       </p>
                     </div>
                     <div className="text-center">
-                      <p className={`text-sm ${selectedRental.balanceAmount <= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      <p className={`text-xs sm:text-sm ${selectedRental.balanceAmount <= 0 ? 'text-green-600' : 'text-red-600'}`}>
                         Balance Due
                       </p>
-                      <p className={`font-bold text-3xl ${selectedRental.balanceAmount <= 0 ? 'text-green-900' : 'text-red-900'}`}>
+                      <p className={`font-bold text-2xl sm:text-3xl ${selectedRental.balanceAmount <= 0 ? 'text-green-900' : 'text-red-900'}`}>
                         ₹{selectedRental.balanceAmount || 0}
                       </p>
                     </div>
@@ -752,7 +868,7 @@ function RentalHistory() {
 
                   {/* Payment Progress Bar */}
                   <div className="mt-4">
-                    <div className="flex justify-between text-sm text-gray-600 mb-1">
+                    <div className="flex justify-between text-xs sm:text-sm text-gray-600 mb-1">
                       <span>Payment Progress</span>
                       <span>{Math.round((selectedRental.totalPaid / selectedRental.totalAmount) * 100 || 0)}%</span>
                     </div>
@@ -767,89 +883,86 @@ function RentalHistory() {
                   </div>
                 </div>
               </div>
-
-              {/* Transaction and Payment History - Same as before but enhanced */}
             </div>
           </div>
         </div>
       )}
 
-
       {/* Delete Confirmation Modal */}
       {isDeleteModalOpen && rentalToDelete && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-3 sm:p-4">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
-            <div className="bg-gradient-to-r from-red-500 to-rose-500 text-white px-6 py-4 rounded-t-xl">
+            <div className="bg-gradient-to-r from-red-500 to-rose-500 text-white px-4 sm:px-6 py-3 sm:py-4 rounded-t-xl">
               <div className="flex justify-between items-center">
-                <h3 className="text-xl font-semibold">Delete Rental Record</h3>
+                <h3 className="text-lg sm:text-xl font-semibold">Delete Rental Record</h3>
                 <button
                   onClick={closeDeleteModal}
                   className="text-white hover:bg-white hover:bg-opacity-20 p-1 rounded transition-colors"
                 >
-                  <FiX className="w-6 h-6" />
+                  <FiX className="w-5 h-5 sm:w-6 sm:h-6" />
                 </button>
               </div>
             </div>
 
-            <div className="p-6">
+            <div className="p-4 sm:p-6">
               {/* Warning Message */}
-              <div className="flex items-center gap-3 mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-                <FiTrash2 className="w-6 h-6 text-red-600 flex-shrink-0" />
+              <div className="flex items-center gap-3 mb-4 p-3 sm:p-4 bg-red-50 border border-red-200 rounded-lg">
+                <FiTrash2 className="w-5 h-5 sm:w-6 sm:h-6 text-red-600 flex-shrink-0" />
                 <div>
-                  <p className="text-red-800 font-medium">Are you sure you want to delete this rental?</p>
-                  <p className="text-red-600 text-sm mt-1">This action cannot be undone.</p>
+                  <p className="text-red-800 font-medium text-sm sm:text-base">Are you sure you want to delete this rental?</p>
+                  <p className="text-red-600 text-xs sm:text-sm mt-1">This action cannot be undone.</p>
                 </div>
               </div>
 
               {/* Rental Details */}
-              <div className="bg-gray-50 p-4 rounded-lg mb-6">
+              <div className="bg-gray-50 p-3 sm:p-4 rounded-lg mb-4 sm:mb-6">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <p className="text-sm text-gray-600">Customer</p>
-                    <p className="font-medium">{rentalToDelete.customerName}</p>
+                    <p className="text-xs sm:text-sm text-gray-600">Customer</p>
+                    <p className="font-medium text-sm sm:text-base">{rentalToDelete.customerName}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-600">Product</p>
-                    <p className="font-medium">{rentalToDelete.productId?.name || 'Unknown'}</p>
+                    <p className="text-xs sm:text-sm text-gray-600">Product</p>
+                    <p className="font-medium text-sm sm:text-base">{rentalToDelete.productId?.name || 'Unknown'}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-600">Total Amount</p>
-                    <p className="font-medium">${rentalToDelete.totalAmount}</p>
+                    <p className="text-xs sm:text-sm text-gray-600">Total Amount</p>
+                    <p className="font-medium text-sm sm:text-base">₹{rentalToDelete.totalAmount}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-600">Status</p>
-                    <p className="font-medium capitalize">{rentalToDelete.status.replace('_', ' ')}</p>
+                    <p className="text-xs sm:text-sm text-gray-600">Status</p>
+                    <p className="font-medium capitalize text-sm sm:text-base">{rentalToDelete.status.replace('_', ' ')}</p>
                   </div>
                 </div>
               </div>
 
               {/* Warning if there's outstanding balance */}
               {rentalToDelete.balanceAmount > 0 && (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 sm:p-4 mb-4 sm:mb-6">
                   <div className="flex items-center gap-2">
-                    <FiAlertCircle className="w-5 h-5 text-yellow-600" />
-                    <p className="text-yellow-800 font-medium">Outstanding Balance</p>
+                    <FiAlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-600" />
+                    <p className="text-yellow-800 font-medium text-sm sm:text-base">Outstanding Balance</p>
                   </div>
-                  <p className="text-yellow-700 text-sm mt-1">
-                    This rental has an outstanding balance of <strong>${rentalToDelete.balanceAmount}</strong>.
+                  <p className="text-yellow-700 text-xs sm:text-sm mt-1">
+                    This rental has an outstanding balance of <strong>₹{rentalToDelete.balanceAmount}</strong>.
                     Deleting this record will permanently remove all payment history.
                   </p>
                 </div>
               )}
 
               {/* Action Buttons */}
-              <div className="flex gap-3">
+              <div className="flex flex-col sm:flex-row gap-3">
                 <button
                   type="button"
                   onClick={closeDeleteModal}
-                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm sm:text-base"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleDeleteConfirm}
                   disabled={isDeleting}
-                  className="flex-1 bg-gradient-to-r from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600 text-white px-4 py-2 rounded-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                  className="flex-1 bg-gradient-to-r from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600 text-white px-4 py-2 rounded-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50 text-sm sm:text-base"
                 >
                   {isDeleting && <LoadingSpinner size="sm" color="gray" />}
                   {isDeleting ? 'Deleting...' : 'Delete Rental'}

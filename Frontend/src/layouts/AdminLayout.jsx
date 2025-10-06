@@ -12,12 +12,12 @@ function AdminLayout() {
   };
 
   return (
-    <div>
+    <div >
       {/* Navbar always visible */}
       <AdminNavbar onMenuClick={handleMenuClick} onLogout={logout} />
 
       {/* Page content changes here */}
-      <div className='pt-16'>
+      <div className='pt-0 sm:pt-16  '>
         <Outlet />
       </div>
     </div>

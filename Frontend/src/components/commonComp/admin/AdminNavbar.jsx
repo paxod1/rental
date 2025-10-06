@@ -59,7 +59,7 @@ function AdminNavbar() {
         return location.pathname === path;
     };
 
-    // Navigation items for reusability
+    // Navigation items for reusability (only main nav items, logout moved to header)
     const navItems = [
         { path: '/', icon: FiHome, label: 'Home' },
         { path: '/Admin-products', icon: FiBox, label: 'Products' },
@@ -79,7 +79,8 @@ function AdminNavbar() {
     return (
         <>
             {/* Desktop Navbar - Hidden on mobile */}
-            <nav className={`hidden md:block fixed w-full z-50 bg-gradient-to-r from-[#ca6464] to-[#d17474] shadow-lg transition-all duration-300 ${scrolled ? 'py-1' : 'py-2'}`}>
+            <nav className={`hidden md:block fixed w-full z-50 bg-gradient-to-r from-[#ca6464] to-[#d17474] shadow-lg 
+                transition-all duration-300 ${scrolled ? 'py-1' : 'py-2'}`}>
                 <div className="w-[95%] mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between items-center h-16">
                         {/* Brand Logo */}
@@ -147,9 +148,10 @@ function AdminNavbar() {
                 </div>
             </nav>
 
-            {/* Mobile Header - Only brand logo */}
-            <div className="md:hidden fixed top-0 w-full z-40 bg-gradient-to-r from-[#ca6464] to-[#d17474] shadow-lg">
-                <div className="px-4 py-3">
+            {/* Mobile Header - Brand logo + Logout button */}
+            <div className="md:hidden fixed top-0 w-full  z-40 bg-gradient-to-r from-[#ca6464] to-[#d17474] shadow-lg">
+                <div className="px-4 py-3 flex justify-between items-center">
+                    {/* Brand Logo */}
                     <Link to="/" className="flex flex-col items-start">
                         <h1 className='text-white text-lg font-bold'>
                             Edasserikkudiyil
@@ -158,14 +160,32 @@ function AdminNavbar() {
                             Quality Rentals You Can Trust
                         </p>
                     </Link>
+
+                    {/* Mobile Logout Button */}
+                    <button
+                        onClick={handleLogoutClick}
+                        className="relative flex items-center justify-center p-2 rounded-lg hover:bg-white hover:bg-opacity-20 transition-all duration-300 ease-in-out group"
+                        onTouchStart={() => handleTooltipShow('Logout')}
+                        onTouchEnd={() => setTimeout(handleTooltipHide, 1500)}
+                    >
+                        <FiLogOut className="w-5 h-5 text-white group-hover:text-yellow-200 transition-colors duration-300" />
+                        
+                        {/* Tooltip for mobile logout */}
+                        {showTooltip === 'Logout' && (
+                            <div className="absolute -bottom-12 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded-md whitespace-nowrap animate-fade-in">
+                                Logout
+                                <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-2 border-l-transparent border-r-2 border-r-transparent border-b-2 border-b-gray-900"></div>
+                            </div>
+                        )}
+                    </button>
                 </div>
             </div>
 
-            {/* Instagram-Style Mobile Bottom Navigation */}
+            {/* Instagram-Style Mobile Bottom Navigation - Only main nav items */}
             <div className="md:hidden fixed bottom-0 left-0 right-0 z-50">
                 {/* Bottom Nav Container */}
                 <div className="bg-white border-t border-gray-200 shadow-2xl">
-                    <div className="flex items-center justify-around px-2 py-2">
+                    <div className="flex items-center justify-around px-1 py-0">
                         {/* Navigation Items */}
                         {navItems.map((item) => (
                             <Link
@@ -177,13 +197,13 @@ function AdminNavbar() {
                                 onTouchStart={() => handleTooltipShow(item.label)}
                                 onTouchEnd={() => setTimeout(handleTooltipHide, 1500)}
                             >
-                                <div className={`p-3 rounded-full transition-all duration-300 ${
+                                <div className={`p-2 rounded-full transition-all duration-300 ${
                                     isActiveLink(item.path) 
                                         ? 'bg-[#ca6464] shadow-lg scale-110' 
                                         : 'hover:bg-gray-100 group-active:bg-gray-200'
                                 }`}>
                                     <item.icon 
-                                        className={`w-6 h-6 transition-colors duration-300 ${
+                                        className={`w-5 h-5 transition-colors duration-300 ${
                                             isActiveLink(item.path) 
                                                 ? 'text-white' 
                                                 : 'text-gray-600 group-hover:text-[#ca6464]'
@@ -193,7 +213,7 @@ function AdminNavbar() {
                                 
                                 {/* Active Indicator Dot */}
                                 {isActiveLink(item.path) && (
-                                    <div className="w-1 h-1 bg-[#ca6464] rounded-full mt-1"></div>
+                                    <div className="w-1.5 h-1.5 bg-[#ca6464] rounded-full mt-1 animate-pulse"></div>
                                 )}
 
                                 {/* Tooltip */}
@@ -205,28 +225,6 @@ function AdminNavbar() {
                                 )}
                             </Link>
                         ))}
-
-                        {/* Profile/Logout Button */}
-                        <button
-                            onClick={handleLogoutClick}
-                            className="relative flex flex-col items-center justify-center p-2 rounded-xl transition-all duration-300 ease-in-out group"
-                            onMouseEnter={() => handleTooltipShow('Logout')}
-                            onMouseLeave={handleTooltipHide}
-                            onTouchStart={() => handleTooltipShow('Logout')}
-                            onTouchEnd={() => setTimeout(handleTooltipHide, 1500)}
-                        >
-                            <div className="p-3 rounded-full hover:bg-gray-100 group-active:bg-gray-200 transition-all duration-300">
-                                <FiLogOut className="w-6 h-6 text-gray-600 group-hover:text-red-600 transition-colors duration-300" />
-                            </div>
-
-                            {/* Tooltip */}
-                            {showTooltip === 'Logout' && (
-                                <div className="absolute -top-12 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded-md whitespace-nowrap animate-fade-in">
-                                    Logout
-                                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-2 border-l-transparent border-r-2 border-r-transparent border-t-2 border-t-gray-900"></div>
-                                </div>
-                            )}
-                        </button>
                     </div>
                 </div>
             </div>
@@ -293,6 +291,7 @@ function AdminNavbar() {
                 @media (max-width: 768px) {
                     body {
                         padding-bottom: 80px;
+                        padding-top: 80px;
                     }
                 }
             `}</style>

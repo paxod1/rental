@@ -10,7 +10,7 @@ import {
   FiAlertTriangle,
   FiDollarSign,
   FiArrowUp,
-  FiBarChart2, // ✅ Changed from FiBarChart3
+  FiBarChart2,
   FiClock
 } from "react-icons/fi";
 import LoadingSpinner from "../../components/commonComp/LoadingSpinner";
@@ -29,7 +29,7 @@ function AdminHome() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const navigate = useNavigate()
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchDashboardData();
@@ -88,7 +88,7 @@ function AdminHome() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-rose-50 to-pink-50 ">
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-rose-50 to-pink-50">
         <LoadingSpinner size="xl" />
       </div>
     );
@@ -126,33 +126,30 @@ function AdminHome() {
         }}
       />
 
-      <div className="p-6 w-[95%] mx-auto">
+      <div className="p-3 sm:p-4 lg:p-6 w-[95%] mx-auto">
         {/* Header */}
-        <div className="mb-8">
-          <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-6">
+        <div className="mb-6 sm:mb-8">
+          <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4 sm:gap-6">
             <div>
-              <h1 className="text-4xl lg:text-5xl font-bold text-[#994646] mb-3  "
-
-              >
+              <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-[#994646] mb-2 sm:mb-3">
                 Welcome Back! 👋
               </h1>
-              <p className="text-gray-700 text-lg"
-
-              >
+              <p className="text-gray-700 text-sm sm:text-base lg:text-lg">
                 Here's what's happening with your rental business today
               </p>
             </div>
 
-            <div className="flex gap-3">
-              <button className="bg-white hover:bg-slate-50 text-slate-700 px-6 py-3 rounded-xl font-medium shadow-md hover:shadow-lg transition-all duration-300 flex items-center gap-2 border border-slate-200">
-                <FiBarChart2 className="w-5 h-5" />
-                Reports
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+              <button className="bg-white hover:bg-slate-50 text-slate-700 px-4 sm:px-6 py-2 sm:py-3 rounded-xl font-medium shadow-md hover:shadow-lg transition-all duration-300 flex items-center justify-center gap-2 border border-slate-200 text-sm sm:text-base">
+                <FiBarChart2 className="w-4 h-4 sm:w-5 sm:h-5" />
+                <span className="hidden sm:inline">Reports</span>
+                <span className="sm:hidden">Reports</span>
               </button>
               <button
                 onClick={openModal}
-                className="bg-[#b86969] hover:bg-[#994646] cursor-pointer text-white px-8 py-3 rounded-xl font-medium shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-2"
+                className="bg-[#b86969] hover:bg-[#994646] cursor-pointer text-white px-4 sm:px-8 py-2 sm:py-3 rounded-xl font-medium shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center gap-2 text-sm sm:text-base"
               >
-                <FiPlus className="w-5 h-5" />
+                <FiPlus className="w-4 h-4 sm:w-5 sm:h-5" />
                 New Rental
               </button>
             </div>
@@ -160,114 +157,125 @@ function AdminHome() {
         </div>
 
         {/* Analytics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-6 sm:mb-8">
           {/* Total Products */}
-          <div  onClick={() => { navigate("/Admin-products") }} className="cursor-pointer bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 border border-slate-100">
-            <div className="flex items-center justify-between mb-4">
-              <div className="bg-blue-100 p-3 rounded-xl">
-                <FiPackage className="w-6 h-6 text-blue-600" />
+          <div onClick={() => { navigate("/Admin-products") }} className="cursor-pointer bg-white rounded-xl lg:rounded-2xl p-3 sm:p-4 lg:p-6 shadow-lg hover:shadow-xl transition-all duration-300 border border-slate-100">
+            <div className="flex items-center justify-between mb-2 sm:mb-4">
+              <div className="bg-blue-100 p-2 sm:p-3 rounded-lg lg:rounded-xl">
+                <FiPackage className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-blue-600" />
               </div>
-              <div className="flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
-                <FiArrowUp className="w-3 h-3" />
-                Active
+              <div className="flex items-center gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                <FiArrowUp className="w-2 h-2 sm:w-3 sm:h-3" />
+                <span className="hidden sm:inline">Active</span>
               </div>
             </div>
             <div>
-              <h3 className="text-slate-600 text-sm font-medium mb-2">Total Products</h3>
-              <p className="text-2xl lg:text-3xl font-bold text-slate-800">{analytics.totalProducts}</p>
+              <h3 className="text-slate-600 text-xs sm:text-sm font-medium mb-1 sm:mb-2">Total Products</h3>
+              <p className="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-slate-800">{analytics.totalProducts}</p>
             </div>
           </div>
 
           {/* Active Rentals */}
-          <div  onClick={() => { navigate("/Admin-Rented") }} className="bg-white cursor-pointer rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 border border-slate-100">
-            <div className="flex items-center justify-between mb-4">
-              <div className="bg-green-100 p-3 rounded-xl">
-                <FiActivity className="w-6 h-6 text-green-600" />
+          <div onClick={() => { navigate("/Admin-Rented") }} className="bg-white cursor-pointer rounded-xl lg:rounded-2xl p-3 sm:p-4 lg:p-6 shadow-lg hover:shadow-xl transition-all duration-300 border border-slate-100">
+            <div className="flex items-center justify-between mb-2 sm:mb-4">
+              <div className="bg-green-100 p-2 sm:p-3 rounded-lg lg:rounded-xl">
+                <FiActivity className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-green-600" />
               </div>
-              <div className="flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
-                <FiArrowUp className="w-3 h-3" />
-                Live
+              <div className="flex items-center gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                <FiArrowUp className="w-2 h-2 sm:w-3 sm:h-3" />
+                <span className="hidden sm:inline">Live</span>
               </div>
             </div>
             <div>
-              <h3 className="text-slate-600 text-sm font-medium mb-2">Active Rentals</h3>
-              <p className="text-2xl lg:text-3xl font-bold text-slate-800">{analytics.activeRentals}</p>
+              <h3 className="text-slate-600 text-xs sm:text-sm font-medium mb-1 sm:mb-2">Active Rentals</h3>
+              <p className="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-slate-800">{analytics.activeRentals}</p>
             </div>
           </div>
 
           {/* Total Rentals */}
-          <div className="bg-white cursor-pointer rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 border border-slate-100">
-            <div className="flex items-center justify-between mb-4">
-              <div className="bg-purple-100 p-3 rounded-xl">
-                <FiTrendingUp className="w-6 h-6 text-purple-600" />
+          <div className="bg-white cursor-pointer rounded-xl lg:rounded-2xl p-3 sm:p-4 lg:p-6 shadow-lg hover:shadow-xl transition-all duration-300 border border-slate-100">
+            <div className="flex items-center justify-between mb-2 sm:mb-4">
+              <div className="bg-purple-100 p-2 sm:p-3 rounded-lg lg:rounded-xl">
+                <FiTrendingUp className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-purple-600" />
               </div>
-              <div className="flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
-                <FiArrowUp className="w-3 h-3" />
-                +18%
+              <div className="flex items-center gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
+                <FiArrowUp className="w-2 h-2 sm:w-3 sm:h-3" />
+                <span className="hidden sm:inline">+18%</span>
               </div>
             </div>
             <div>
-              <h3 className="text-slate-600 text-sm font-medium mb-2">Total Rentals</h3>
-              <p className="text-2xl lg:text-3xl font-bold text-slate-800">{analytics.totalRentals}</p>
+              <h3 className="text-slate-600 text-xs sm:text-sm font-medium mb-1 sm:mb-2">Total Rentals</h3>
+              <p className="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-slate-800">{analytics.totalRentals}</p>
             </div>
           </div>
 
           {/* Stock Alerts */}
-          <div onClick={() => { navigate("/Admin-products") }} className="bg-white cursor-pointer rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 border border-slate-100">
-            <div className="flex items-center justify-between mb-4">
-              <div className={`p-3 rounded-xl ${outOfStockProducts > 0 ? 'bg-red-100' : lowStockProducts > 0 ? 'bg-amber-100' : 'bg-green-100'}`}>
-                <FiAlertTriangle className={`w-6 h-6 ${outOfStockProducts > 0 ? 'text-red-600' : lowStockProducts > 0 ? 'text-amber-600' : 'text-green-600'}`} />
+          <div onClick={() => { navigate("/Admin-products") }} className="bg-white cursor-pointer rounded-xl lg:rounded-2xl p-3 sm:p-4 lg:p-6 shadow-lg hover:shadow-xl transition-all duration-300 border border-slate-100">
+            <div className="flex items-center justify-between mb-2 sm:mb-4">
+              <div className={`p-2 sm:p-3 rounded-lg lg:rounded-xl ${outOfStockProducts > 0 ? 'bg-red-100' : lowStockProducts > 0 ? 'bg-amber-100' : 'bg-green-100'}`}>
+                <FiAlertTriangle className={`w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 ${outOfStockProducts > 0 ? 'text-red-600' : lowStockProducts > 0 ? 'text-amber-600' : 'text-green-600'}`} />
               </div>
-              <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${outOfStockProducts > 0 ? 'bg-red-100 text-red-700' :
+              <div className={`flex items-center gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full text-xs font-medium ${outOfStockProducts > 0 ? 'bg-red-100 text-red-700' :
                 lowStockProducts > 0 ? 'bg-amber-100 text-amber-700' :
                   'bg-green-100 text-green-700'
                 }`}>
-                {outOfStockProducts > 0 ? 'Critical' : lowStockProducts > 0 ? 'Warning' : 'Good'}
+                <span className="hidden sm:inline">
+                  {outOfStockProducts > 0 ? 'Critical' : lowStockProducts > 0 ? 'Warning' : 'Good'}
+                </span>
+                <span className="sm:hidden">
+                  {outOfStockProducts > 0 ? '!' : lowStockProducts > 0 ? '⚠' : '✓'}
+                </span>
               </div>
             </div>
             <div>
-              <h3 className="text-slate-600 text-sm font-medium mb-2">Stock Alerts</h3>
-              <p className="text-2xl lg:text-3xl font-bold text-slate-800">{lowStockProducts + outOfStockProducts}</p>
+              <h3 className="text-slate-600 text-xs sm:text-sm font-medium mb-1 sm:mb-2">Stock Alerts</h3>
+              <p className="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-slate-800">{lowStockProducts + outOfStockProducts}</p>
             </div>
           </div>
         </div>
 
         {/* Main Content Grid */}
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
 
           {/* Products Inventory */}
           <div className="xl:col-span-2">
-            <div className="bg-white rounded-2xl shadow-lg border border-slate-100">
-              <div className="p-6 border-b border-slate-100">
-                <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                  <FiPackage className="w-6 h-6 text-blue-600" />
+            <div className="bg-white rounded-xl lg:rounded-2xl shadow-lg border border-slate-100">
+              <div className="p-4 sm:p-6 border-b border-slate-100">
+                <h3 className="text-lg sm:text-xl font-bold text-slate-800 flex items-center gap-2">
+                  <FiPackage className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
                   Product Inventory
                 </h3>
               </div>
 
-              <div className="p-6">
-                <div className="space-y-4">
+              <div className="p-4 sm:p-6">
+                <div className="space-y-3 sm:space-y-4">
                   {products.map((product, index) => {
                     const stockStatus = getStockStatus(product.quantity);
                     return (
-                      <div key={product._id} className="flex items-center justify-between p-4 bg-slate-50 hover:bg-slate-100 rounded-xl transition-colors">
-                        <div className="flex items-center gap-4">
-                          <div className="bg-white p-3 rounded-lg shadow-sm">
-                            <FiPackage className="w-5 h-5 text-slate-600" />
+                      <div key={product._id} className="flex items-center justify-between p-3 sm:p-4 bg-slate-50 hover:bg-slate-100 rounded-lg lg:rounded-xl transition-colors">
+                        <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0">
+                          <div className="bg-white p-2 sm:p-3 rounded-lg shadow-sm flex-shrink-0">
+                            <FiPackage className="w-4 h-4 sm:w-5 sm:h-5 text-slate-600" />
                           </div>
-                          <div>
-                            <h4 className="font-semibold text-slate-800 capitalize">{product.name}</h4>
-                            <p className="text-sm text-slate-600">₹{product.rate}/{product.rateType}</p>
+                          <div className="min-w-0 flex-1">
+                            <h4 className="font-semibold text-slate-800 capitalize text-sm sm:text-base truncate">{product.name}</h4>
+                            <p className="text-xs sm:text-sm text-slate-600">₹{product.rate}/{product.rateType}</p>
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
                           <div className="text-right">
-                            <p className="text-lg font-bold text-slate-800">
-                              {product.quantity.toLocaleString()} units
+                            <p className="text-sm sm:text-base lg:text-lg font-bold text-slate-800">
+                              {product.quantity.toLocaleString()}
                             </p>
-                            <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${stockStatus.color}`}>
-                              {stockStatus.status}
+                            <p className="text-xs text-slate-500 sm:hidden">units</p>
+                            <div className={`inline-flex items-center px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full text-xs font-medium border ${stockStatus.color}`}>
+                              <span className="hidden sm:inline">{stockStatus.status}</span>
+                              <span className="sm:hidden">
+                                {stockStatus.status === 'Out of Stock' ? 'Out' :
+                                 stockStatus.status === 'Low Stock' ? 'Low' :
+                                 stockStatus.status === 'Medium Stock' ? 'Med' : 'Good'}
+                              </span>
                             </div>
                           </div>
                         </div>
@@ -280,63 +288,59 @@ function AdminHome() {
           </div>
 
           {/* Quick Actions & Stats */}
-          <div className="xl:col-span-1 space-y-6">
+          <div className="xl:col-span-1 space-y-4 sm:space-y-6">
 
             {/* Quick Actions */}
-            <div className="bg-white rounded-2xl shadow-lg p-6 border border-slate-100">
-              <h3 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
-                <FiActivity className="w-6 h-6 text-green-600" />
+            <div className="bg-white rounded-xl lg:rounded-2xl shadow-lg p-4 sm:p-6 border border-slate-100">
+              <h3 className="text-lg sm:text-xl font-bold text-slate-800 mb-4 sm:mb-6 flex items-center gap-2">
+                <FiActivity className="w-5 h-5 sm:w-6 sm:h-6 text-green-600" />
                 Quick Actions
               </h3>
 
-              <div className="space-y-3">
+              <div className="space-y-2 sm:space-y-3">
                 <button
                   onClick={openModal}
-                  className="w-full cursor-pointer group p-4 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white rounded-xl transition-all duration-300 text-left shadow-lg hover:shadow-xl"
+                  className="w-full cursor-pointer group p-3 sm:p-4 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white rounded-lg lg:rounded-xl transition-all duration-300 text-left shadow-lg hover:shadow-xl"
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="bg-white bg-opacity-20 p-2 rounded-lg group-hover:bg-opacity-30 transition-all">
-                      <FiPlus className="w-5 h-5 text-[#b86969] " />
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    <div className="bg-white bg-opacity-20 p-1.5 sm:p-2 rounded-lg group-hover:bg-opacity-30 transition-all flex-shrink-0">
+                      <FiPlus className="w-4 h-4 sm:w-5 sm:h-5 text-[#b86969]" />
                     </div>
-                    <div>
-                      <h4 className="font-semibold">New Rental</h4>
-                      <p className="text-blue-100 text-sm">Create booking</p>
+                    <div className="min-w-0">
+                      <h4 className="font-semibold text-sm sm:text-base">New Rental</h4>
+                      <p className="text-blue-100 text-xs sm:text-sm">Create booking</p>
                     </div>
                   </div>
                 </button>
 
-
-                <button className="w-full cursor-pointer group p-4 bg-gradient-to-r from-green-500
-                   to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white rounded-xl 
-                   transition-all duration-300 text-left shadow-lg hover:shadow-xl"
+                <button 
+                  className="w-full cursor-pointer group p-3 sm:p-4 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white rounded-lg lg:rounded-xl transition-all duration-300 text-left shadow-lg hover:shadow-xl"
                   onClick={() => { navigate("/Admin-products") }}
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="bg-white bg-opacity-20 p-2 rounded-lg group-hover:bg-opacity-30 transition-all">
-                      <FiPackage className="w-5 h-5 text-[#b86969]" />
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    <div className="bg-white bg-opacity-20 p-1.5 sm:p-2 rounded-lg group-hover:bg-opacity-30 transition-all flex-shrink-0">
+                      <FiPackage className="w-4 h-4 sm:w-5 sm:h-5 text-[#b86969]" />
                     </div>
-                    <div>
-                      <h4 className="font-semibold">Manage Products</h4>
-                      <p className="text-green-100 text-sm">Update inventory</p>
+                    <div className="min-w-0">
+                      <h4 className="font-semibold text-sm sm:text-base">Manage Products</h4>
+                      <p className="text-green-100 text-xs sm:text-sm">Update inventory</p>
                     </div>
                   </div>
                 </button>
 
-
-                <button className="w-full cursor-not-allowed group p-4 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-xl transition-all duration-300 text-left shadow-lg hover:shadow-xl">
-                  <div className="flex items-center gap-3">
-                    <div className="bg-white bg-opacity-20 p-2 rounded-lg group-hover:bg-opacity-30 transition-all">
-                      <FiBarChart2 className="w-5 h-5 text-[#b86969] " />
+                <button className="w-full cursor-not-allowed group p-3 sm:p-4 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-lg lg:rounded-xl transition-all duration-300 text-left shadow-lg hover:shadow-xl">
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    <div className="bg-white bg-opacity-20 p-1.5 sm:p-2 rounded-lg group-hover:bg-opacity-30 transition-all flex-shrink-0">
+                      <FiBarChart2 className="w-4 h-4 sm:w-5 sm:h-5 text-[#b86969]" />
                     </div>
-                    <div>
-                      <h4 className="font-semibold">View Reports</h4>
-                      <p className="text-purple-100 text-sm">Business analytics</p>
+                    <div className="min-w-0">
+                      <h4 className="font-semibold text-sm sm:text-base">View Reports</h4>
+                      <p className="text-purple-100 text-xs sm:text-sm">Business analytics</p>
                     </div>
                   </div>
                 </button>
               </div>
             </div>
-
 
           </div>
         </div>

@@ -638,7 +638,7 @@ function RentalDetails({ rentalId, onBack }) {
             return (
                 <div key={`product-transaction-${index}`} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 bg-gray-50 rounded-lg space-y-2 sm:space-y-0">
                     <div className="flex items-center gap-2 w-full">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isRental ? 'bg-green-100' : 'bg-orange-100'}`}>
+                        <div className={` hidden sm:flex w-8 h-8 rounded-full  items-center justify-center ${isRental ? 'bg-green-100' : 'bg-orange-100'}`}>
                             {isRental ? (
                                 <FiArrowUpCircle className="w-4 h-4 text-green-600" />
                             ) : (

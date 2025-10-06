@@ -106,7 +106,7 @@ function AdminRented() {
     }
 
     return (
-        <div className="p-6 bg-gradient-to-br from-rose-50 to-pink-50 min-h-screen">
+        <div className="p-3 sm:p-4 lg:p-6 bg-gradient-to-br from-rose-50 to-pink-50 min-h-screen">
             <Toaster
                 position="top-right"
                 toastOptions={{
@@ -117,20 +117,20 @@ function AdminRented() {
             />
 
             {/* Header with Search */}
-            <div className="mb-8">
-                <h2 className="text-3xl font-bold text-[#b86969]  bg-[#b86969] bg-clip-text text-transparent">
+            <div className="mb-6 sm:mb-8">
+                <h2 className="text-2xl sm:text-3xl font-bold text-[#b86969] bg-[#b86969] bg-clip-text text-transparent">
                     Active Rentals
                 </h2>
-                <p className="text-gray-600 mt-2 mb-6">Click on any rental card to view details and manage</p>
+                <p className="text-gray-600 mt-2 mb-4 sm:mb-6 text-sm sm:text-base">Click on any rental card to view details and manage</p>
                 
                 {/* Search Section */}
-                <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
-                    <div className="flex items-center gap-2 mb-4">
-                        <FiSearch className="w-5 h-5 text-[#b86969]" />
-                        <h3 className="text-lg font-semibold text-gray-800">Search & Filter</h3>
+                <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 mb-4 sm:mb-6">
+                    <div className="flex items-center gap-2 mb-3 sm:mb-4">
+                        <FiSearch className="w-4 h-4 sm:w-5 sm:h-5 text-[#b86969]" />
+                        <h3 className="text-base sm:text-lg font-semibold text-gray-800">Search & Filter</h3>
                     </div>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                         {/* Customer Name Search */}
                         <div className="relative">
                             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -143,7 +143,7 @@ function AdminRented() {
                                     value={searchCustomer}
                                     onChange={(e) => setSearchCustomer(e.target.value)}
                                     placeholder="Search by customer name..."
-                                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#b86969] focus:border-transparent transition-colors"
+                                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#b86969] focus:border-transparent transition-colors text-sm sm:text-base"
                                 />
                             </div>
                         </div>
@@ -160,17 +160,16 @@ function AdminRented() {
                                     value={searchProduct}
                                     onChange={(e) => setSearchProduct(e.target.value)}
                                     placeholder="Search by product name..."
-                                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg
-                                     focus:ring-2 focus:ring-[#b86969] focus:border-transparent transition-colors"
+                                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#b86969] focus:border-transparent transition-colors text-sm sm:text-base"
                                 />
                             </div>
                         </div>
 
                         {/* Clear Button */}
-                        <div className="flex items-end">
+                        <div className="flex items-end sm:col-span-2 lg:col-span-1">
                             <button
                                 onClick={clearSearch}
-                                className="w-full bg-[#b86969] cursor-pointer text-white px-4 py-2 rounded-lg transition-colors flex items-center justify-center gap-2"
+                                className="w-full bg-[#b86969] cursor-pointer text-white px-4 py-2 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm sm:text-base"
                             >
                                 <FiX className="w-4 h-4" />
                                 Clear Filters
@@ -180,8 +179,8 @@ function AdminRented() {
 
                     {/* Search Results Summary */}
                     {(searchCustomer || searchProduct) && (
-                        <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-                            <p className="text-sm text-[#b86969]">
+                        <div className="mt-3 sm:mt-4 p-3 bg-blue-50 rounded-lg">
+                            <p className="text-xs sm:text-sm text-[#b86969]">
                                 Found <span className="font-semibold">{filteredRentals.length}</span> rental(s) 
                                 {searchCustomer && <span> matching customer: "<span className="font-semibold">{searchCustomer}</span>"</span>}
                                 {searchCustomer && searchProduct && <span> and </span>}
@@ -192,7 +191,7 @@ function AdminRented() {
                 </div>
             </div>
 
-            {/* Rentals List - Simplified Cards */}
+            {/* Rentals List - Responsive Cards */}
             {filteredRentals.length === 0 ? (
                 <div className="bg-white rounded-xl shadow-xl">
                     <EmptyState
@@ -206,10 +205,10 @@ function AdminRented() {
                         showAction={false}
                     />
                     {(searchCustomer || searchProduct) && (
-                        <div className="p-6 text-center border-t">
+                        <div className="p-4 sm:p-6 text-center border-t">
                             <button
                                 onClick={clearSearch}
-                                className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg transition-colors"
+                                className="bg-blue-500 hover:bg-blue-600 text-white px-4 sm:px-6 py-2 rounded-lg transition-colors text-sm sm:text-base"
                             >
                                 Clear Search & Show All
                             </button>
@@ -217,16 +216,83 @@ function AdminRented() {
                     )}
                 </div>
             ) : (
-                <div className="grid gap-4">
+                <div className="grid gap-3 sm:gap-4">
                     {filteredRentals.map((rental) => (
                         <div 
                             key={rental._id} 
                             onClick={() => handleCardClick(rental._id)}
-                            className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer border border-gray-50
-                             hover:border-[#994646]"
+                            className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer border border-gray-50 hover:border-[#994646]"
                         >
-                            <div className="p-6">
-                                <div className="flex items-center justify-between">
+                            <div className="p-4 sm:p-6">
+                                {/* Mobile Layout */}
+                                <div className="block sm:hidden">
+                                    {/* Customer Header */}
+                                    <div className="flex items-start justify-between mb-3">
+                                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                                            <div className="bg-blue-100 p-2 rounded-full flex-shrink-0">
+                                                <FiUser className="w-4 h-4 text-[#b86969]" />
+                                            </div>
+                                            <div className="min-w-0 flex-1">
+                                                <h3 className="text-sm font-semibold text-gray-800 uppercase truncate">
+                                                    {rental.customerName || 'Unknown Customer'}
+                                                </h3>
+                                                {rental.customerPhone && (
+                                                    <div className="flex items-center gap-1 text-xs text-gray-600 mt-0.5">
+                                                        <FiPhone className="w-3 h-3" />
+                                                        <span>{rental.customerPhone}</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-2 ml-2">
+                                            <span className={`px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap ${getStatusColor(rental.status)}`}>
+                                                {(rental.status || 'unknown').replace('_', ' ').toUpperCase()}
+                                            </span>
+                                            <div className="bg-gray-100 p-1.5 rounded-full">
+                                                <FiChevronRight className="w-4 h-4 text-gray-600" />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Address - Mobile */}
+                                    {rental.customerAddress && (
+                                        <div className="mb-3 text-xs text-gray-600 line-clamp-2">
+                                            📍 {rental.customerAddress}
+                                        </div>
+                                    )}
+
+                                    {/* Products - Mobile */}
+                                    <div className="space-y-2">
+                                        <div className="flex items-center gap-2">
+                                            <FiPackage className="w-3 h-3 text-gray-400" />
+                                            <span className="text-xs font-medium text-gray-700">
+                                                {getActiveProductsCount(rental)} items, {getTotalActiveQuantity(rental)} units
+                                            </span>
+                                        </div>
+                                        <div className="flex flex-wrap gap-1">
+                                            {(rental.productItems || [])
+                                                .filter(item => item.currentQuantity > 0)
+                                                .slice(0, 3) // Show max 3 on mobile
+                                                .map((item, index) => (
+                                                    <span 
+                                                        key={index}
+                                                        className="bg-blue-50 text-[#b86969] px-2 py-0.5 rounded text-xs font-medium"
+                                                    >
+                                                        {item.productName} ({item.currentQuantity})
+                                                    </span>
+                                                ))
+                                            }
+                                            {(rental.productItems || []).filter(item => item.currentQuantity > 0).length > 3 && (
+                                                <span className="text-xs text-gray-500 px-2 py-0.5">
+                                                    +{(rental.productItems || []).filter(item => item.currentQuantity > 0).length - 3} more
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Desktop Layout */}
+                                <div className="hidden sm:flex items-center justify-between">
                                     {/* Customer Info */}
                                     <div className="flex-1">
                                         <div className="flex items-center gap-3 mb-3">
