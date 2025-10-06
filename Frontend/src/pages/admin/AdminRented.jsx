@@ -6,7 +6,8 @@ import {
     FiPhone,
     FiPackage,
     FiX,
-    FiChevronRight
+    FiChevronRight,
+    FiMapPin
 } from "react-icons/fi";
 import PageLoading from "../../components/commonComp/PageLoading";
 import EmptyState from "../../components/commonComp/EmptyState";
@@ -191,7 +192,7 @@ function AdminRented() {
                 </div>
             </div>
 
-            {/* Rentals List - Responsive Cards */}
+            {/* Rentals List - Fixed Responsive Cards */}
             {filteredRentals.length === 0 ? (
                 <div className="bg-white rounded-xl shadow-xl">
                     <EmptyState
@@ -221,93 +222,102 @@ function AdminRented() {
                         <div 
                             key={rental._id} 
                             onClick={() => handleCardClick(rental._id)}
-                            className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer border border-gray-50 hover:border-[#994646]"
+                            className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer border border-gray-50 hover:border-[#994646] overflow-hidden"
                         >
                             <div className="p-4 sm:p-6">
-                                {/* Mobile Layout */}
-                                <div className="block sm:hidden">
-                                    {/* Customer Header */}
+                                {/* Mobile Layout - Completely Rewritten for Better Flow */}
+                                <div className="block lg:hidden">
+                                    {/* Top Row: Customer Name + Status */}
                                     <div className="flex items-start justify-between mb-3">
-                                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                                        <div className="flex items-start gap-3 flex-1 min-w-0">
                                             <div className="bg-blue-100 p-2 rounded-full flex-shrink-0">
                                                 <FiUser className="w-4 h-4 text-[#b86969]" />
                                             </div>
                                             <div className="min-w-0 flex-1">
-                                                <h3 className="text-sm font-semibold text-gray-800 uppercase truncate">
+                                                <h3 className="text-sm font-semibold text-gray-800 uppercase line-clamp-1 break-words">
                                                     {rental.customerName || 'Unknown Customer'}
                                                 </h3>
                                                 {rental.customerPhone && (
-                                                    <div className="flex items-center gap-1 text-xs text-gray-600 mt-0.5">
-                                                        <FiPhone className="w-3 h-3" />
-                                                        <span>{rental.customerPhone}</span>
+                                                    <div className="flex items-center gap-1 text-xs text-gray-600 mt-1">
+                                                        <FiPhone className="w-3 h-3 flex-shrink-0" />
+                                                        <span className="break-all">{rental.customerPhone}</span>
                                                     </div>
                                                 )}
                                             </div>
                                         </div>
-                                        <div className="flex items-center gap-2 ml-2">
+                                        <div className="flex items-start gap-2 ml-3 flex-shrink-0">
                                             <span className={`px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap ${getStatusColor(rental.status)}`}>
-                                                {(rental.status || 'unknown').replace('_', ' ').toUpperCase()}
+                                                {rental.status === 'active' ? 'Active' : 
+                                                 rental.status === 'partially_returned' ? 'Partial' : 'Unknown'}
                                             </span>
                                             <div className="bg-gray-100 p-1.5 rounded-full">
-                                                <FiChevronRight className="w-4 h-4 text-gray-600" />
+                                                <FiChevronRight className="w-3 h-3 text-gray-600" />
                                             </div>
                                         </div>
                                     </div>
 
-                                    {/* Address - Mobile */}
+                                    {/* Address Row - Mobile */}
                                     {rental.customerAddress && (
-                                        <div className="mb-3 text-xs text-gray-600 line-clamp-2">
-                                            📍 {rental.customerAddress}
+                                        <div className="mb-3 p-2 bg-gray-50 rounded-lg">
+                                            <div className="flex items-start gap-2">
+                                                <FiMapPin className="w-3 h-3 text-gray-400 mt-0.5 flex-shrink-0" />
+                                                <p className="text-xs text-gray-600 line-clamp-2 break-words">
+                                                    {rental.customerAddress}
+                                                </p>
+                                            </div>
                                         </div>
                                     )}
 
-                                    {/* Products - Mobile */}
+                                    {/* Products Summary Row - Mobile */}
                                     <div className="space-y-2">
                                         <div className="flex items-center gap-2">
-                                            <FiPackage className="w-3 h-3 text-gray-400" />
+                                            <FiPackage className="w-3 h-3 text-gray-400 flex-shrink-0" />
                                             <span className="text-xs font-medium text-gray-700">
-                                                {getActiveProductsCount(rental)} items, {getTotalActiveQuantity(rental)} units
+                                                {getActiveProductsCount(rental)} items • {getTotalActiveQuantity(rental)} units
                                             </span>
                                         </div>
+                                        
+                                        {/* Product Tags - Mobile with Better Wrapping */}
                                         <div className="flex flex-wrap gap-1">
                                             {(rental.productItems || [])
                                                 .filter(item => item.currentQuantity > 0)
-                                                .slice(0, 3) // Show max 3 on mobile
+                                                .slice(0, 2) // Show max 2 on mobile for better layout
                                                 .map((item, index) => (
                                                     <span 
                                                         key={index}
-                                                        className="bg-blue-50 text-[#b86969] px-2 py-0.5 rounded text-xs font-medium"
+                                                        className="bg-blue-50 text-[#b86969] px-2 py-1 rounded text-xs font-medium inline-block max-w-[120px] truncate"
+                                                        title={`${item.productName} (${item.currentQuantity})`}
                                                     >
                                                         {item.productName} ({item.currentQuantity})
                                                     </span>
                                                 ))
                                             }
-                                            {(rental.productItems || []).filter(item => item.currentQuantity > 0).length > 3 && (
-                                                <span className="text-xs text-gray-500 px-2 py-0.5">
-                                                    +{(rental.productItems || []).filter(item => item.currentQuantity > 0).length - 3} more
+                                            {(rental.productItems || []).filter(item => item.currentQuantity > 0).length > 2 && (
+                                                <span className="text-xs text-gray-500 px-2 py-1 bg-gray-100 rounded">
+                                                    +{(rental.productItems || []).filter(item => item.currentQuantity > 0).length - 2} more
                                                 </span>
                                             )}
                                         </div>
                                     </div>
                                 </div>
 
-                                {/* Desktop Layout */}
-                                <div className="hidden sm:flex items-center justify-between">
+                                {/* Desktop Layout - Preserved Original */}
+                                <div className="hidden lg:flex items-center justify-between">
                                     {/* Customer Info */}
-                                    <div className="flex-1">
+                                    <div className="flex-1 min-w-0">
                                         <div className="flex items-center gap-3 mb-3">
-                                            <div className="bg-blue-100 p-2 rounded-full">
+                                            <div className="bg-blue-100 p-2 rounded-full flex-shrink-0">
                                                 <FiUser className="w-5 h-5 text-[#b86969]" />
                                             </div>
-                                            <div>
-                                                <h3 className="text-lg font-semibold text-gray-800 uppercase">
+                                            <div className="min-w-0 flex-1">
+                                                <h3 className="text-lg font-semibold text-gray-800 uppercase truncate">
                                                     {rental.customerName || 'Unknown Customer'}
                                                 </h3>
                                                 <div className="flex items-center gap-4 text-sm text-gray-600 mt-1">
                                                     {rental.customerPhone && (
                                                         <div className="flex items-center gap-1">
-                                                            <FiPhone className="w-3 h-3" />
-                                                            <span>{rental.customerPhone}</span>
+                                                            <FiPhone className="w-3 h-3 flex-shrink-0" />
+                                                            <span className="truncate">{rental.customerPhone}</span>
                                                         </div>
                                                     )}
                                                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(rental.status)}`}>
@@ -320,15 +330,15 @@ function AdminRented() {
                                         {/* Address */}
                                         {rental.customerAddress && (
                                             <div className="flex items-start gap-2 mb-3 text-sm text-gray-600">
-                                                <FiUser className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                                                <span className="line-clamp-2">{rental.customerAddress}</span>
+                                                <FiMapPin className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                                                <span className="line-clamp-2 break-words">{rental.customerAddress}</span>
                                             </div>
                                         )}
 
                                         {/* Products */}
                                         <div className="flex items-start gap-2">
                                             <FiPackage className="w-4 h-4 mt-0.5 text-gray-400 flex-shrink-0" />
-                                            <div className="flex-1">
+                                            <div className="flex-1 min-w-0">
                                                 <p className="text-sm font-medium text-gray-700 mb-1">
                                                     Rented Products ({getActiveProductsCount(rental)} items, {getTotalActiveQuantity(rental)} units):
                                                 </p>
@@ -338,7 +348,8 @@ function AdminRented() {
                                                         .map((item, index) => (
                                                             <span 
                                                                 key={index}
-                                                                className="bg-blue-50 text-[#b86969] px-2 py-1 rounded text-xs font-medium"
+                                                                className="bg-blue-50 text-[#b86969] px-2 py-1 rounded text-xs font-medium inline-block max-w-[200px] truncate"
+                                                                title={`${item.productName} (${item.currentQuantity})`}
                                                             >
                                                                 {item.productName} ({item.currentQuantity})
                                                             </span>
@@ -350,7 +361,7 @@ function AdminRented() {
                                     </div>
 
                                     {/* Click Indicator */}
-                                    <div className="ml-4">
+                                    <div className="ml-4 flex-shrink-0">
                                         <div className="bg-gray-100 p-2 rounded-full group-hover:bg-blue-100 transition-colors">
                                             <FiChevronRight className="w-5 h-5 text-gray-600 group-hover:text-blue-600" />
                                         </div>
