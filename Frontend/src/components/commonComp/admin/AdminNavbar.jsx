@@ -79,8 +79,7 @@ function AdminNavbar() {
     return (
         <>
             {/* Desktop Navbar - Hidden on mobile */}
-            <nav className={`hidden md:block fixed w-full z-50 bg-gradient-to-r from-[#ca6464] to-[#d17474] shadow-lg 
-                transition-all duration-300 ${scrolled ? 'py-1' : 'py-2'}`}>
+            <nav className={`hidden md:block fixed w-full z-50 bg-gradient-to-r from-[#ca6464] to-[#d17474] shadow-lg transition-all duration-300 ${scrolled ? 'py-1' : 'py-2'}`}>
                 <div className="w-[95%] mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between items-center h-16">
                         {/* Brand Logo */}
@@ -148,8 +147,8 @@ function AdminNavbar() {
                 </div>
             </nav>
 
-            {/* Mobile Header - Brand logo + Logout button */}
-            <div className="md:hidden fixed top-0 w-full  z-40 bg-gradient-to-r from-[#ca6464] to-[#d17474] shadow-lg">
+            {/* Mobile Header - Brand logo + Logout button - REMOVED z-40 and added z-50 */}
+            <div className="md:hidden fixed top-0 w-full z-50 bg-gradient-to-r from-[#ca6464] to-[#d17474] shadow-lg">
                 <div className="px-4 py-3 flex justify-between items-center">
                     {/* Brand Logo */}
                     <Link to="/" className="flex flex-col items-start">
@@ -181,12 +180,10 @@ function AdminNavbar() {
                 </div>
             </div>
 
-            {/* Instagram-Style Mobile Bottom Navigation - Only main nav items */}
+            {/* Instagram-Style Mobile Bottom Navigation - REMOVED extra padding */}
             <div className="md:hidden fixed bottom-0 left-0 right-0 z-50">
-                {/* Bottom Nav Container */}
                 <div className="bg-white border-t border-gray-200 shadow-2xl">
-                    <div className="flex items-center justify-around px-1 py-0">
-                        {/* Navigation Items */}
+                    <div className="flex items-center justify-around px-2 py-2">
                         {navItems.map((item) => (
                             <Link
                                 key={item.path}
@@ -270,7 +267,7 @@ function AdminNavbar() {
                 </div>
             )}
 
-            {/* Custom CSS for animations */}
+            {/* Custom CSS for animations - UPDATED to remove body padding */}
             <style jsx>{`
                 @keyframes fade-in {
                     from {
@@ -285,14 +282,6 @@ function AdminNavbar() {
                 
                 .animate-fade-in {
                     animation: fade-in 0.2s ease-out;
-                }
-
-                /* Add padding to body to account for bottom nav on mobile */
-                @media (max-width: 768px) {
-                    body {
-                        padding-bottom: 80px;
-                        padding-top: 80px;
-                    }
                 }
             `}</style>
         </>

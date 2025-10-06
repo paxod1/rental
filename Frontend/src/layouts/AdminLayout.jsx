@@ -17,7 +17,7 @@ function AdminLayout() {
       <AdminNavbar onMenuClick={handleMenuClick} onLogout={logout} />
 
       {/* Page content changes here */}
-      <div className='pt-0 sm:pt-16  '>
+      <div className='pt-16 sm:pb-0 pb-20 '>
         <Outlet />
       </div>
     </div>

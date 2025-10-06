@@ -1,4 +1,4 @@
-// pages/admin/RentalHistory.jsx - Fixed version
+// pages/admin/RentalHistory.jsx - Complete with Payment & Discount System
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import toast, { Toaster } from "react-hot-toast";
@@ -15,7 +15,9 @@ import {
   FiX,
   FiCheckCircle,
   FiAlertCircle,
-  FiTrash2
+  FiTrash2,
+  FiPhone,
+  FiMapPin
 } from "react-icons/fi";
 import PageLoading from "../../components/commonComp/PageLoading";
 import EmptyState from "../../components/commonComp/EmptyState";
@@ -34,22 +36,27 @@ function RentalHistory() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Enhanced payment data with discount support (same as RentalDetails)
   const [paymentData, setPaymentData] = useState({
     amount: '',
+    discountAmount: '0',
     paymentType: 'partial_payment',
-    notes: ''
+    notes: '',
+    discountNotes: ''
   });
+  
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [rentalToDelete, setRentalToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
-    async function firstFeatch() {
+    async function firstFetch() {
       setIsLoading(true);
       await fetchRentalHistory();
       setIsLoading(false);
     }
-    firstFeatch()
+    firstFetch()
   }, [currentPage, statusFilter]);
 
   const fetchRentalHistory = async () => {
@@ -101,8 +108,10 @@ function RentalHistory() {
     setSelectedRental(rental);
     setPaymentData({
       amount: '',
+      discountAmount: '0',
       paymentType: 'partial_payment',
-      notes: ''
+      notes: '',
+      discountNotes: ''
     });
     setIsPaymentModalOpen(true);
   };
@@ -112,8 +121,10 @@ function RentalHistory() {
     setSelectedRental(null);
     setPaymentData({
       amount: '',
+      discountAmount: '0',
       paymentType: 'partial_payment',
-      notes: ''
+      notes: '',
+      discountNotes: ''
     });
   };
 
@@ -121,22 +132,39 @@ function RentalHistory() {
     setPaymentData({ ...paymentData, [e.target.name]: e.target.value });
   };
 
+  // Enhanced payment submit function (same as RentalDetails general-payment)
   const handlePaymentSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
 
     try {
-      await axiosInstance.put(`/api/rentals/${selectedRental._id}/history-payment`, {
-        amount: parseFloat(paymentData.amount),
+      const endpoint = `/api/rentals/${selectedRental._id}/general-payment`;
+      const payload = {
+        amount: paymentData.amount ? parseFloat(paymentData.amount) : null,
+        discountAmount: paymentData.discountAmount ? parseFloat(paymentData.discountAmount) : null,
         paymentType: paymentData.paymentType,
-        notes: paymentData.notes
-      });
+        notes: paymentData.notes,
+        discountNotes: paymentData.discountNotes
+      };
 
-      toast.success("Payment added successfully!");
+      const response = await axiosInstance.put(endpoint, payload);
+
+      // Same success message format as RentalDetails
+      const paymentAmt = response.data.paymentAmount || 0;
+      const discountAmt = response.data.discountAmount || 0;
+      const totalReduction = response.data.totalReduction || 0;
+
+      let message = `Payment: ₹${paymentAmt.toFixed(2)}`;
+      if (discountAmt > 0) {
+        message += ` + Discount: ₹${discountAmt.toFixed(2)}`;
+      }
+      message += ` = Total: ₹${totalReduction.toFixed(2)} processed successfully!`;
+
+      toast.success(message, { duration: 4000 });
       closePaymentModal();
       fetchRentalHistory();
     } catch (error) {
-      toast.error(error.response?.data?.message || "Error adding payment");
+      toast.error(error.response?.data?.message || "Error processing payment");
       console.error("Error:", error);
     } finally {
       setIsSubmitting(false);
@@ -186,7 +214,6 @@ function RentalHistory() {
     return Math.ceil(timeDifference / (1000 * 60 * 60 * 24));
   };
 
-  // Fixed getPaymentStatus function
   const getPaymentStatus = (rental) => {
     if (rental.balanceAmount <= 0) {
       return {
@@ -462,10 +489,8 @@ function RentalHistory() {
                         </div>
                       </td>
 
-                      {/* Enhanced Products Column */}
                       <td className="px-6 py-4">
                         <div className="space-y-1">
-                          {/* Show first 2 products */}
                           {rental.productItems.slice(0, 2).map((item, index) => (
                             <div key={index} className="text-sm">
                               <span className="font-medium text-gray-900">
@@ -482,14 +507,12 @@ function RentalHistory() {
                             </div>
                           ))}
 
-                          {/* Show count if more products */}
                           {rental.productItems.length > 2 && (
                             <div className="text-xs text-blue-600 font-medium">
                               +{rental.productItems.length - 2} more products
                             </div>
                           )}
 
-                          {/* Product summary */}
                           <div className="text-xs text-gray-500 mt-1">
                             Total: {rental.totalProducts} products •
                             Active: {rental.activeProducts} •
@@ -520,7 +543,6 @@ function RentalHistory() {
                           </div>
                         )}
 
-                        {/* Payment Progress Bar */}
                         <div className="mt-1">
                           <div className="w-full bg-gray-200 rounded-full h-1">
                             <div
@@ -540,7 +562,6 @@ function RentalHistory() {
                             {paymentStatus.text}
                           </span>
 
-                          {/* Rental Status */}
                           <div className="text-xs text-gray-500 capitalize">
                             {rental.status.replace('_', ' ')}
                           </div>
@@ -646,13 +667,13 @@ function RentalHistory() {
         </div>
       )}
 
-      {/* Payment Modal */}
+      {/* Enhanced Payment Modal (Same as RentalDetails general-payment) */}
       {isPaymentModalOpen && selectedRental && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-3 sm:p-4">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
             <div className="bg-gradient-to-r from-green-500 to-emerald-500 text-white px-4 sm:px-6 py-3 sm:py-4 rounded-t-xl">
               <div className="flex justify-between items-center">
-                <h3 className="text-lg sm:text-xl font-semibold">Add Payment</h3>
+                <h3 className="text-lg sm:text-xl font-semibold">Payment & Discount</h3>
                 <button
                   onClick={closePaymentModal}
                   className="text-white hover:bg-white hover:bg-opacity-20 p-1 rounded transition-colors"
@@ -672,23 +693,41 @@ function RentalHistory() {
                 </div>
               </div>
 
-              {/* Payment Amount */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Payment Amount *
-                </label>
-                <input
-                  type="number"
-                  name="amount"
-                  value={paymentData.amount}
-                  onChange={handlePaymentChange}
-                  step="0.01"
-                  min="0.01"
-                  max={selectedRental.balanceAmount}
-                  required
-                  className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-sm sm:text-base"
-                  placeholder="Enter payment amount"
-                />
+              {/* Payment and Discount Fields */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Payment Amount
+                  </label>
+                  <input
+                    type="number"
+                    name="amount"
+                    value={paymentData.amount}
+                    onChange={handlePaymentChange}
+                    step="0.01"
+                    min="0"
+                    max={selectedRental.balanceAmount}
+                    className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-sm sm:text-base"
+                    placeholder="Enter payment amount"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Discount Amount
+                  </label>
+                  <input
+                    type="number"
+                    name="discountAmount"
+                    value={paymentData.discountAmount}
+                    onChange={handlePaymentChange}
+                    step="0.01"
+                    min="0"
+                    max={selectedRental.balanceAmount}
+                    className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-sm sm:text-base"
+                    placeholder="Enter discount amount"
+                  />
+                </div>
               </div>
 
               {/* Payment Type */}
@@ -707,20 +746,53 @@ function RentalHistory() {
                 </select>
               </div>
 
-              {/* Payment Notes */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Notes
-                </label>
-                <textarea
-                  name="notes"
-                  value={paymentData.notes}
-                  onChange={handlePaymentChange}
-                  rows="3"
-                  className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-sm sm:text-base"
-                  placeholder="Payment method, reference number, etc."
-                />
+              {/* Notes */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Payment Notes
+                  </label>
+                  <textarea
+                    name="notes"
+                    value={paymentData.notes}
+                    onChange={handlePaymentChange}
+                    rows="2"
+                    className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-sm sm:text-base"
+                    placeholder="Payment method, reference, etc."
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Discount Notes
+                  </label>
+                  <textarea
+                    name="discountNotes"
+                    value={paymentData.discountNotes}
+                    onChange={handlePaymentChange}
+                    rows="2"
+                    className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-sm sm:text-base"
+                    placeholder="Reason for discount..."
+                  />
+                </div>
               </div>
+
+              {/* Summary */}
+              {(paymentData.amount || paymentData.discountAmount) && (
+                <div className="bg-blue-50 p-3 rounded-lg">
+                  <p className="text-sm font-medium text-blue-800 mb-1">Summary</p>
+                  <div className="text-sm text-blue-700 space-y-1">
+                    {paymentData.amount && <p>Payment: ₹{parseFloat(paymentData.amount || 0).toFixed(2)}</p>}
+                    {paymentData.discountAmount && <p>Discount: ₹{parseFloat(paymentData.discountAmount || 0).toFixed(2)}</p>}
+                    <p className="font-medium">
+                      Total Reduction: ₹{(parseFloat(paymentData.amount || 0) + parseFloat(paymentData.discountAmount || 0)).toFixed(2)}
+                    </p>
+                    <p className="font-medium">
+                      New Balance: ₹{Math.max(0, selectedRental.balanceAmount - (parseFloat(paymentData.amount || 0) + parseFloat(paymentData.discountAmount || 0))).toFixed(2)}
+                    </p>
+                  </div>
+                </div>
+              )}
 
               {/* Action Buttons */}
               <div className="flex flex-col sm:flex-row gap-3 pt-4">
@@ -737,7 +809,7 @@ function RentalHistory() {
                   className="flex-1 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white px-4 py-2 rounded-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50 text-sm sm:text-base"
                 >
                   {isSubmitting && <LoadingSpinner size="sm" color="gray" />}
-                  Add Payment
+                  Process Payment
                 </button>
               </div>
             </form>
@@ -764,7 +836,39 @@ function RentalHistory() {
             </div>
 
             <div className="p-4 sm:p-6">
-              {/* Products Information - Enhanced */}
+              {/* Customer Information */}
+              <div className="mb-6">
+                <h4 className="text-base sm:text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                  <FiUser className="w-4 h-4 sm:w-5 sm:h-5" />
+                  Customer Information
+                </h4>
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-gray-600">Customer Name</p>
+                      <p className="font-semibold text-gray-900">{selectedRental.customerName}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600 flex items-center gap-1">
+                        <FiPhone className="w-3 h-3" />
+                        Phone Number
+                      </p>
+                      <p className="font-semibold text-gray-900">{selectedRental.customerPhone}</p>
+                    </div>
+                    {selectedRental.customerAddress && (
+                      <div className="sm:col-span-2">
+                        <p className="text-sm text-gray-600 flex items-center gap-1">
+                          <FiMapPin className="w-3 h-3" />
+                          Address
+                        </p>
+                        <p className="text-gray-900">{selectedRental.customerAddress}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Products Information */}
               <div className="mb-6">
                 <h4 className="text-base sm:text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
                   <FiPackage className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -832,7 +936,7 @@ function RentalHistory() {
                 </div>
               </div>
 
-              {/* Financial Summary - Enhanced */}
+              {/* Financial Summary */}
               <div className="mb-6">
                 <h4 className="text-base sm:text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
                   <FiDollarSign className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -922,8 +1026,8 @@ function RentalHistory() {
                     <p className="font-medium text-sm sm:text-base">{rentalToDelete.customerName}</p>
                   </div>
                   <div>
-                    <p className="text-xs sm:text-sm text-gray-600">Product</p>
-                    <p className="font-medium text-sm sm:text-base">{rentalToDelete.productId?.name || 'Unknown'}</p>
+                    <p className="text-xs sm:text-sm text-gray-600">Products</p>
+                    <p className="font-medium text-sm sm:text-base">{rentalToDelete.productItems.length} items</p>
                   </div>
                   <div>
                     <p className="text-xs sm:text-sm text-gray-600">Total Amount</p>
