@@ -89,14 +89,13 @@ const WhatsAppBill = ({ rental, isOpen, onClose }) => {
 
 *INVOICE / BILL RECEIPT*
 
-*Invoice No:* ${invoiceNo}
 *Date:* ${currentDate}
 *Customer:* ${rental.customerName}
 
 *BILL TO:*
-${rental.customerName}
-📱 ${rental.customerPhone}
-📍 ${rental.customerAddress || 'Address not provided'}
+   ${rental.customerName}
+   ${rental.customerPhone}
+   ${rental.customerAddress || 'Address not provided'}
 
 *RENTAL DETAILS:*
 ────────────────────`;
