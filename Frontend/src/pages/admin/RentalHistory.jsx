@@ -36,7 +36,7 @@ function RentalHistory() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   // Enhanced payment data with discount support (same as RentalDetails)
   const [paymentData, setPaymentData] = useState({
     amount: '',
@@ -45,7 +45,7 @@ function RentalHistory() {
     notes: '',
     discountNotes: ''
   });
-  
+
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [rentalToDelete, setRentalToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -350,8 +350,8 @@ function RentalHistory() {
                       <paymentStatus.icon className="w-3 h-3" />
                       <span className="hidden sm:inline">{paymentStatus.text}</span>
                       <span className="sm:hidden">
-                        {paymentStatus.text === 'Fully Paid' ? 'Paid' : 
-                         paymentStatus.text === 'Partial Payment' ? 'Partial' : 'Pending'}
+                        {paymentStatus.text === 'Fully Paid' ? 'Paid' :
+                          paymentStatus.text === 'Partial Payment' ? 'Partial' : 'Pending'}
                       </span>
                     </span>
                   </div>
@@ -667,149 +667,172 @@ function RentalHistory() {
         </div>
       )}
 
-      {/* Enhanced Payment Modal (Same as RentalDetails general-payment) */}
+      {/* Enhanced Payment Modal - Fully Responsive */}
       {isPaymentModalOpen && selectedRental && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-3 sm:p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
-            <div className="bg-gradient-to-r from-green-500 to-emerald-500 text-white px-4 sm:px-6 py-3 sm:py-4 rounded-t-xl">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2 sm:p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg mx-2 sm:mx-4 max-h-[95vh] overflow-y-auto">
+            <div className="bg-gradient-to-r from-green-500 to-emerald-500 text-white px-3 sm:px-6 py-3 sm:py-4 rounded-t-xl">
               <div className="flex justify-between items-center">
-                <h3 className="text-lg sm:text-xl font-semibold">Payment & Discount</h3>
+                <h3 className="text-base sm:text-lg lg:text-xl font-semibold">Payment & Discount</h3>
                 <button
                   onClick={closePaymentModal}
                   className="text-white hover:bg-white hover:bg-opacity-20 p-1 rounded transition-colors"
                 >
-                  <FiX className="w-5 h-5 sm:w-6 sm:h-6" />
+                  <FiX className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6" />
                 </button>
               </div>
             </div>
 
-            <form onSubmit={handlePaymentSubmit} className="p-4 sm:p-6 space-y-4">
+            <form onSubmit={handlePaymentSubmit} className="p-3 sm:p-6 space-y-4">
               {/* Customer Info */}
               <div className="bg-gray-50 p-3 sm:p-4 rounded-lg">
-                <div className="text-sm text-gray-600">Customer</div>
-                <div className="font-semibold">{selectedRental.customerName}</div>
-                <div className="text-sm text-gray-600 mt-1">
+                <div className="text-xs sm:text-sm text-gray-600">Customer</div>
+                <div className="font-semibold text-sm sm:text-base truncate">{selectedRental.customerName}</div>
+                <div className="text-xs sm:text-sm text-gray-600 mt-1">
                   Balance Due: <span className="font-bold text-red-600">₹{selectedRental.balanceAmount}</span>
                 </div>
               </div>
 
-              {/* Payment and Discount Fields */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Payment Amount
-                  </label>
-                  <input
-                    type="number"
-                    name="amount"
-                    value={paymentData.amount}
-                    onChange={handlePaymentChange}
-                    step="0.01"
-                    min="0"
-                    max={selectedRental.balanceAmount}
-                    className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-sm sm:text-base"
-                    placeholder="Enter payment amount"
-                  />
+              {/* Payment and Discount Fields - Enhanced Mobile Layout */}
+              <div className="space-y-4">
+                {/* Mobile: Stacked Layout, Desktop: Side by side */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
+                  <div>
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
+                      Payment Amount
+                    </label>
+                    <input
+                      type="number"
+                      name="amount"
+                      value={paymentData.amount}
+                      onChange={handlePaymentChange}
+                      step="0.01"
+                      min="0"
+                      max={selectedRental.balanceAmount}
+                      className="w-full px-3 py-2 sm:px-4 sm:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-sm sm:text-base"
+                      placeholder="Enter payment amount"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
+                      Discount Amount
+                    </label>
+                    <input
+                      type="number"
+                      name="discountAmount"
+                      value={paymentData.discountAmount}
+                      onChange={handlePaymentChange}
+                      step="0.01"
+                      min="0"
+                      max={selectedRental.balanceAmount}
+                      className="w-full px-3 py-2 sm:px-4 sm:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-sm sm:text-base"
+                      placeholder="Enter discount amount"
+                    />
+                  </div>
                 </div>
 
+                {/* Payment Type - Full Width */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Discount Amount
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
+                    Payment Type
                   </label>
-                  <input
-                    type="number"
-                    name="discountAmount"
-                    value={paymentData.discountAmount}
+                  <select
+                    name="paymentType"
+                    value={paymentData.paymentType}
                     onChange={handlePaymentChange}
-                    step="0.01"
-                    min="0"
-                    max={selectedRental.balanceAmount}
-                    className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-sm sm:text-base"
-                    placeholder="Enter discount amount"
-                  />
+                    className="w-full px-3 py-2 sm:px-4 sm:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-sm sm:text-base"
+                  >
+                    <option value="general_payment">General Payment</option>
+                    <option value="partial_payment">Partial Payment</option>
+                    <option value="full_payment">Full Payment</option>
+                  </select>
+                </div>
+
+                {/* Notes - Mobile: Stacked, Desktop: Side by side */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
+                  <div>
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
+                      Payment Notes
+                    </label>
+                    <textarea
+                      name="notes"
+                      value={paymentData.notes}
+                      onChange={handlePaymentChange}
+                      rows="3"
+                      className="w-full px-3 py-2 sm:px-4 sm:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-sm sm:text-base resize-none"
+                      placeholder="Payment method, reference, etc."
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
+                      Discount Notes
+                    </label>
+                    <textarea
+                      name="discountNotes"
+                      value={paymentData.discountNotes}
+                      onChange={handlePaymentChange}
+                      rows="3"
+                      className="w-full px-3 py-2 sm:px-4 sm:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-sm sm:text-base resize-none"
+                      placeholder="Reason for discount..."
+                    />
+                  </div>
                 </div>
               </div>
 
-              {/* Payment Type */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Payment Type
-                </label>
-                <select
-                  name="paymentType"
-                  value={paymentData.paymentType}
-                  onChange={handlePaymentChange}
-                  className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-sm sm:text-base"
-                >
-                  <option value="partial_payment">Partial Payment</option>
-                  <option value="full_payment">Full Payment</option>
-                </select>
-              </div>
-
-              {/* Notes */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Payment Notes
-                  </label>
-                  <textarea
-                    name="notes"
-                    value={paymentData.notes}
-                    onChange={handlePaymentChange}
-                    rows="2"
-                    className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-sm sm:text-base"
-                    placeholder="Payment method, reference, etc."
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Discount Notes
-                  </label>
-                  <textarea
-                    name="discountNotes"
-                    value={paymentData.discountNotes}
-                    onChange={handlePaymentChange}
-                    rows="2"
-                    className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-sm sm:text-base"
-                    placeholder="Reason for discount..."
-                  />
-                </div>
-              </div>
-
-              {/* Summary */}
+              {/* Summary - Enhanced Mobile View */}
               {(paymentData.amount || paymentData.discountAmount) && (
-                <div className="bg-blue-50 p-3 rounded-lg">
-                  <p className="text-sm font-medium text-blue-800 mb-1">Summary</p>
-                  <div className="text-sm text-blue-700 space-y-1">
-                    {paymentData.amount && <p>Payment: ₹{parseFloat(paymentData.amount || 0).toFixed(2)}</p>}
-                    {paymentData.discountAmount && <p>Discount: ₹{parseFloat(paymentData.discountAmount || 0).toFixed(2)}</p>}
-                    <p className="font-medium">
-                      Total Reduction: ₹{(parseFloat(paymentData.amount || 0) + parseFloat(paymentData.discountAmount || 0)).toFixed(2)}
-                    </p>
-                    <p className="font-medium">
-                      New Balance: ₹{Math.max(0, selectedRental.balanceAmount - (parseFloat(paymentData.amount || 0) + parseFloat(paymentData.discountAmount || 0))).toFixed(2)}
-                    </p>
+                <div className="bg-blue-50 p-3 sm:p-4 rounded-lg">
+                  <p className="text-sm font-medium text-blue-800 mb-2 sm:mb-3">Summary</p>
+                  <div className="space-y-2">
+                    {/* Mobile: Stack vertically, Desktop: Show inline */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4 text-xs sm:text-sm text-blue-700">
+                      {paymentData.amount && (
+                        <div className="flex justify-between sm:block">
+                          <span>Payment:</span>
+                          <span className="font-medium">₹{parseFloat(paymentData.amount || 0).toFixed(2)}</span>
+                        </div>
+                      )}
+                      {paymentData.discountAmount && (
+                        <div className="flex justify-between sm:block">
+                          <span>Discount:</span>
+                          <span className="font-medium">₹{parseFloat(paymentData.discountAmount || 0).toFixed(2)}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Total and New Balance */}
+                    <div className="border-t border-blue-200 pt-2 space-y-1">
+                      <div className="flex justify-between text-sm font-medium text-blue-800">
+                        <span>Total Reduction:</span>
+                        <span>₹{(parseFloat(paymentData.amount || 0) + parseFloat(paymentData.discountAmount || 0)).toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm font-bold text-blue-900">
+                        <span>New Balance:</span>
+                        <span>₹{Math.max(0, selectedRental.balanceAmount - (parseFloat(paymentData.amount || 0) + parseFloat(paymentData.discountAmount || 0))).toFixed(2)}</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
 
-              {/* Action Buttons */}
-              <div className="flex flex-col sm:flex-row gap-3 pt-4">
+              {/* Action Buttons - Enhanced Mobile */}
+              <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-gray-200">
                 <button
                   type="button"
                   onClick={closePaymentModal}
-                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm sm:text-base"
+                  className="flex-1 w-full px-4 py-3 sm:py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm sm:text-base font-medium"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="flex-1 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white px-4 py-2 rounded-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50 text-sm sm:text-base"
+                  className="flex-1 w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white px-4 py-3 sm:py-2 rounded-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50 text-sm sm:text-base font-medium"
                 >
                   {isSubmitting && <LoadingSpinner size="sm" color="gray" />}
-                  Process Payment
+                  <span>Process Payment</span>
                 </button>
               </div>
             </form>
@@ -882,10 +905,10 @@ function RentalHistory() {
 
                     return (
                       <div key={index} className={`p-3 sm:p-4 rounded-lg border-l-4 ${isReturned
-                          ? hasBalance
-                            ? 'bg-red-50 border-red-400'
-                            : 'bg-green-50 border-green-400'
-                          : 'bg-blue-50 border-blue-400'
+                        ? hasBalance
+                          ? 'bg-red-50 border-red-400'
+                          : 'bg-green-50 border-green-400'
+                        : 'bg-blue-50 border-blue-400'
                         }`}>
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
                           <div>
@@ -914,10 +937,10 @@ function RentalHistory() {
                         {/* Product Status Badge */}
                         <div className="mt-2 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${isReturned
-                              ? hasBalance
-                                ? 'bg-red-100 text-red-800'
-                                : 'bg-green-100 text-green-800'
-                              : 'bg-blue-100 text-blue-800'
+                            ? hasBalance
+                              ? 'bg-red-100 text-red-800'
+                              : 'bg-green-100 text-green-800'
+                            : 'bg-blue-100 text-blue-800'
                             }`}>
                             {isReturned
                               ? hasBalance
