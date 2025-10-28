@@ -234,6 +234,7 @@ EDASSERIKKUDIYIL RENTALS
             return total + (payment.discountAmount || 0);
         }, 0);
     };
+    
 
     const getDiscountBreakdown = () => {
         if (!rental || !rental.payments) return [];
