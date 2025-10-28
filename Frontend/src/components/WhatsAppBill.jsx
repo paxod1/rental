@@ -1,4 +1,4 @@
-// components/WhatsAppBill.jsx - WITH DISCOUNT SUPPORT
+// components/WhatsAppBill.jsx - FREE MODE (Opens Native WhatsApp)
 import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import {
@@ -8,29 +8,22 @@ import {
     FiSend,
     FiEdit3,
     FiCheck,
-    FiLoader,
-    FiWifi
+    FiExternalLink,
+    FiSmartphone
 } from 'react-icons/fi';
-import axiosInstance from '../../axiosCreate';
 
 const WhatsAppBill = ({ rental, isOpen, onClose }) => {
     const [phoneNumber, setPhoneNumber] = useState('');
     const [isEditing, setIsEditing] = useState(false);
-    const [isSending, setIsSending] = useState(false);
     const [billPreview, setBillPreview] = useState('');
-    const [whatsappStatus, setWhatsappStatus] = useState({ connected: false, status: 'checking' });
     const [billType, setBillType] = useState('detailed');
-
 
     useEffect(() => {
         if (rental && isOpen) {
             setPhoneNumber(rental.customerPhone || '');
-            generateBill(); // Use the main generate function instead of generateBillText
-            checkWhatsAppStatus();
+            generateBill();
         }
-    }, [rental, isOpen, billType]); // Add billType to dependencies
-
-    
+    }, [rental, isOpen, billType]);
 
     const generateBill = () => {
         switch (billType) {
@@ -40,31 +33,6 @@ const WhatsAppBill = ({ rental, isOpen, onClose }) => {
                 return generateMinimalBill();
             default:
                 return generateBillText();
-        }
-    };
-
-
-    const checkWhatsAppStatus = async () => {
-        try {
-            const response = await axiosInstance.get('/api/whatsapp/status');
-            setWhatsappStatus(response.data);
-        } catch (error) {
-            console.error('Failed to check WhatsApp status:', error);
-            setWhatsappStatus({ connected: false, status: 'error' });
-        }
-    };
-
-    const restartWhatsApp = async () => {
-        try {
-            const response = await axiosInstance.post('/api/whatsapp/restart');
-            if (response.data.success) {
-                toast.success('WhatsApp service restarted! Check terminal for QR code.', {
-                    duration: 5000
-                });
-                setTimeout(checkWhatsAppStatus, 2000);
-            }
-        } catch (error) {
-            toast.error('Failed to restart WhatsApp service');
         }
     };
 
@@ -89,45 +57,25 @@ const WhatsAppBill = ({ rental, isOpen, onClose }) => {
 
 *INVOICE / BILL RECEIPT*
 *Date:* ${currentDate}
+*Invoice No:* ${invoiceNo}
 *Customer:* ${rental.customerName}
 
 *BILL TO:*
-   ${rental.customerName}
-   ${rental.customerPhone}
-   ${rental.customerAddress || 'Address not provided'}
+${rental.customerName}
+${rental.customerPhone}
+${rental.customerAddress || 'Address not provided'}
 
 *RENTAL DETAILS:*
 ────────────────────`;
 
         // Add product items
         rental.productItems.forEach((product, index) => {
-            const activities = getProductActivities(product.productId?._id || product.productId);
-
             billText += `\n
 *${index + 1}. ${product.productName.toUpperCase()}*
 Rate: ${formatCurrency(product.rate)}/${product.rateType}
 Quantity: ${product.quantity} units
 Current: ${product.currentQuantity} units
 Amount: ${formatCurrency(product.amount || 0)}`;
-
-            // Add transaction history
-            if (activities.length > 0) {
-                billText += `\n*Transaction History:*`;
-                activities.forEach(activity => {
-                    if (activity.activityType === 'transaction') {
-                        if (activity.type === 'rental' || activity.type === 'additional_rental') {
-                            billText += `\n📦 ${formatDate(activity.date)}: Rented ${activity.quantity} units`;
-                        } else if (activity.type === 'return' || activity.type === 'partial_return') {
-                            billText += `\n🔄 ${formatDate(activity.date)}: Returned ${activity.quantity} units`;
-                            if (activity.amount > 0) {
-                                billText += ` (${formatCurrency(activity.amount)})`;
-                            }
-                        }
-                    } else if (activity.activityType === 'payment') {
-                        billText += `\n💳 ${formatDate(activity.date)}: Payment ${formatCurrency(activity.amount)}`;
-                    }
-                });
-            }
         });
 
         billText += `\n
@@ -147,14 +95,12 @@ Paid: ${formatCurrency(totalPaid)}
 ────────────────────
 *BALANCE DUE: ${formatCurrency(balance)}*`;
 
-        // Payment status with emoji
+        // Payment status
         let statusEmoji = balance > 0 ? '🔴' : '✅';
         let statusText = balance > 0 ? 'PENDING' : 'PAID';
-        let progressPercent = subtotal > 0 ? ((totalPaid / subtotal) * 100).toFixed(0) : 0;
 
         billText += `\n
-*PAYMENT STATUS:* ${statusEmoji} ${statusText}
-Progress: ${progressPercent}% Complete`;
+*PAYMENT STATUS:* ${statusEmoji} ${statusText}`;
 
         // Discount breakdown if any
         if (totalDiscount > 0) {
@@ -172,15 +118,9 @@ Progress: ${progressPercent}% Complete`;
         }
 
         billText += `\n
-*TERMS & CONDITIONS:*
-• Payment due within 30 days
-• Items to be returned in good condition
-• Late fees may apply for overdue payments
-
 *CONTACT INFORMATION:*
 📞 Phone: +91-9961964928
 📧 Email: info@edasserikkudiyil.com
-🌐 Service: Equipment Rental
 
 _Generated on ${currentDate}_
 
@@ -190,7 +130,6 @@ _Generated on ${currentDate}_
         setBillPreview(billText.trim());
     };
 
-    // Alternative: Simple version for better WhatsApp display
     const generateSimpleBill = () => {
         if (!rental) return;
 
@@ -212,17 +151,15 @@ _Generated on ${currentDate}_
 *Phone:* ${rental.customerPhone}
 *Date:* ${formatDate(new Date())}
 
-*ITEMS RENTED:*
-`;
+*ITEMS RENTED:*`;
 
         // Products summary
         rental.productItems.forEach((product, index) => {
             billText += `
 ${index + 1}. ${product.productName}
-   Qty: ${product.quantity} units (${product.currentQuantity} active)
+   Qty: ${product.quantity} units
    Rate: ${formatCurrency(product.rate)}/${product.rateType}
-   Amount: ${formatCurrency(product.amount || 0)}
-`;
+   Amount: ${formatCurrency(product.amount || 0)}`;
         });
 
         billText += `
@@ -247,7 +184,6 @@ Paid: ${formatCurrency(totalPaid)}
         setBillPreview(billText.trim());
     };
 
-    // Ultra simple version for SMS/WhatsApp
     const generateMinimalBill = () => {
         if (!rental) return;
 
@@ -257,80 +193,50 @@ Paid: ${formatCurrency(totalPaid)}
         const balance = rental.balanceAmount || 0;
         const totalPaid = rental.totalPaid || 0;
         const totalAmount = rental.totalAmount || 0;
+        const totalDiscount = getTotalDiscounts();
 
-        let billText = `*Rental Invoice*
+        let billText = `*Rental Invoice - EDASSERIKKUDIYIL*
 
 Customer: ${rental.customerName}
-Invoice Date: ${formatDate(new Date())}
+Date: ${formatDate(new Date())}
 
-*Products:*
-`;
+*Products:*`;
 
         rental.productItems.forEach((product, index) => {
-            billText += `${product.productName} - ${formatCurrency(product.amount || 0)}
-`;
+            billText += `
+${product.productName} - ${formatCurrency(product.amount || 0)}`;
         });
 
         billText += `
-Total: ${formatCurrency(totalAmount)}
+Total: ${formatCurrency(totalAmount)}`;
+
+        if (totalDiscount > 0) {
+            billText += `
+Discount: -${formatCurrency(totalDiscount)}`;
+        }
+
+        billText += `
 Paid: ${formatCurrency(totalPaid)}
 *Balance: ${formatCurrency(balance)}*
 
 Status: ${balance > 0 ? 'Pending' : 'Paid'}
 
 EDASSERIKKUDIYIL RENTALS
-📞 +91-9961964928`;
+📞 +91-9447379802`;
 
         setBillPreview(billText.trim());
     };
 
-    // Helper function to calculate total days for a product (fixed version)
-    const getProductTotalDays = (activities) => {
-        if (!activities || activities.length === 0) return 0;
-
-        const rentals = activities.filter(a =>
-            a.activityType === 'transaction' &&
-            (a.type === 'rental' || a.type === 'additional_rental')
-        );
-        const returns = activities.filter(a =>
-            a.activityType === 'transaction' &&
-            (a.type === 'return' || a.type === 'partial_return')
-        );
-
-        if (rentals.length === 0) return 0;
-
-        // Sort by date
-        rentals.sort((a, b) => new Date(a.date) - new Date(b.date));
-        returns.sort((a, b) => new Date(a.date) - new Date(b.date));
-
-        const firstRental = rentals[0];
-        const lastActivity = returns.length > 0 ? returns[returns.length - 1] : rentals[rentals.length - 1];
-
-        const start = new Date(firstRental.date);
-        const end = returns.length > 0 ? new Date(lastActivity.date) : new Date();
-
-        const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
-        return Math.max(days, 1); // Ensure at least 1 day
-    };
-
-
-
-
-
-
-    // ✅ HELPER FUNCTION TO CALCULATE TOTAL DISCOUNTS
+    // Helper functions for discounts
     const getTotalDiscounts = () => {
         if (!rental || !rental.payments) return 0;
-
         return rental.payments.reduce((total, payment) => {
             return total + (payment.discountAmount || 0);
         }, 0);
     };
 
-    // ✅ HELPER FUNCTION TO GET DISCOUNT BREAKDOWN
     const getDiscountBreakdown = () => {
         if (!rental || !rental.payments) return [];
-
         return rental.payments
             .filter(payment => payment.discountAmount && payment.discountAmount > 0)
             .map(payment => ({
@@ -340,55 +246,13 @@ EDASSERIKKUDIYIL RENTALS
             }));
     };
 
-    const getProductActivities = (productId) => {
-        if (!rental) return [];
-
-        const activities = [];
-
-        const productTransactions = rental.transactions.filter(transaction => {
-            return transaction.productId &&
-                transaction.productId.toString() === productId.toString();
-        });
-
-        productTransactions.forEach(transaction => {
-            activities.push({
-                ...transaction,
-                activityType: 'transaction',
-                date: transaction.date
-            });
-        });
-
-        const productPayments = rental.payments.filter(payment => {
-            return payment.productId &&
-                payment.productId.toString() === productId.toString();
-        });
-
-        productPayments.forEach(payment => {
-            activities.push({
-                ...payment,
-                activityType: 'payment',
-                date: payment.date
-            });
-        });
-
-        return activities.sort((a, b) => new Date(a.date) - new Date(b.date));
-    };
-
     const validatePhoneNumber = (phone) => {
         const phoneRegex = /^[6-9]\d{9}$/;
         const cleanPhone = phone.replace(/\D/g, '');
         return phoneRegex.test(cleanPhone);
     };
 
-    const formatPhoneNumber = (phone) => {
-        const cleanPhone = phone.replace(/\D/g, '');
-        if (cleanPhone.length === 10) {
-            return `91${cleanPhone}`;
-        }
-        return cleanPhone;
-    };
-
-    const sendWhatsAppBill = async () => {
+    const openWhatsApp = () => {
         if (!phoneNumber) {
             toast.error('Please enter a phone number');
             return;
@@ -399,55 +263,66 @@ EDASSERIKKUDIYIL RENTALS
             return;
         }
 
-        if (!whatsappStatus.connected) {
-            toast.error('WhatsApp is not connected. Please scan QR code in terminal first.', {
-                duration: 8000
-            });
+        if (!billPreview) {
+            toast.error('Please generate bill first');
             return;
         }
 
-        setIsSending(true);
-
-        try {
-            const formattedPhone = formatPhoneNumber(phoneNumber);
-
-            const response = await axiosInstance.post('/api/whatsapp/send-bill', {
-                phoneNumber: formattedPhone,
-                billText: billPreview,
-                customerName: rental.customerName,
-                rentalId: rental._id
-            });
-
-            if (response.data.success) {
-                toast.success('✅ Bill sent automatically via WhatsApp!', {
-                    duration: 5000,
-                    icon: '📱'
-                });
-                onClose();
-            } else if (response.data.needsQR) {
-                toast.error('WhatsApp not connected. Please scan QR code in terminal first.', {
-                    duration: 8000
-                });
-            } else {
-                throw new Error(response.data.message || 'Failed to send bill');
-            }
-        } catch (error) {
-            console.error('WhatsApp send error:', error);
-            if (error.response?.status === 503) {
-                toast.error('WhatsApp not connected. Please connect WhatsApp first.', {
-                    duration: 6000
-                });
-            } else {
-                toast.error(error.response?.data?.message || 'Failed to send WhatsApp bill automatically.');
-            }
-        } finally {
-            setIsSending(false);
-        }
+        // Clean phone number (remove any non-digits)
+        const cleanPhone = phoneNumber.replace(/\D/g, '');
+        
+        // Encode the message for URL
+        const encodedMessage = encodeURIComponent(billPreview);
+        
+        // Create WhatsApp URL
+        const whatsappUrl = `https://wa.me/91${cleanPhone}?text=${encodedMessage}`;
+        
+        // Open WhatsApp in new tab
+        window.open(whatsappUrl, '_blank');
+        
+        toast.success('Opening WhatsApp... Check your phone!', {
+            duration: 4000,
+            icon: '📱'
+        });
     };
 
     const copyBillText = () => {
+        if (!billPreview) {
+            toast.error('Please generate bill first');
+            return;
+        }
         navigator.clipboard.writeText(billPreview);
-        toast.success('Bill copied to clipboard!');
+        toast.success('Bill copied to clipboard! You can now paste it in WhatsApp manually.');
+    };
+
+    const simulateMobileWhatsApp = () => {
+        if (!phoneNumber || !validatePhoneNumber(phoneNumber)) {
+            toast.error('Please enter a valid phone number first');
+            return;
+        }
+
+        if (!billPreview) {
+            toast.error('Please generate bill first');
+            return;
+        }
+
+        // For mobile devices, use the direct WhatsApp API
+        const cleanPhone = phoneNumber.replace(/\D/g, '');
+        const encodedMessage = encodeURIComponent(billPreview);
+        
+        // Different approach for mobile vs desktop
+        if (/Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+            // Mobile device - use WhatsApp direct link
+            window.location.href = `whatsapp://send?phone=91${cleanPhone}&text=${encodedMessage}`;
+        } else {
+            // Desktop - open web version
+            window.open(`https://web.whatsapp.com/send?phone=91${cleanPhone}&text=${encodedMessage}`, '_blank');
+        }
+
+        toast.success('Opening WhatsApp...', {
+            duration: 4000,
+            icon: '📱'
+        });
     };
 
     if (!isOpen) return null;
@@ -460,7 +335,7 @@ EDASSERIKKUDIYIL RENTALS
                     <div className="flex items-center gap-3">
                         <FiMessageSquare className="w-6 h-6" />
                         <div>
-                            <h3 className="text-xl font-semibold">Send Bill via WhatsApp (Auto)</h3>
+                            <h3 className="text-xl font-semibold">Send Bill via WhatsApp</h3>
                             <p className="text-green-100 text-sm">Customer: {rental?.customerName}</p>
                             {getTotalDiscounts() > 0 && (
                                 <p className="text-green-100 text-xs">💸 Includes ₹{getTotalDiscounts().toFixed(2)} discount</p>
@@ -477,34 +352,17 @@ EDASSERIKKUDIYIL RENTALS
 
                 <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        {/* Left Panel */}
+                        {/* Left Panel - Controls */}
                         <div className="space-y-6">
-                            {/* WhatsApp Status */}
-                            <div className={`rounded-lg p-4 ${whatsappStatus.connected ? 'bg-green-50' : 'bg-red-50'}`}>
-                                <div className="flex items-center justify-between mb-2">
-                                    <div className="flex items-center gap-2">
-                                        <FiWifi className={`w-4 h-4 ${whatsappStatus.connected ? 'text-green-600' : 'text-red-600'}`} />
-                                        <span className={`font-medium text-sm ${whatsappStatus.connected ? 'text-green-800' : 'text-red-800'}`}>
-                                            WhatsApp Status: {whatsappStatus.connected ? 'Connected ✅' : 'Not Connected ❌'}
-                                        </span>
-                                    </div>
-
-                                    {!whatsappStatus.connected && (
-                                        <button
-                                            onClick={restartWhatsApp}
-                                            className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-xs transition-colors"
-                                        >
-                                            🔄 Generate QR
-                                        </button>
-                                    )}
+                            {/* WhatsApp Info */}
+                            <div className="bg-blue-50 rounded-lg p-4">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <FiSmartphone className="w-5 h-5 text-blue-600" />
+                                    <span className="font-medium text-blue-800">Free WhatsApp Integration</span>
                                 </div>
-
-                                {!whatsappStatus.connected && (
-                                    <div className="text-red-700 text-xs space-y-1">
-                                        <p>Please scan QR code in terminal to connect WhatsApp</p>
-                                        <p>Click "Generate QR" to create a new QR code</p>
-                                    </div>
-                                )}
+                                <p className="text-blue-700 text-sm">
+                                    Opens WhatsApp on your phone with the bill pre-filled. Just tap send!
+                                </p>
                             </div>
 
                             {/* Phone Number Section */}
@@ -564,14 +422,13 @@ EDASSERIKKUDIYIL RENTALS
                                 )}
                             </div>
 
-                            {/* ✅ DISCOUNT SUMMARY IF DISCOUNTS EXIST */}
+                            {/* Discount Summary */}
                             {getTotalDiscounts() > 0 && (
                                 <div className="bg-yellow-50 rounded-lg p-4">
-                                    <h5 className="font-medium text-yellow-800 mb-2">💸 Discount Information:</h5>
+                                    <h5 className="font-medium text-yellow-800 mb-2">💸 Discount Applied:</h5>
                                     <div className="text-sm text-yellow-700 space-y-1">
                                         <p>• Total Discounts: ₹{getTotalDiscounts().toFixed(2)}</p>
-                                        <p>• {getDiscountBreakdown().length} discount(s) applied</p>
-                                        <p>• Customer saves ₹{getTotalDiscounts().toFixed(2)} on this rental</p>
+                                        <p>• Customer saves ₹{getTotalDiscounts().toFixed(2)}</p>
                                     </div>
                                 </div>
                             )}
@@ -579,41 +436,43 @@ EDASSERIKKUDIYIL RENTALS
                             {/* Action Buttons */}
                             <div className="space-y-3">
                                 <button
-                                    onClick={sendWhatsAppBill}
-                                    disabled={!phoneNumber || !validatePhoneNumber(phoneNumber) || isSending || !whatsappStatus.connected}
+                                    onClick={openWhatsApp}
+                                    disabled={!phoneNumber || !validatePhoneNumber(phoneNumber) || !billPreview}
                                     className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-6 py-3 rounded-lg transition-all flex items-center justify-center gap-2 font-medium"
                                 >
-                                    {isSending ? (
-                                        <>
-                                            <FiLoader className="w-5 h-5 animate-spin" />
-                                            Sending automatically...
-                                        </>
-                                    ) : (
-                                        <>
-                                            <FiSend className="w-5 h-5" />
-                                            🤖 Send Bill Automatically
-                                        </>
-                                    )}
+                                    <FiExternalLink className="w-5 h-5" />
+                                    📱 Open WhatsApp & Send
+                                </button>
+
+                                <button
+                                    onClick={simulateMobileWhatsApp}
+                                    disabled={!phoneNumber || !validatePhoneNumber(phoneNumber) || !billPreview}
+                                    className="w-full bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white px-6 py-2 rounded-lg transition-colors flex items-center justify-center gap-2"
+                                >
+                                    <FiSmartphone className="w-4 h-4" />
+                                    Mobile WhatsApp (Direct)
                                 </button>
 
                                 <button
                                     onClick={copyBillText}
-                                    className="w-full bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg transition-colors"
+                                    disabled={!billPreview}
+                                    className="w-full bg-gray-500 hover:bg-gray-600 disabled:bg-gray-300 text-white px-6 py-2 rounded-lg transition-colors"
                                 >
                                     📋 Copy Bill Text
                                 </button>
                             </div>
 
                             {/* Instructions */}
-                            <div className="bg-blue-50 rounded-lg p-4">
-                                <h5 className="font-medium text-blue-800 mb-2">🤖 Automatic Sending:</h5>
-                                <ul className="text-sm text-blue-700 space-y-1">
-                                    <li>• WhatsApp must be connected (scan QR once)</li>
-                                    <li>• Bill sends automatically to customer</li>
-                                    <li>• No manual intervention needed</li>
-                                    <li>• Message sent from +91-9961964928</li>
+                            <div className="bg-green-50 rounded-lg p-4">
+                                <h5 className="font-medium text-green-800 mb-2">🚀 How It Works:</h5>
+                                <ul className="text-sm text-green-700 space-y-1">
+                                    <li>1. Enter customer's phone number</li>
+                                    <li>2. Choose bill format and generate</li>
+                                    <li>3. Click "Open WhatsApp & Send"</li>
+                                    <li>4. WhatsApp opens with bill pre-filled</li>
+                                    <li>5. Review and tap send button</li>
                                     {getTotalDiscounts() > 0 && (
-                                        <li>• ✅ Includes discount information</li>
+                                        <li>• ✅ Discounts automatically included</li>
                                     )}
                                 </ul>
                             </div>
@@ -627,10 +486,7 @@ EDASSERIKKUDIYIL RENTALS
                                 {/* Bill Format Selector */}
                                 <div className="flex gap-1 bg-white border rounded-lg p-1">
                                     <button
-                                        onClick={() => {
-                                            setBillType('detailed');
-                                            generateBillText(); // Auto-generate when switching
-                                        }}
+                                        onClick={() => setBillType('detailed')}
                                         className={`px-3 py-1 text-xs rounded transition-colors ${billType === 'detailed'
                                             ? 'bg-green-500 text-white'
                                             : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -639,10 +495,7 @@ EDASSERIKKUDIYIL RENTALS
                                         Detailed
                                     </button>
                                     <button
-                                        onClick={() => {
-                                            setBillType('simple');
-                                            generateSimpleBill(); // Auto-generate when switching
-                                        }}
+                                        onClick={() => setBillType('simple')}
                                         className={`px-3 py-1 text-xs rounded transition-colors ${billType === 'simple'
                                             ? 'bg-green-500 text-white'
                                             : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -651,10 +504,7 @@ EDASSERIKKUDIYIL RENTALS
                                         Simple
                                     </button>
                                     <button
-                                        onClick={() => {
-                                            setBillType('minimal');
-                                            generateMinimalBill(); // Auto-generate when switching
-                                        }}
+                                        onClick={() => setBillType('minimal')}
                                         className={`px-3 py-1 text-xs rounded transition-colors ${billType === 'minimal'
                                             ? 'bg-green-500 text-white'
                                             : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -669,10 +519,10 @@ EDASSERIKKUDIYIL RENTALS
                             <div className="bg-white rounded-lg p-4 border h-96 overflow-y-auto">
                                 <pre className="text-xs whitespace-pre-wrap text-gray-800 font-mono leading-relaxed">
                                     {billPreview || `Select a bill format and click generate to preview...
-            
+
 Available Formats:
-• Detailed - Full bill with transaction history
-• Simple - Clean summary with key details  
+• Detailed - Full bill with all details
+• Simple - Clean summary with key info  
 • Minimal - Ultra-compact for quick sending`}
                                 </pre>
                             </div>
@@ -694,24 +544,16 @@ Available Formats:
                                 </button>
                             </div>
                         </div>
-
-
                     </div>
                 </div>
 
                 {/* Footer */}
                 <div className="flex justify-end gap-3 p-6 border-t bg-gray-50">
                     <button
-                        onClick={checkWhatsAppStatus}
-                        className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors text-sm"
-                    >
-                        🔄 Check Status
-                    </button>
-                    <button
                         onClick={onClose}
                         className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
                     >
-                        Cancel
+                        Close
                     </button>
                 </div>
             </div>
