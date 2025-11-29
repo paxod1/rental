@@ -56,79 +56,57 @@ const generateBillText = () => {
     let billText = `*EDASSERIKKUDIYIL RENTALS PVT LTD*
 *Mammattikkanam, Idukki, Kerala*
 
-================================
-        *INVOICE / BILL RECEIPT*
-================================
+*INVOICE / BILL RECEIPT*
 
 *Invoice No:* ${invoiceNo}
 *Date:* ${currentDate}
 
---------------------------------
-        *CUSTOMER DETAILS*
---------------------------------
+
+*CUSTOMER DETAILS*
 *Name:* ${rental.customerName}
 *Phone:* ${rental.customerPhone}
 *Address:* ${rental.customerAddress || 'Address not provided'}
 
---------------------------------
-      *PRODUCTS & CHARGES*
---------------------------------`;
+
+*PRODUCTS & AMOUNT DETAILS*`;
 
     // Add product items with detailed calculation
+    let totalProductsAmount = 0;
+    let totalProductsPaid = 0;
+    let totalProductsBalance = 0;
+
     rental.productItems.forEach((product, index) => {
         const productBalance = calculateProductBalance(product);
         const paidAmount = (product.amount || 0) - productBalance;
         
+        totalProductsAmount += product.amount || 0;
+        totalProductsPaid += paidAmount;
+        totalProductsBalance += productBalance;
+        
         billText += `\n
 *${index + 1}. ${product.productName.toUpperCase()}*
 Rate: ${formatCurrency(product.rate)}/${product.rateType}
-Initial Qty: ${product.quantity} units
-Current Qty: ${product.currentQuantity} units
-Total Amount: ${formatCurrency(product.amount || 0)}
+Quantity: ${product.quantity} units (Current: ${product.currentQuantity} units)
+Amount: ${formatCurrency(product.amount || 0)}
 Paid: ${formatCurrency(paidAmount)}
 Balance: ${formatCurrency(productBalance)}`;
     });
 
     billText += `\n
---------------------------------
-      *BILL CALCULATION*
---------------------------------
-Total Rental Amount: ${formatCurrency(subtotal)}`;
 
-    if (totalDiscount > 0) {
-        billText += `
-Total Discount: -${formatCurrency(totalDiscount)}
---------------------------------
-*Net Amount:* ${formatCurrency(netAmount)}`;
-    }
 
-    billText += `
-Total Paid: ${formatCurrency(totalPaid)}
---------------------------------
-*BALANCE DUE:* ${formatCurrency(balance)}`;
 
-    // Payment status
-    let statusText = balance > 0 ? 'PENDING PAYMENT' : 'FULLY PAID';
-
+    // Transaction details
     billText += `\n
---------------------------------
-      *PAYMENT STATUS*
---------------------------------
-${statusText}`;
+*TRANSACTION HISTORY*`;
 
-    // Simple transaction summary
-    billText += `\n
---------------------------------
-   *TRANSACTION SUMMARY*
---------------------------------`;
-
-    // Returns summary
+    // Returns summary with product names
     const returnTransactions = rental.transactions?.filter(t => 
         t.type === 'return' || t.type === 'partial_return'
     ) || [];
 
     if (returnTransactions.length > 0) {
-        billText += `\n*Returns Made:* ${returnTransactions.length} times`;
+        billText += `\n*Returns Made:*`;
         returnTransactions.forEach((returnTx, index) => {
             const returnDate = formatDate(returnTx.date);
             const product = rental.productItems.find(item => 
@@ -136,7 +114,10 @@ ${statusText}`;
             );
             const productName = product ? product.productName : 'Unknown Product';
             
-            billText += `\n${index + 1}. ${returnDate}: ${returnTx.quantity} units - ${formatCurrency(returnTx.amount || 0)}`;
+            // Check if return amount was paid
+            const isPaid = returnTx.amount <= totalPaid;
+            
+            billText += `\n${index + 1}. ${returnDate}: ${returnTx.quantity} units of ${productName} - ${formatCurrency(returnTx.amount || 0)} ${isPaid ? '(Paid)' : '(Not Paid)'}`;
         });
     }
 
@@ -146,26 +127,43 @@ ${statusText}`;
     ) || [];
 
     if (additionalRentals.length > 0) {
-        billText += `\n*Additional Rentals:* ${additionalRentals.length} times`;
+        billText += `\n*Additional Rentals:*`;
         additionalRentals.forEach((addTx, index) => {
             const addDate = formatDate(addTx.date);
-            billText += `\n${index + 1}. ${addDate}: +${addTx.quantity} units`;
+            const product = rental.productItems.find(item => 
+                (item.productId._id || item.productId).toString() === addTx.productId.toString()
+            );
+            const productName = product ? product.productName : 'Unknown Product';
+            
+            billText += `\n${index + 1}. ${addDate}: +${addTx.quantity} units of ${productName}`;
         });
     }
 
     // Payments summary
     if (rental.payments && rental.payments.length > 0) {
-        billText += `\n*Payments Received:* ${rental.payments.length} times`;
+        billText += `\n*Payments Received:*`;
         let paymentCount = 1;
         rental.payments.forEach((payment) => {
             const payDate = payment.date ? formatDate(payment.date) : 'Unknown';
             
-            // Only show payment amount (not discounts separately)
             if (payment.amount > 0) {
-                billText += `\n${paymentCount}. ${payDate}: ${formatCurrency(payment.amount)}`;
-                if (payment.notes && !payment.notes.includes('Discount')) {
-                    billText += ` - ${payment.notes}`;
+                let paymentInfo = `\n${paymentCount}. ${payDate}: ${formatCurrency(payment.amount)}`;
+                
+                // Add product name if specific payment
+                if (payment.productId) {
+                    const product = rental.productItems.find(item => 
+                        (item.productId._id || item.productId).toString() === payment.productId.toString()
+                    );
+                    if (product) {
+                        paymentInfo += ` for ${product.productName}`;
+                    }
                 }
+                
+                if (payment.notes && !payment.notes.includes('Discount')) {
+                    paymentInfo += ` - ${payment.notes}`;
+                }
+                
+                billText += paymentInfo;
                 paymentCount++;
             }
         });
@@ -174,32 +172,39 @@ ${statusText}`;
     // Discount summary
     if (totalDiscount > 0) {
         billText += `\n*Discount Applied:* ${formatCurrency(totalDiscount)}`;
+        
+        // Show discount breakdown
+        const discountPayments = rental.payments?.filter(p => p.discountAmount && p.discountAmount > 0) || [];
+        if (discountPayments.length > 0) {
+            discountPayments.forEach((discount, index) => {
+                const discDate = formatDate(discount.date);
+                billText += `\n  - ${discDate}: ${formatCurrency(discount.discountAmount)}`;
+                if (discount.discountNotes) {
+                    billText += ` (${discount.discountNotes})`;
+                }
+            });
+        }
     }
 
+
     billText += `\n
---------------------------------
-    *CONTACT INFORMATION*
---------------------------------
+*CONTACT INFORMATION*
 EDASSERIKKUDIYIL RENTALS PVT LTD
 Mammattikkanam, Idukki, Kerala
 Phone: +91-9447379802
 Business Hours: 8:00 AM - 8:00 PM
 
---------------------------------
-   *GENERATED INFORMATION*
---------------------------------
+
+*GENERATED INFORMATION*
 Generated on: ${currentDate}
 Invoice ID: ${invoiceNo}
 
-================================
 
 Thank you for choosing EDASSERIKKUDIYIL RENTALS!
 We appreciate your business and look forward to serving you again.
 
-EDASSERIKKUDIYIL RENTALS PVT LTD
-"Your Trusted Rental Partner"
-
-================================`;
+*EDASSERIKKUDIYIL RENTALS PVT LTD*
+*"Your Trusted Rental Partner"*`;
 
     setBillPreview(billText.trim());
 };
