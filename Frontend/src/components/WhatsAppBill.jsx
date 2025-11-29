@@ -52,10 +52,6 @@ const generateBillText = () => {
     // Generate invoice number
     const invoiceNo = `INV-${rental._id?.slice(-6)?.toUpperCase() || '000000'}`;
     const currentDate = formatDate(new Date());
-    
-    // Rental dates
-    const startDate = rental.startDate ? formatDate(rental.startDate) : 'Not set';
-    const endDate = rental.endDate ? formatDate(rental.endDate) : 'Not set';
 
     let billText = `*EDASSERIKKUDIYIL RENTALS PVT LTD*
 *Mammattikkanam, Idukki, Kerala*
@@ -66,7 +62,6 @@ const generateBillText = () => {
 
 *Invoice No:* ${invoiceNo}
 *Date:* ${currentDate}
-*Rental Period:* ${startDate} to ${endDate}
 
 --------------------------------
         *CUSTOMER DETAILS*
@@ -76,62 +71,44 @@ const generateBillText = () => {
 *Address:* ${rental.customerAddress || 'Address not provided'}
 
 --------------------------------
-      *RENTAL ORDER DETAILS*
---------------------------------
-*Order Date:* ${startDate}
-*Delivery Date:* ${rental.deliveryDate ? formatDate(rental.deliveryDate) : 'Not set'}
-*Return Date:* ${endDate}
-*Rental Status:* ${rental.status || 'Active'}
-
---------------------------------
-        *RENTAL ITEMS*
+      *PRODUCTS & CHARGES*
 --------------------------------`;
 
-    // Add product items in simple listing format
+    // Add product items with detailed calculation
     rental.productItems.forEach((product, index) => {
+        const productBalance = calculateProductBalance(product);
+        const paidAmount = (product.amount || 0) - productBalance;
+        
         billText += `\n
 *${index + 1}. ${product.productName.toUpperCase()}*
 Rate: ${formatCurrency(product.rate)}/${product.rateType}
-Quantity: ${product.quantity} units
-Current: ${product.currentQuantity} units
-Amount: ${formatCurrency(product.amount || 0)}`;
-        
-        // Add product details if available (optional)
-        if (product.productDetails) {
-            billText += `\nDetails: ${product.productDetails}`;
-        }
-        if (product.serialNumber) {
-            billText += `\nSerial No: ${product.serialNumber}`;
-        }
+Initial Qty: ${product.quantity} units
+Current Qty: ${product.currentQuantity} units
+Total Amount: ${formatCurrency(product.amount || 0)}
+Paid: ${formatCurrency(paidAmount)}
+Balance: ${formatCurrency(productBalance)}`;
     });
 
     billText += `\n
 --------------------------------
-      *QUANTITY SUMMARY*
+      *BILL CALCULATION*
 --------------------------------
-*Total Items:* ${rental.productItems.length} products
-*Total Units:* ${rental.productItems.reduce((sum, item) => sum + (item.quantity || 0), 0)} units`;
-
-    billText += `\n
---------------------------------
-      *FINANCIAL SUMMARY*
---------------------------------
-Subtotal: ${formatCurrency(subtotal)}`;
+Total Rental Amount: ${formatCurrency(subtotal)}`;
 
     if (totalDiscount > 0) {
         billText += `
-Discount: -${formatCurrency(totalDiscount)}
+Total Discount: -${formatCurrency(totalDiscount)}
 --------------------------------
 *Net Amount:* ${formatCurrency(netAmount)}`;
     }
 
     billText += `
-Paid Amount: ${formatCurrency(totalPaid)}
+Total Paid: ${formatCurrency(totalPaid)}
 --------------------------------
 *BALANCE DUE:* ${formatCurrency(balance)}`;
 
     // Payment status
-    let statusText = balance > 0 ? ' PENDING PAYMENT' : ' FULLY PAID';
+    let statusText = balance > 0 ? 'PENDING PAYMENT' : 'FULLY PAID';
 
     billText += `\n
 --------------------------------
@@ -139,72 +116,160 @@ Paid Amount: ${formatCurrency(totalPaid)}
 --------------------------------
 ${statusText}`;
 
-    // Payment history if available
-    if (rental.payments && rental.payments.length > 0 && rental.payments.some(p => p.amount > 0)) {
-        billText += `\n
+    // Simple transaction summary
+    billText += `\n
 --------------------------------
-      *PAYMENT HISTORY*
+   *TRANSACTION SUMMARY*
 --------------------------------`;
-        
-        rental.payments.forEach((payment, index) => {
+
+    // Returns summary
+    const returnTransactions = rental.transactions?.filter(t => 
+        t.type === 'return' || t.type === 'partial_return'
+    ) || [];
+
+    if (returnTransactions.length > 0) {
+        billText += `\n*Returns Made:* ${returnTransactions.length} times`;
+        returnTransactions.forEach((returnTx, index) => {
+            const returnDate = formatDate(returnTx.date);
+            const product = rental.productItems.find(item => 
+                (item.productId._id || item.productId).toString() === returnTx.productId.toString()
+            );
+            const productName = product ? product.productName : 'Unknown Product';
+            
+            billText += `\n${index + 1}. ${returnDate}: ${returnTx.quantity} units - ${formatCurrency(returnTx.amount || 0)}`;
+        });
+    }
+
+    // Additional rentals summary
+    const additionalRentals = rental.transactions?.filter(t => 
+        t.type === 'additional_rental'
+    ) || [];
+
+    if (additionalRentals.length > 0) {
+        billText += `\n*Additional Rentals:* ${additionalRentals.length} times`;
+        additionalRentals.forEach((addTx, index) => {
+            const addDate = formatDate(addTx.date);
+            billText += `\n${index + 1}. ${addDate}: +${addTx.quantity} units`;
+        });
+    }
+
+    // Payments summary
+    if (rental.payments && rental.payments.length > 0) {
+        billText += `\n*Payments Received:* ${rental.payments.length} times`;
+        let paymentCount = 1;
+        rental.payments.forEach((payment) => {
+            const payDate = payment.date ? formatDate(payment.date) : 'Unknown';
+            
+            // Only show payment amount (not discounts separately)
             if (payment.amount > 0) {
-                const payDate = payment.date ? formatDate(payment.date) : 'Unknown';
-                billText += `\n${payDate}: ${formatCurrency(payment.amount)} (${payment.paymentMethod || 'Cash'})`;
-                if (payment.notes) {
+                billText += `\n${paymentCount}. ${payDate}: ${formatCurrency(payment.amount)}`;
+                if (payment.notes && !payment.notes.includes('Discount')) {
                     billText += ` - ${payment.notes}`;
                 }
+                paymentCount++;
             }
         });
     }
 
-    // Discount breakdown if any
+    // Discount summary
     if (totalDiscount > 0) {
-        billText += `\n
---------------------------------
-      *DISCOUNT & OFFERS*
---------------------------------`;
-        
-        const discountBreakdown = getDiscountBreakdown();
-        discountBreakdown.forEach((discount, index) => {
-            const discDate = formatDate(discount.date);
-            billText += `\n${discDate}: ${formatCurrency(discount.amount)}`;
-            if (discount.notes) {
-                billText += ` - ${discount.notes}`;
-            }
-        });
-        
-        billText += `\n--------------------------------
-*TOTAL SAVINGS:* ${formatCurrency(totalDiscount)}`;
+        billText += `\n*Discount Applied:* ${formatCurrency(totalDiscount)}`;
     }
 
     billText += `\n
 --------------------------------
     *CONTACT INFORMATION*
 --------------------------------
-*EDASSERIKKUDIYIL RENTALS PVT LTD*
+EDASSERIKKUDIYIL RENTALS PVT LTD
 Mammattikkanam, Idukki, Kerala
-*Phone:* +91-9447379802
-*Business Hours:* 8:00 AM - 8:00 PM`;
+Phone: +91-9447379802
+Business Hours: 8:00 AM - 8:00 PM
 
-    billText += `\n
 --------------------------------
    *GENERATED INFORMATION*
 --------------------------------
 Generated on: ${currentDate}
-Invoice ID: ${invoiceNo}`;
+Invoice ID: ${invoiceNo}
 
-    billText += `\n
 ================================
 
-*Thank you for choosing EDASSERIKKUDIYIL RENTALS!*
-*We appreciate your business and look forward to serving you again.*
+Thank you for choosing EDASSERIKKUDIYIL RENTALS!
+We appreciate your business and look forward to serving you again.
 
-*EDASSERIKKUDIYIL RENTALS PVT LTD*
-*"Your Trusted Rental Partner"*
+EDASSERIKKUDIYIL RENTALS PVT LTD
+"Your Trusted Rental Partner"
 
 ================================`;
 
     setBillPreview(billText.trim());
+};
+
+// Helper function to calculate product balance
+const calculateProductBalance = (productItem) => {
+    if (!productItem) return 0;
+    
+    // If product has balanceAmount, use it
+    if (productItem.balanceAmount !== undefined) {
+        return productItem.balanceAmount;
+    }
+    
+    // Otherwise calculate from transactions
+    if (!rental || !rental.transactions) return productItem.amount || 0;
+    
+    const productId = productItem.productId._id || productItem.productId;
+    
+    const productPayments = rental.payments?.filter(payment => 
+        payment.productId && payment.productId.toString() === productId.toString()
+    ) || [];
+    
+    const totalPaid = productPayments.reduce((sum, payment) => sum + (payment.amount || 0), 0);
+    
+    return Math.max(0, (productItem.amount || 0) - totalPaid);
+};
+
+// Helper function to get all activities
+const getAllActivities = () => {
+    if (!rental) return [];
+    
+    const activities = [];
+
+    // Add transactions
+    const transactions = rental.transactions || [];
+    transactions.forEach(transaction => {
+        // Find product name for transaction
+        const productItem = rental.productItems.find(item => 
+            (item.productId._id || item.productId).toString() === transaction.productId?.toString()
+        );
+        
+        activities.push({
+            ...transaction,
+            activityType: 'transaction',
+            productName: productItem ? productItem.productName : 'Unknown Product',
+            date: transaction.date,
+            displayDate: new Date(transaction.date).toLocaleDateString(),
+            rate: productItem ? productItem.rate : 0
+        });
+    });
+
+    // Add payments
+    const payments = rental.payments || [];
+    payments.forEach(payment => {
+        // Find product name for payment if applicable
+        const productItem = payment.productId ? rental.productItems.find(item => 
+            (item.productId._id || item.productId).toString() === payment.productId.toString()
+        ) : null;
+        
+        activities.push({
+            ...payment,
+            activityType: 'payment',
+            productName: productItem ? productItem.productName : null,
+            date: payment.date,
+            displayDate: new Date(payment.date).toLocaleDateString()
+        });
+    });
+
+    // Sort by date (newest first)
+    return activities.sort((a, b) => new Date(b.date) - new Date(a.date));
 };
 
     const generateSimpleBill = () => {
