@@ -140,7 +140,8 @@ Balance: ${formatCurrency(productBalance)}`;
 
     // Payments summary
     if (rental.payments && rental.payments.length > 0) {
-        billText += `\n*Payments Received:*`;
+        billText += `\n*
+        Payments Received:*`;
         let paymentCount = 1;
         rental.payments.forEach((payment) => {
             const payDate = payment.date ? formatDate(payment.date) : 'Unknown';
