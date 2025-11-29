@@ -116,7 +116,7 @@ Balance: ${formatCurrency(productBalance)}`;
             // Check if return amount was paid
             const isPaid = returnTx.amount <= totalPaid;
             
-            billText += `\n${index + 1}. ${returnDate}: ${returnTx.quantity} units of ${productName} - ${formatCurrency(returnTx.amount || 0)} ${isPaid ? '(Paid)' : '(Not Paid)'}`;
+            billText += `\n${index + 1}. ${returnDate}: ${returnTx.quantity} units of ${productName} - ${formatCurrency(returnTx.amount || 0)} }`;
         });
     }
 
@@ -157,10 +157,7 @@ Balance: ${formatCurrency(productBalance)}`;
                         paymentInfo += ` for ${product.productName}`;
                     }
                 }
-                
-                if (payment.notes && !payment.notes.includes('Discount')) {
-                    paymentInfo += ` - ${payment.notes}`;
-                }
+            
                 
                 billText += paymentInfo;
                 paymentCount++;
