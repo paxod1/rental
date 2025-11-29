@@ -36,99 +36,176 @@ const WhatsAppBill = ({ rental, isOpen, onClose }) => {
         }
     };
 
-    const generateBillText = () => {
-        if (!rental) return;
+const generateBillText = () => {
+    if (!rental) return;
 
-        const formatDate = (date) => new Date(date).toLocaleDateString('en-IN');
-        const formatCurrency = (amount) => `₹${amount?.toFixed(2) || '0.00'}`;
+    const formatDate = (date) => new Date(date).toLocaleDateString('en-IN');
+    const formatCurrency = (amount) => `₹${amount?.toFixed(2) || '0.00'}`;
 
-        // Calculate totals
-        const subtotal = rental.totalAmount || 0;
-        const totalPaid = rental.totalPaid || 0;
-        const totalDiscount = getTotalDiscounts();
-        const balance = rental.balanceAmount || 0;
-        const netAmount = subtotal - totalDiscount;
+    // Calculate totals
+    const subtotal = rental.totalAmount || 0;
+    const totalPaid = rental.totalPaid || 0;
+    const totalDiscount = getTotalDiscounts();
+    const balance = rental.balanceAmount || 0;
+    const netAmount = subtotal - totalDiscount;
 
-        // Generate invoice number
-        const invoiceNo = `INV-${rental._id?.slice(-6)?.toUpperCase() || '000000'}`;
-        const currentDate = formatDate(new Date());
+    // Generate invoice number
+    const invoiceNo = `INV-${rental._id?.slice(-6)?.toUpperCase() || '000000'}`;
+    const currentDate = formatDate(new Date());
+    
+    // Rental dates
+    const startDate = rental.startDate ? formatDate(rental.startDate) : 'Not set';
+    const endDate = rental.endDate ? formatDate(rental.endDate) : 'Not set';
 
-        let billText = `*EDASSERIKKUDIYIL RENTALS PVT LTD*
+    let billText = `*EDASSERIKKUDIYIL RENTALS PVT LTD*
+*Mammattikkanam, Idukki, Kerala*
 
-*INVOICE / BILL RECEIPT*
-*Date:* ${currentDate}
+================================
+        *INVOICE / BILL RECEIPT*
+================================
+
 *Invoice No:* ${invoiceNo}
-*Customer:* ${rental.customerName}
+*Date:* ${currentDate}
+*Rental Period:* ${startDate} to ${endDate}
 
-*BILL TO:*
-${rental.customerName}
-${rental.customerPhone}
-${rental.customerAddress || 'Address not provided'}
+--------------------------------
+        *CUSTOMER DETAILS*
+--------------------------------
+*Name:* ${rental.customerName}
+*Phone:* ${rental.customerPhone}
+*Address:* ${rental.customerAddress || 'Address not provided'}
 
-*RENTAL DETAILS:*
-────────────────────`;
+--------------------------------
+      *RENTAL ORDER DETAILS*
+--------------------------------
+*Order Date:* ${startDate}
+*Delivery Date:* ${rental.deliveryDate ? formatDate(rental.deliveryDate) : 'Not set'}
+*Return Date:* ${endDate}
+*Rental Status:* ${rental.status || 'Active'}
 
-        // Add product items
-        rental.productItems.forEach((product, index) => {
-            billText += `\n
+--------------------------------
+        *RENTAL ITEMS*
+--------------------------------`;
+
+    // Add product items in simple listing format
+    rental.productItems.forEach((product, index) => {
+        billText += `\n
 *${index + 1}. ${product.productName.toUpperCase()}*
 Rate: ${formatCurrency(product.rate)}/${product.rateType}
 Quantity: ${product.quantity} units
 Current: ${product.currentQuantity} units
 Amount: ${formatCurrency(product.amount || 0)}`;
-        });
+        
+        // Add product details if available (optional)
+        if (product.productDetails) {
+            billText += `\nDetails: ${product.productDetails}`;
+        }
+        if (product.serialNumber) {
+            billText += `\nSerial No: ${product.serialNumber}`;
+        }
+    });
 
-        billText += `\n
-*PAYMENT SUMMARY:*
-────────────────────
+    billText += `\n
+--------------------------------
+      *QUANTITY SUMMARY*
+--------------------------------
+*Total Items:* ${rental.productItems.length} products
+*Total Units:* ${rental.productItems.reduce((sum, item) => sum + (item.quantity || 0), 0)} units`;
+
+    billText += `\n
+--------------------------------
+      *FINANCIAL SUMMARY*
+--------------------------------
 Subtotal: ${formatCurrency(subtotal)}`;
 
-        if (totalDiscount > 0) {
-            billText += `
-Discount: -${formatCurrency(totalDiscount)}
-────────────────────
-Net Amount: ${formatCurrency(netAmount)}`;
-        }
-
+    if (totalDiscount > 0) {
         billText += `
-Paid: ${formatCurrency(totalPaid)}
-────────────────────
-*BALANCE DUE: ${formatCurrency(balance)}*`;
+Discount: -${formatCurrency(totalDiscount)}
+--------------------------------
+*Net Amount:* ${formatCurrency(netAmount)}`;
+    }
 
-        // Payment status
-        let statusEmoji = balance > 0 ? '🔴' : '✅';
-        let statusText = balance > 0 ? 'PENDING' : 'PAID';
+    billText += `
+Paid Amount: ${formatCurrency(totalPaid)}
+--------------------------------
+*BALANCE DUE:* ${formatCurrency(balance)}`;
 
+    // Payment status
+    let statusText = balance > 0 ? ' PENDING PAYMENT' : ' FULLY PAID';
+
+    billText += `\n
+--------------------------------
+      *PAYMENT STATUS*
+--------------------------------
+${statusText}`;
+
+    // Payment history if available
+    if (rental.payments && rental.payments.length > 0 && rental.payments.some(p => p.amount > 0)) {
         billText += `\n
-*PAYMENT STATUS:* ${statusEmoji} ${statusText}`;
-
-        // Discount breakdown if any
-        if (totalDiscount > 0) {
-            billText += `\n
-*DISCOUNT BREAKDOWN:*`;
-            const discountBreakdown = getDiscountBreakdown();
-            discountBreakdown.forEach((discount, index) => {
-                billText += `\n${index + 1}. ${formatDate(discount.date)}: ${formatCurrency(discount.amount)}`;
-                if (discount.notes) {
-                    billText += ` (${discount.notes})`;
+--------------------------------
+      *PAYMENT HISTORY*
+--------------------------------`;
+        
+        rental.payments.forEach((payment, index) => {
+            if (payment.amount > 0) {
+                const payDate = payment.date ? formatDate(payment.date) : 'Unknown';
+                billText += `\n${payDate}: ${formatCurrency(payment.amount)} (${payment.paymentMethod || 'Cash'})`;
+                if (payment.notes) {
+                    billText += ` - ${payment.notes}`;
                 }
-            });
-            billText += `\n────────────────────
-*TOTAL SAVINGS: ${formatCurrency(totalDiscount)}*`;
-        }
+            }
+        });
+    }
 
+    // Discount breakdown if any
+    if (totalDiscount > 0) {
         billText += `\n
-*CONTACT INFORMATION:*
-📞 Phone: +91-9961964928
-📧 Email: info@edasserikkudiyil.com
+--------------------------------
+      *DISCOUNT & OFFERS*
+--------------------------------`;
+        
+        const discountBreakdown = getDiscountBreakdown();
+        discountBreakdown.forEach((discount, index) => {
+            const discDate = formatDate(discount.date);
+            billText += `\n${discDate}: ${formatCurrency(discount.amount)}`;
+            if (discount.notes) {
+                billText += ` - ${discount.notes}`;
+            }
+        });
+        
+        billText += `\n--------------------------------
+*TOTAL SAVINGS:* ${formatCurrency(totalDiscount)}`;
+    }
 
-_Generated on ${currentDate}_
+    billText += `\n
+--------------------------------
+    *CONTACT INFORMATION*
+--------------------------------
+*EDASSERIKKUDIYIL RENTALS PVT LTD*
+Mammattikkanam, Idukki, Kerala
+*Phone:* +91-9447379802
+*Business Hours:* 8:00 AM - 8:00 PM`;
 
-*Thank you for your business!*
-*EDASSERIKKUDIYIL RENTALS*`;
+    billText += `\n
+--------------------------------
+   *GENERATED INFORMATION*
+--------------------------------
+Generated on: ${currentDate}
+Invoice ID: ${invoiceNo}`;
 
-        setBillPreview(billText.trim());
-    };
+    billText += `\n
+================================
+
+*Thank you for choosing EDASSERIKKUDIYIL RENTALS!*
+*We appreciate your business and look forward to serving you again.*
+
+*EDASSERIKKUDIYIL RENTALS PVT LTD*
+*"Your Trusted Rental Partner"*
+
+================================`;
+
+    setBillPreview(billText.trim());
+};
 
     const generateSimpleBill = () => {
         if (!rental) return;
@@ -178,7 +255,7 @@ Paid: ${formatCurrency(totalPaid)}
 
 *Status:* ${balance > 0 ? '🔄 PENDING' : '✅ PAID'}
 
-*Contact:* +91-9961964928
+*Contact:* +91-9447379802
 *Thank You!*`;
 
         setBillPreview(billText.trim());
@@ -234,7 +311,7 @@ EDASSERIKKUDIYIL RENTALS
             return total + (payment.discountAmount || 0);
         }, 0);
     };
-    
+
 
     const getDiscountBreakdown = () => {
         if (!rental || !rental.payments) return [];
@@ -271,16 +348,16 @@ EDASSERIKKUDIYIL RENTALS
 
         // Clean phone number (remove any non-digits)
         const cleanPhone = phoneNumber.replace(/\D/g, '');
-        
+
         // Encode the message for URL
         const encodedMessage = encodeURIComponent(billPreview);
-        
+
         // Create WhatsApp URL
         const whatsappUrl = `https://wa.me/91${cleanPhone}?text=${encodedMessage}`;
-        
+
         // Open WhatsApp in new tab
         window.open(whatsappUrl, '_blank');
-        
+
         toast.success('Opening WhatsApp... Check your phone!', {
             duration: 4000,
             icon: '📱'
@@ -310,7 +387,7 @@ EDASSERIKKUDIYIL RENTALS
         // For mobile devices, use the direct WhatsApp API
         const cleanPhone = phoneNumber.replace(/\D/g, '');
         const encodedMessage = encodeURIComponent(billPreview);
-        
+
         // Different approach for mobile vs desktop
         if (/Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
             // Mobile device - use WhatsApp direct link
