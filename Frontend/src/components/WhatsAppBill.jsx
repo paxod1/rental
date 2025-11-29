@@ -92,8 +92,7 @@ Paid: ${formatCurrency(paidAmount)}
 Balance: ${formatCurrency(productBalance)}`;
     });
 
-    billText += `\n
-
+    
 
 
     // Transaction details
@@ -186,6 +185,29 @@ Balance: ${formatCurrency(productBalance)}`;
         }
     }
 
+    billText += `\n
+*BILL CALCULATION SUMMARY*
+Total Products Amount: ${formatCurrency(totalProductsAmount)}`;
+
+    if (totalDiscount > 0) {
+        billText += `
+Discount: -${formatCurrency(totalDiscount)}
+*Net Amount:* ${formatCurrency(netAmount)}`;
+    }
+
+    billText += `
+Total Paid: ${formatCurrency(totalPaid)}
+*BALANCE DUE:* ${formatCurrency(balance)}`;
+
+
+    // Payment status
+    let statusText = balance > 0 ? 'PENDING PAYMENT' : 'FULLY PAID';
+    let paymentPercentage = subtotal > 0 ? ((totalPaid / subtotal) * 100).toFixed(1) : '0.0';
+
+    billText += `\n
+*PAYMENT STATUS*
+${statusText}`;
+
 
     billText += `\n
 *CONTACT INFORMATION*
@@ -201,10 +223,7 @@ Invoice ID: ${invoiceNo}
 
 
 Thank you for choosing EDASSERIKKUDIYIL RENTALS!
-We appreciate your business and look forward to serving you again.
-
-*EDASSERIKKUDIYIL RENTALS PVT LTD*
-*"Your Trusted Rental Partner"*`;
+We appreciate your business and look forward to serving you again.`;
 
     setBillPreview(billText.trim());
 };
