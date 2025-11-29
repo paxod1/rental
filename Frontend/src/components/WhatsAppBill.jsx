@@ -97,7 +97,8 @@ Balance: ${formatCurrency(productBalance)}`;
 
     // Transaction details
     billText += `\n
-*TRANSACTION HISTORY*`;
+*TRANSACTION HISTORY* 
+`;
 
     // Returns summary with product names
     const returnTransactions = rental.transactions?.filter(t => 
@@ -116,7 +117,8 @@ Balance: ${formatCurrency(productBalance)}`;
             // Check if return amount was paid
             const isPaid = returnTx.amount <= totalPaid;
             
-            billText += `\n${index + 1}. ${returnDate}: ${returnTx.quantity} units of ${productName} - ${formatCurrency(returnTx.amount || 0)} }`;
+            billText += `
+            \n${index + 1}. ${returnDate}: ${returnTx.quantity} units of ${productName} - ${formatCurrency(returnTx.amount || 0)} }`;
         });
     }
 
@@ -155,8 +157,8 @@ Balance: ${formatCurrency(productBalance)}`;
                         (item.productId._id || item.productId).toString() === payment.productId.toString()
                     );
                     if (product) {
-                        paymentInfo += ` for ${product.productName} 
-                        `;
+                        paymentInfo += `
+                         for ${product.productName} `;
                     }
                 }
             
