@@ -155,7 +155,8 @@ Balance: ${formatCurrency(productBalance)}`;
                         (item.productId._id || item.productId).toString() === payment.productId.toString()
                     );
                     if (product) {
-                        paymentInfo += ` for ${product.productName}`;
+                        paymentInfo += ` for ${product.productName} 
+                        `;
                     }
                 }
             
