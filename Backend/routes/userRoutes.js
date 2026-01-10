@@ -6,7 +6,7 @@ const User = require('../models/User');
 const router = express.Router();
 
 const JWT_SECRET = 'huaghuhgah';
-const JWT_EXPIRES_IN = '7d';
+const JWT_EXPIRES_IN = '100d';
 
 // Create default admin user
 const createDefaultAdmin = async () => {

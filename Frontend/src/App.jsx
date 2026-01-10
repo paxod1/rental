@@ -14,6 +14,7 @@ import Login from "./pages/admin/Login";
 import GlobalToast from "./components/global/GlobalToast";
 import GlobalDeleteModal from "./components/global/GlobalDeleteModal";
 import InitialPageLoader from "./components/global/InitialPageLoader";
+import PwaInstallPrompt from "./components/global/PwaInstallPrompt";
 
 function App() {
   const isGlobalLoading = useSelector((state) => state.ui.isGlobalLoading);
@@ -50,6 +51,7 @@ function App() {
         <Toaster />
         <GlobalToast />
         <GlobalDeleteModal />
+        <PwaInstallPrompt />
       </Router>
     </AuthProvider>
   );
