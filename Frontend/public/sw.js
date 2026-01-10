@@ -1,4 +1,4 @@
-const CACHE_NAME = 'edasserikkudiyil-rentals-v1';
+const CACHE_NAME = 'edasserikkudiyil-rentals-v2';
 const urlsToCache = [
     '/',
     '/index.html',
