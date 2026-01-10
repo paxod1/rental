@@ -54,7 +54,6 @@ function AdminHome() {
 
       setAnalytics(analyticsRes.data);
       setProducts(productsRes.data);
-      console.log(analyticsRes.data, productsRes.data);
 
     } catch (error) {
       dispatch(showToast({ message: "Error fetching dashboard data", type: "error" }));

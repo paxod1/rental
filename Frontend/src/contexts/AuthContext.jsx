@@ -76,14 +76,12 @@ export const AuthProvider = ({ children }) => {
   // ✅ BULLETPROOF login function with guaranteed error handling
   const login = async (username, password) => {
     try {
-      console.log('🔐 AuthContext: Login attempt');
 
       const response = await axiosInstance.post('/api/auth/login', {
         username: username?.trim() || '',
         password: password?.trim() || ''
       });
 
-      console.log('📡 AuthContext: Response:', response.data);
 
       if (response?.data?.success) {
         const { token, user } = response.data;

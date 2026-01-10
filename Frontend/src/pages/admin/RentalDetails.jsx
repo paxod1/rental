@@ -218,7 +218,6 @@ function RentalDetails({ rentalId, onBack }) {
         }
 
         if (productItem.amountLocked && productItem.amount > 0) {
-            console.log(`✅ Using locked amount for ${productItem.productName}: ₹${productItem.amount}`);
             return productItem.amount;
         }
 
@@ -234,7 +233,6 @@ function RentalDetails({ rentalId, onBack }) {
             return sum + (transaction.amount || 0);
         }, 0);
 
-        console.log(`💰 Calculated from transactions for ${productItem.productName}: ₹${totalTransactionAmount.toFixed(2)}`);
 
         return Math.max(totalTransactionAmount, productItem.amount || 0);
     };
