@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { showToast } from "../../store/slices/toastSlice";
 import { openDeleteModal, closeDeleteModal, setDeleteModalLoading, setGlobalLoading } from "../../store/slices/uiSlice";
@@ -28,6 +29,7 @@ import WhatsAppBill from "../../components/WhatsAppBill";
 
 function RentalDetails({ rentalId, onBack }) {
     const dispatch = useDispatch();
+    const navigate = useNavigate();
     const [rental, setRental] = useState(null);
     const [products, setProducts] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -401,6 +403,19 @@ function RentalDetails({ rentalId, onBack }) {
                     };
                     break;
 
+                case 'close-all-rentals':
+                    endpoint = `/api/rentals/${rentalId}/close-all-rentals`;
+                    payload = {
+                        returnDate: formData.returnDate,
+                        payAllAmount: formData.amount ? parseFloat(formData.amount) : 0,
+                        discountAmount: formData.discountAmount ? parseFloat(formData.discountAmount) : 0,
+                        paymentMethod: formData.paymentType || 'cash',
+                        paymentNotes: formData.paymentNotes,
+                        returnNotes: formData.notes, // Using generic notes for return notes
+                        discountNotes: formData.discountNotes
+                    };
+                    break;
+
                 case 'return':
                     endpoint = `/api/rentals/${rentalId}/return-and-pay`;
                     payload = {
@@ -496,6 +511,13 @@ function RentalDetails({ rentalId, onBack }) {
             }
             else if (modalType === 'add-products-bulk') {
                 dispatch(showToast({ message: `Successfully added ${payload.products.length} products to rental!`, type: "success" }));
+            }
+            else if (modalType === 'close-all-rentals') {
+                dispatch(showToast({ message: response.data.message || "All rentals closed successfully!", type: "success" }));
+                closeModal();
+                // Redirect to history page as requested
+                navigate('/Rental-History');
+                return; // Stop further execution to prevent fetchRentalDetails on unmounted component
             }
             else {
                 dispatch(showToast({ message: `${modalType.replace('-', ' ')} processed successfully!`, type: "success" }));
@@ -1342,6 +1364,15 @@ function RentalDetails({ rentalId, onBack }) {
                     </button>
 
                     <button
+                        onClick={() => openModal('close-all-rentals')}
+                        disabled={(rental.productItems || []).filter(item => item.currentQuantity > 0).length === 0}
+                        className="bg-orange-600 hover:bg-orange-700 disabled:bg-gray-300 text-white px-4 sm:px-6 py-3 rounded-lg transition-all flex items-center gap-2 justify-center flex-1 sm:flex-none"
+                    >
+                        <FiPackage className="w-5 h-5" />
+                        <span className="break-words text-sm sm:text-base">Return Full Product</span>
+                    </button>
+
+                    <button
                         onClick={() => setShowWhatsAppBill(true)}
                         className="bg-[#086cbe] hover:bg-[#0757a8] text-white px-4 sm:px-6 py-3 rounded-lg transition-all flex items-center gap-2 justify-center flex-1 sm:flex-none"
                     >
@@ -1651,6 +1682,154 @@ function RentalDetails({ rentalId, onBack }) {
                                     </>
                                 )}
 
+                                {/* Close All Rentals Modal */}
+                                {modalType === 'close-all-rentals' && (
+                                    <>
+                                        <div className="mb-4 p-4 bg-orange-50 rounded-lg">
+                                            <p className="text-sm text-orange-800">
+                                                <strong>Close All Rentals & Return Products</strong>
+                                            </p>
+                                            <p className="text-xs text-orange-700 mt-1">
+                                                This will return all active products, calculate final amounts, and allow you to settle payments and discounts in one step.
+                                            </p>
+                                            <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                                                <div className="bg-white p-2 rounded border border-orange-100">
+                                                    <span className="text-gray-600 block text-xs">Active Products</span>
+                                                    <span className="font-bold text-orange-600">{(rental.productItems || []).filter(item => item.currentQuantity > 0).length}</span>
+                                                </div>
+                                                <div className="bg-white p-2 rounded border border-orange-100">
+                                                    <span className="text-gray-600 block text-xs">Total Balance</span>
+                                                    <span className="font-bold text-red-600">₹{calculateTotalBalance().toFixed(2)}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                    <FiCalendar className="w-4 h-4 inline mr-1" />
+                                                    Return Date <span className="text-red-500">*</span>
+                                                </label>
+                                                <input
+                                                    type="date"
+                                                    name="returnDate"
+                                                    value={formData.returnDate}
+                                                    onChange={handleChange}
+                                                    max={new Date().toISOString().split('T')[0]}
+                                                    required
+                                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                    Payment Method
+                                                </label>
+                                                <select
+                                                    name="paymentType"
+                                                    value={formData.paymentType}
+                                                    onChange={handleChange}
+                                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                                                >
+                                                    <option value="cash">Cash</option>
+                                                    <option value="upi">UPI</option>
+                                                    <option value="bank_transfer">Bank Transfer</option>
+                                                    <option value="card">Card</option>
+                                                    <option value="cheque">Cheque</option>
+                                                    <option value="other">Other</option>
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                    💰 Pay Amount (Optional)
+                                                </label>
+                                                <input
+                                                    type="number"
+                                                    name="amount"
+                                                    value={formData.amount}
+                                                    onChange={handleChange}
+                                                    min="0"
+                                                    step="0.01"
+                                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                                                    placeholder="Amount to pay now"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                    🎁 Discount Amount (Optional)
+                                                </label>
+                                                <input
+                                                    type="number"
+                                                    name="discountAmount"
+                                                    value={formData.discountAmount}
+                                                    onChange={handleChange}
+                                                    min="0"
+                                                    step="0.01"
+                                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                                                    placeholder="Discount amount"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-3">
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                    Return Notes
+                                                </label>
+                                                <textarea
+                                                    name="notes"
+                                                    value={formData.notes}
+                                                    onChange={handleChange}
+                                                    rows="2"
+                                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                                                    placeholder="Notes about the return..."
+                                                />
+                                            </div>
+                                            {formData.amount && parseFloat(formData.amount) > 0 && (
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                        Payment Notes
+                                                    </label>
+                                                    <textarea
+                                                        name="paymentNotes"
+                                                        value={formData.paymentNotes}
+                                                        onChange={handleChange}
+                                                        rows="2"
+                                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                                                        placeholder="Notes about the payment..."
+                                                    />
+                                                </div>
+                                            )}
+                                            {formData.discountAmount && parseFloat(formData.discountAmount) > 0 && (
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                        Discount Notes
+                                                    </label>
+                                                    <textarea
+                                                        name="discountNotes"
+                                                        value={formData.discountNotes}
+                                                        onChange={handleChange}
+                                                        rows="2"
+                                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                                                        placeholder="Reason for discount..."
+                                                    />
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div className="mt-4 p-3 bg-gray-50 rounded border border-gray-200">
+                                            <div className="flex justify-between items-center text-sm">
+                                                <span className="text-gray-600">Total Settlement:</span>
+                                                <span className="font-bold text-gray-800">
+                                                    ₹{((parseFloat(formData.amount) || 0) + (parseFloat(formData.discountAmount) || 0)).toFixed(2)}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
+
                                 {/* General Payment Modal */}
                                 {modalType === 'general-payment' && (
                                     <>
@@ -1929,6 +2108,7 @@ function RentalDetails({ rentalId, onBack }) {
                                     >
                                         {isSubmitting && <LoadingSpinner size="sm" color="gray" />}
                                         <span className="break-words">
+                                            {modalType === 'close-all-rentals' && 'Close All Rentals'}
                                             {modalType === 'add-products-bulk' && 'Add All Products'}
                                             {modalType === 'add-product' && 'Add Product'}
                                             {modalType === 'general-payment' && 'Process Payment'}

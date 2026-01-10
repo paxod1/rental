@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useDispatch } from "react-redux";
 import { showToast } from "../../store/slices/toastSlice";
-import { openDeleteModal, closeDeleteModal, setDeleteModalLoading, setGlobalLoading } from "../../store/slices/uiSlice";
+import { setGlobalLoading } from "../../store/slices/uiSlice";
 import {
   FiSearch,
   FiEye,
@@ -39,6 +39,9 @@ function RentalHistory() {
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [rentalToDelete, setRentalToDelete] = useState(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Enhanced payment data with discount support (same as RentalDetails)
   const [paymentData, setPaymentData] = useState({
@@ -68,8 +71,8 @@ function RentalHistory() {
       });
 
       setRentals(response.data.rentals);
-      setTotalPages(response.data.totalPages);
-      setTotalRentals(response.data.totalRentals);
+      setTotalPages(response.data.pagination?.totalPages || 1);
+      setTotalRentals(response.data.pagination?.totalRentals || 0);
     } catch (error) {
       dispatch(showToast({ message: "Error fetching rental history", type: "error" }));
       console.error("Error:", error);
@@ -196,11 +199,11 @@ function RentalHistory() {
     setIsDeleting(true);
     try {
       await axiosInstance.delete(`/api/rentals/${rentalToDelete._id}`);
-      toast.success("Rental record deleted successfully!");
+      dispatch(showToast({ message: "Rental record deleted successfully!", type: "success" }));
       closeDeleteModal();
-      fetchRentalHistory();
+      fetchRentalHistory(false);
     } catch (error) {
-      toast.error(error.response?.data?.message || "Error deleting rental");
+      dispatch(showToast({ message: error.response?.data?.message || "Error deleting rental", type: "error" }));
       console.error("Error:", error);
     } finally {
       setIsDeleting(false);
@@ -370,10 +373,14 @@ function RentalHistory() {
 
                   {/* Financial Summary */}
                   <div className="mb-3 p-3 bg-gray-50 rounded-lg">
-                    <div className="grid grid-cols-3 gap-2 text-center">
+                    <div className="grid grid-cols-2 gap-2 text-center mb-2">
                       <div>
                         <p className="text-xs text-gray-500">Total</p>
                         <p className="font-semibold text-sm">₹{rental.paymentSummary?.totalAmount || rental.totalAmount || 0}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500">Discount</p>
+                        <p className="font-semibold text-sm text-orange-600">₹{rental.discountInfo?.totalDiscount || 0}</p>
                       </div>
                       <div>
                         <p className="text-xs text-gray-500">Paid</p>
@@ -386,9 +393,17 @@ function RentalHistory() {
                     </div>
                     {/* Progress bar */}
                     <div className="mt-2">
-                      <div className="w-full bg-gray-200 rounded-full h-1">
+                      <div className="w-full bg-gray-200 rounded-full h-1 flex overflow-hidden">
+                        {/* Discount Part */}
                         <div
-                          className="bg-green-500 h-1 rounded-full"
+                          className="bg-orange-400 h-1"
+                          style={{
+                            width: `${rental.paymentSummary?.discountProgress || 0}%`
+                          }}
+                        ></div>
+                        {/* Paid Part */}
+                        <div
+                          className="bg-green-500 h-1"
                           style={{
                             width: `${rental.paymentSummary?.paymentProgress || 0}%`
                           }}
@@ -524,6 +539,11 @@ function RentalHistory() {
                         <div className="text-sm lg:text-lg font-medium text-gray-900">
                           Total: ₹{rental.paymentSummary?.totalAmount || rental.totalAmount || 0}
                         </div>
+                        {rental.discountInfo?.totalDiscount > 0 && (
+                          <div className="text-xs lg:text-sm text-orange-600">
+                            Discount: -₹{rental.discountInfo.totalDiscount}
+                          </div>
+                        )}
                         <div className="text-sm lg:text-base text-green-600">
                           Paid: ₹{rental.paymentSummary?.totalPaid || rental.totalPaid || 0}
                         </div>
@@ -534,9 +554,15 @@ function RentalHistory() {
                         )}
 
                         <div className="mt-1">
-                          <div className="w-full bg-gray-200 rounded-full h-1">
+                          <div className="w-full bg-gray-200 rounded-full h-1 flex overflow-hidden">
                             <div
-                              className="bg-green-500 h-1 rounded-full"
+                              className="bg-orange-400 h-1"
+                              style={{
+                                width: `${rental.paymentSummary?.discountProgress || 0}%`
+                              }}
+                            ></div>
+                            <div
+                              className="bg-green-500 h-1"
                               style={{
                                 width: `${rental.paymentSummary?.paymentProgress || 0}%`
                               }}
@@ -847,8 +873,8 @@ function RentalHistory() {
                           : 'bg-green-50 border-green-400'
                         : 'bg-blue-50 border-[#086cbe]'
                         }`}>
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-                          <div>
+                        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 sm:gap-4">
+                          <div className="sm:col-span-2">
                             <p className="text-xs sm:text-sm font-medium text-gray-600">Product</p>
                             <p className="font-semibold text-sm sm:text-base">{item.productId?.name || item.productName}</p>
                           </div>
@@ -860,8 +886,19 @@ function RentalHistory() {
                             </p>
                           </div>
                           <div>
-                            <p className="text-xs sm:text-sm font-medium text-gray-600">Amount</p>
-                            <p className="font-semibold text-sm sm:text-base">₹{item.amount || 0}</p>
+                            <p className="text-xs sm:text-sm font-medium text-gray-600">Financials</p>
+                            <div className="text-sm sm:text-base">
+                              <p>Amt: ₹{item.amount || 0}</p>
+                              {selectedRental.discountInfo?.productDiscounts?.find(d =>
+                                (d.productId._id || d.productId) === (item.productId?._id || item.productId)
+                              )?.discount > 0 && (
+                                  <p className="text-orange-600 text-xs">
+                                    Disc: -₹{selectedRental.discountInfo.productDiscounts.find(d =>
+                                      (d.productId._id || d.productId) === (item.productId?._id || item.productId)
+                                    ).discount}
+                                  </p>
+                                )}
+                            </div>
                           </div>
                           <div>
                             <p className="text-xs sm:text-sm font-medium text-gray-600">Balance</p>
@@ -903,20 +940,28 @@ function RentalHistory() {
                   Financial Summary (All Products)
                 </h4>
                 <div className={`p-4 sm:p-6 rounded-lg ${selectedRental.balanceAmount <= 0 ? 'bg-green-50' : 'bg-red-50'}`}>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6">
                     <div className="text-center">
                       <p className={`text-xs sm:text-sm ${selectedRental.balanceAmount <= 0 ? 'text-green-600' : 'text-red-600'}`}>
                         Total Amount
                       </p>
-                      <p className={`font-bold text-2xl sm:text-3xl ${selectedRental.balanceAmount <= 0 ? 'text-green-900' : 'text-red-900'}`}>
+                      <p className={`font-bold text-xl sm:text-2xl ${selectedRental.balanceAmount <= 0 ? 'text-green-900' : 'text-red-900'}`}>
                         ₹{selectedRental.totalAmount || 0}
+                      </p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xs sm:text-sm text-orange-600">
+                        Total Discount
+                      </p>
+                      <p className="font-bold text-xl sm:text-2xl text-orange-800">
+                        ₹{selectedRental.discountInfo?.totalDiscount || 0}
                       </p>
                     </div>
                     <div className="text-center">
                       <p className={`text-xs sm:text-sm ${selectedRental.balanceAmount <= 0 ? 'text-green-600' : 'text-red-600'}`}>
                         Total Paid
                       </p>
-                      <p className={`font-bold text-2xl sm:text-3xl ${selectedRental.balanceAmount <= 0 ? 'text-green-900' : 'text-red-900'}`}>
+                      <p className={`font-bold text-xl sm:text-2xl ${selectedRental.balanceAmount <= 0 ? 'text-green-900' : 'text-red-900'}`}>
                         ₹{selectedRental.totalPaid || 0}
                       </p>
                     </div>
@@ -924,7 +969,7 @@ function RentalHistory() {
                       <p className={`text-xs sm:text-sm ${selectedRental.balanceAmount <= 0 ? 'text-green-600' : 'text-red-600'}`}>
                         Balance Due
                       </p>
-                      <p className={`font-bold text-2xl sm:text-3xl ${selectedRental.balanceAmount <= 0 ? 'text-green-900' : 'text-red-900'}`}>
+                      <p className={`font-bold text-xl sm:text-2xl ${selectedRental.balanceAmount <= 0 ? 'text-green-900' : 'text-red-900'}`}>
                         ₹{selectedRental.balanceAmount || 0}
                       </p>
                     </div>
@@ -934,15 +979,33 @@ function RentalHistory() {
                   <div className="mt-4">
                     <div className="flex justify-between text-xs sm:text-sm text-gray-600 mb-1">
                       <span>Payment Progress</span>
-                      <span>{Math.round((selectedRental.totalPaid / selectedRental.totalAmount) * 100 || 0)}%</span>
+                      <span>{Math.round((selectedRental.paymentSummary?.paymentProgress || 0))} % Paid</span>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div className="w-full bg-gray-200 rounded-full h-2 flex overflow-hidden">
                       <div
-                        className="bg-green-500 h-2 rounded-full transition-all"
+                        className="bg-orange-400 h-2 transition-all"
+                        title="Discount"
                         style={{
-                          width: `${Math.min((selectedRental.totalPaid / selectedRental.totalAmount) * 100 || 0, 100)}%`
+                          width: `${Math.min((selectedRental.paymentSummary?.discountProgress || 0), 100)}%`
                         }}
                       ></div>
+                      <div
+                        className="bg-green-500 h-2 transition-all"
+                        title="Paid"
+                        style={{
+                          width: `${Math.min((selectedRental.paymentSummary?.paymentProgress || 0), 100)}%`
+                        }}
+                      ></div>
+                    </div>
+                    <div className="flex gap-4 mt-1 justify-end">
+                      <div className="flex items-center gap-1 text-xs text-gray-500">
+                        <div className="w-2 h-2 rounded-full bg-orange-400"></div>
+                        <span>Discount ({Math.round(selectedRental.paymentSummary?.discountProgress || 0)}%)</span>
+                      </div>
+                      <div className="flex items-center gap-1 text-xs text-gray-500">
+                        <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                        <span>Paid ({Math.round(selectedRental.paymentSummary?.paymentProgress || 0)}%)</span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -953,6 +1016,38 @@ function RentalHistory() {
       )}
 
 
+      {/* Delete Confirmation Modal */}
+      {isDeleteModalOpen && rentalToDelete && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-lg border border-gray-200 w-full max-w-sm">
+            <div className="p-6 text-center">
+              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
+                <FiTrash2 className="h-6 w-6 text-red-600" />
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Delete Rental Record</h3>
+              <p className="text-sm text-gray-500 mb-6">
+                Are you sure you want to delete the rental record for <strong>{rentalToDelete.customerName}</strong>? This action cannot be undone.
+              </p>
+              <div className="flex gap-3 justify-center">
+                <button
+                  onClick={closeDeleteModal}
+                  disabled={isDeleting}
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeleteConfirm}
+                  disabled={isDeleting}
+                  className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-all flex items-center gap-2 text-sm font-medium disabled:opacity-50"
+                >
+                  {isDeleting ? 'Deleting...' : 'Delete'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
