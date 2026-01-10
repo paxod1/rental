@@ -1,7 +1,9 @@
 // contexts/AuthContext.js
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import Cookies from 'js-cookie';
+import { useDispatch } from 'react-redux';
 import axiosInstance from '../../axiosCreate';
+import { setGlobalLoading } from '../store/slices/uiSlice';
 
 const AuthContext = createContext();
 
@@ -14,6 +16,7 @@ export const useAuth = () => {
 };
 
 export const AuthProvider = ({ children }) => {
+  const dispatch = useDispatch();
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -23,6 +26,7 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const checkAuthStatus = async () => {
+    dispatch(setGlobalLoading(true));
     try {
       const token = Cookies.get('authToken');
       const userData = Cookies.get('user');
@@ -63,6 +67,7 @@ export const AuthProvider = ({ children }) => {
       console.error('Auth check failed:', error);
     } finally {
       setIsLoading(false);
+      dispatch(setGlobalLoading(false));
     }
   };
 
