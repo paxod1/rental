@@ -256,7 +256,7 @@ function RentalHistory() {
       </div>
 
       {/* Search and Filters */}
-      <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 mb-4 sm:mb-6">
+      <div className="bg-white rounded-xl shadow-md border border-gray-200 p-4 sm:p-6 mb-4 sm:mb-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
           <div className="relative flex-1 max-w-md w-full">
             <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#086cbe] w-4 h-4 sm:w-5 sm:h-5" />
@@ -265,7 +265,7 @@ function RentalHistory() {
               placeholder="Search by customer name or phone..."
               value={searchTerm}
               onChange={handleSearch}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#086cbe] focus:border-transparent text-sm sm:text-base lg:text-lg"
+              className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#086cbe] focus:border-transparent text-sm sm:text-base lg:text-lg"
             />
           </div>
           <div className="text-xs sm:text-sm text-gray-600 whitespace-nowrap">
@@ -308,7 +308,7 @@ function RentalHistory() {
 
       {/* Rental History Table/Cards */}
       {rentals.length === 0 ? (
-        <div className="bg-white rounded-xl shadow-xl">
+        <div className="bg-white rounded-xl shadow-md border border-gray-200">
           <EmptyState
             icon={FiPackage}
             title="No Rental History"
@@ -317,7 +317,7 @@ function RentalHistory() {
           />
         </div>
       ) : (
-        <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+        <div className="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden">
           {/* Mobile Card View */}
           <div className="block lg:hidden divide-y divide-gray-200">
             {rentals.map((rental) => {
@@ -607,7 +607,7 @@ function RentalHistory() {
       {/* Enhanced Payment Modal - Fully Responsive */}
       {isPaymentModalOpen && selectedRental && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2 sm:p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg mx-2 sm:mx-4 max-h-[95vh] overflow-y-auto">
+          <div className="bg-white rounded-xl shadow-lg border border-gray-200 w-full max-w-lg mx-2 sm:mx-4 max-h-[95vh] overflow-y-auto">
             <div className="bg-[#086cbe] text-white px-3 sm:px-6 py-3 sm:py-4 rounded-t-xl">
               <div className="flex justify-between items-center">
                 <h3 className="text-base sm:text-lg lg:text-2xl font-semibold">Payment & Discount</h3>
@@ -780,7 +780,7 @@ function RentalHistory() {
       {/* Rental Details Modal */}
       {isModalOpen && selectedRental && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-3 sm:p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-xl shadow-lg border border-gray-200 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
             <div className="bg-[#086cbe] text-white px-4 sm:px-6 py-3 sm:py-4 rounded-t-xl">
               <div className="flex justify-between items-center">
                 <h3 className="text-lg sm:text-xl font-semibold">

@@ -125,7 +125,7 @@ function AdminRented() {
                 <p className="text-gray-600 mt-2 mb-4 sm:mb-6 text-sm sm:text-base lg:text-lg">Click on any rental card to view details and manage</p>
 
                 {/* Search Section */}
-                <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 mb-4 sm:mb-6">
+                <div className="bg-white rounded-xl shadow-md border border-gray-200 p-4 sm:p-6 mb-4 sm:mb-6">
                     <div className="flex items-center gap-2 mb-3 sm:mb-4">
                         <FiSearch className="w-4 h-4 sm:w-5 sm:h-5 text-[#086cbe]" />
                         <h3 className="text-base sm:text-lg lg:text-2xl font-bold text-gray-800">Search & Filter</h3>
@@ -194,7 +194,7 @@ function AdminRented() {
 
             {/* Rentals List - Fixed Responsive Cards */}
             {filteredRentals.length === 0 ? (
-                <div className="bg-white rounded-xl shadow-xl">
+                <div className="bg-white rounded-xl shadow-md border border-gray-200">
                     <EmptyState
                         icon={searchCustomer || searchProduct ? FiSearch : FiPackage}
                         title={searchCustomer || searchProduct ? "No Matching Rentals" : "No Active Rentals"}
@@ -224,7 +224,7 @@ function AdminRented() {
                             <div
                                 key={rental._id}
                                 onClick={() => handleCardClick(rental._id)}
-                                className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer border border-gray-50 hover:border-[#086cbe] overflow-hidden"
+                                className="bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300 cursor-pointer border border-gray-100 hover:border-[#086cbe] overflow-hidden"
                             >
                                 <div className="p-4 sm:p-6">
                                     {/* Mobile Layout - Completely Rewritten for Better Flow */}

@@ -3,7 +3,7 @@ import { FiPackage } from 'react-icons/fi';
 
 const InitialPageLoader = () => {
     return (
-        <div className="fixed inset-0 z-[9999] bg-white flex flex-col items-center justify-center">
+        <div className="fixed top-16 bottom-20 sm:bottom-0 left-0 right-0 z-40 bg-white flex flex-col items-center justify-center">
             <div className="relative mb-8">
                 {/* Main Icon Container with Glow */}
                 <div className="relative animate-bounce-subtle">

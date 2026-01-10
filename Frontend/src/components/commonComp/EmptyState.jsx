@@ -24,7 +24,7 @@ const EmptyState = ({
       {showAction && onAction && (
         <button
           onClick={onAction}
-          className="bg-[#086cbe] hover:bg-[#0757a8] text-white px-6 py-2 rounded-lg font-medium shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-2"
+          className="bg-[#086cbe] hover:bg-[#0757a8] text-white px-6 py-2 rounded-lg font-medium shadow-md hover:shadow-lg transition-all duration-300 flex items-center gap-2"
         >
           <FiPlus className="w-4 h-4" />
           {actionLabel}

@@ -163,7 +163,7 @@ function AdminProducts() {
         </h2>
         <button
           onClick={openAddModal}
-          className="bg-[#086cbe] hover:bg-[#0757a8] cursor-pointer text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg font-medium shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center gap-2 text-sm sm:text-base w-full sm:w-auto"
+          className="bg-[#086cbe] hover:bg-[#0757a8] cursor-pointer text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg font-medium shadow-md hover:shadow-lg transition-all duration-300 flex items-center justify-center gap-2 text-sm sm:text-base w-full sm:w-auto"
         >
           <FiPlus className="w-4 h-4 sm:w-5 sm:h-5" />
           Add Product
@@ -171,7 +171,7 @@ function AdminProducts() {
       </div>
 
       {/* Products Table or Empty State */}
-      <div className="bg-white rounded-xl shadow-xl overflow-hidden">
+      <div className="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden">
         {products.length === 0 ? (
           <EmptyState
             icon={FiPackage}
@@ -215,13 +215,13 @@ function AdminProducts() {
                           <div className="flex justify-center gap-3">
                             <button
                               onClick={() => openEditModal(product)}
-                              className="bg-gradient-to-r from-blue-600 to-[#086cbe] hover:from-[#086cbe] hover:to-blue-700 text-white p-2 rounded-lg transition-all duration-200 hover:shadow-md"
+                              className="bg-gradient-to-r from-blue-600 to-[#086cbe] hover:from-[#086cbe] hover:to-blue-700 text-white p-2 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
                             >
                               <FiEdit className="w-4 h-4" />
                             </button>
                             <button
                               onClick={() => openDeleteConfirm(product._id)}
-                              className="bg-red-600 hover:bg-red-700 text-white p-2 rounded-lg transition-all duration-200 hover:shadow-md"
+                              className="bg-red-600 hover:bg-red-700 text-white p-2 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
                             >
                               <FiTrash2 className="w-4 h-4" />
                             </button>
@@ -256,13 +256,13 @@ function AdminProducts() {
                       <div className="flex gap-2 ml-3">
                         <button
                           onClick={() => openEditModal(product)}
-                          className="bg-[#086cbe] hover:bg-[#0757a8] text-white p-2 rounded-lg transition-all duration-200 hover:shadow-md"
+                          className="bg-[#086cbe] hover:bg-[#0757a8] text-white p-2 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
                         >
                           <FiEdit className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => openDeleteConfirm(product._id)}
-                          className="bg-red-600 hover:bg-red-700 text-white p-2 rounded-lg transition-all duration-200 hover:shadow-md"
+                          className="bg-red-600 hover:bg-red-700 text-white p-2 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
                         >
                           <FiTrash2 className="w-4 h-4" />
                         </button>
@@ -305,13 +305,13 @@ function AdminProducts() {
                           <div className="flex justify-center gap-2">
                             <button
                               onClick={() => openEditModal(product)}
-                              className="bg-[#086cbe] hover:bg-[#0757a8] text-white p-2 rounded-lg transition-all duration-200 hover:shadow-md"
+                              className="bg-[#086cbe] hover:bg-[#0757a8] text-white p-2 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
                             >
                               <FiEdit className="w-4 h-4" />
                             </button>
                             <button
                               onClick={() => openDeleteConfirm(product._id)}
-                              className="bg-red-600 hover:bg-red-700 text-white p-2 rounded-lg transition-all duration-200 hover:shadow-md"
+                              className="bg-red-600 hover:bg-red-700 text-white p-2 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
                             >
                               <FiTrash2 className="w-4 h-4" />
                             </button>
@@ -338,7 +338,7 @@ function AdminProducts() {
       {/* Add/Edit Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-3 sm:p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md transform transition-all">
+          <div className="bg-white rounded-2xl shadow-lg border border-gray-200 w-full max-w-md transform transition-all">
             <div className="bg-[#086cbe] text-white px-4 sm:px-6 py-3 sm:py-4 rounded-t-xl">
               <div className="flex justify-between items-center">
                 <h3 className="text-lg sm:text-xl font-semibold">

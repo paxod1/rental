@@ -118,14 +118,14 @@ function AdminHome() {
             </div>
 
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-              <button className="bg-white hover:bg-slate-50 text-slate-700 px-4 sm:px-6 py-2 sm:py-3 rounded-xl font-medium shadow-md hover:shadow-lg transition-all duration-300 flex items-center justify-center gap-2 border border-slate-200 text-sm sm:text-base">
+              <button className="bg-white hover:bg-slate-50 text-slate-700 px-4 sm:px-6 py-2 sm:py-3 rounded-xl font-medium shadow-sm hover:shadow-md transition-all duration-300 flex items-center justify-center gap-2 border border-gray-200 text-sm sm:text-base">
                 <FiBarChart2 className="w-4 h-4 sm:w-5 sm:h-5" />
                 <span className="hidden sm:inline">Reports</span>
                 <span className="sm:hidden">Reports</span>
               </button>
               <button
                 onClick={openModal}
-                className="bg-[#086cbe] hover:bg-[#0757a8] cursor-pointer text-white px-4 sm:px-8 py-2 sm:py-3 rounded-xl font-medium shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center gap-2 text-sm sm:text-base"
+                className="bg-[#086cbe] hover:bg-[#0757a8] cursor-pointer text-white px-4 sm:px-8 py-2 sm:py-3 rounded-xl font-medium shadow-md hover:shadow-lg transition-all duration-300 flex items-center justify-center gap-2 text-sm sm:text-base"
               >
                 <FiPlus className="w-4 h-4 sm:w-5 sm:h-5" />
                 New Rental
@@ -137,7 +137,7 @@ function AdminHome() {
         {/* Analytics Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-6 sm:mb-8">
           {/* Total Products */}
-          <div onClick={() => { navigate("/Admin-products") }} className="cursor-pointer bg-white rounded-xl lg:rounded-2xl p-3 sm:p-4 lg:p-6 shadow-lg hover:shadow-xl transition-all duration-300 border border-slate-100">
+          <div onClick={() => { navigate("/Admin-products") }} className="cursor-pointer bg-white rounded-xl lg:rounded-2xl p-3 sm:p-4 lg:p-6 shadow-md hover:shadow-lg transition-all duration-300 border border-gray-200">
             <div className="flex items-center justify-between mb-2 sm:mb-4">
               <div className="bg-blue-100 p-2 sm:p-3 rounded-lg lg:rounded-xl">
                 <FiPackage className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-blue-600" />
@@ -154,7 +154,7 @@ function AdminHome() {
           </div>
 
           {/* Active Rentals */}
-          <div onClick={() => { navigate("/Admin-Rented") }} className="bg-white cursor-pointer rounded-xl lg:rounded-2xl p-3 sm:p-4 lg:p-6 shadow-lg hover:shadow-xl transition-all duration-300 border border-slate-100">
+          <div onClick={() => { navigate("/Admin-Rented") }} className="bg-white cursor-pointer rounded-xl lg:rounded-2xl p-3 sm:p-4 lg:p-6 shadow-md hover:shadow-lg transition-all duration-300 border border-gray-200">
             <div className="flex items-center justify-between mb-2 sm:mb-4">
               <div className="bg-green-100 p-2 sm:p-3 rounded-lg lg:rounded-xl">
                 <FiActivity className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-green-600" />
@@ -171,7 +171,7 @@ function AdminHome() {
           </div>
 
           {/* Total Rentals */}
-          <div className="bg-white cursor-pointer rounded-xl lg:rounded-2xl p-3 sm:p-4 lg:p-6 shadow-lg hover:shadow-xl transition-all duration-300 border border-slate-100">
+          <div className="bg-white cursor-pointer rounded-xl lg:rounded-2xl p-3 sm:p-4 lg:p-6 shadow-md hover:shadow-lg transition-all duration-300 border border-gray-200">
             <div className="flex items-center justify-between mb-2 sm:mb-4">
               <div className="bg-purple-100 p-2 sm:p-3 rounded-lg lg:rounded-xl">
                 <FiTrendingUp className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-purple-600" />
@@ -188,7 +188,7 @@ function AdminHome() {
           </div>
 
           {/* Stock Alerts */}
-          <div onClick={() => { navigate("/Admin-products") }} className="bg-white cursor-pointer rounded-xl lg:rounded-2xl p-3 sm:p-4 lg:p-6 shadow-lg hover:shadow-xl transition-all duration-300 border border-slate-100">
+          <div onClick={() => { navigate("/Admin-products") }} className="bg-white cursor-pointer rounded-xl lg:rounded-2xl p-3 sm:p-4 lg:p-6 shadow-md hover:shadow-lg transition-all duration-300 border border-gray-200">
             <div className="flex items-center justify-between mb-2 sm:mb-4">
               <div className={`p-2 sm:p-3 rounded-lg lg:rounded-xl ${outOfStockProducts > 0 ? 'bg-red-100' : lowStockProducts > 0 ? 'bg-amber-100' : 'bg-green-100'}`}>
                 <FiAlertTriangle className={`w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 ${outOfStockProducts > 0 ? 'text-red-600' : lowStockProducts > 0 ? 'text-amber-600' : 'text-green-600'}`} />
@@ -217,7 +217,7 @@ function AdminHome() {
 
           {/* Products Inventory */}
           <div className="xl:col-span-2">
-            <div className="bg-white rounded-xl lg:rounded-2xl shadow-lg border border-slate-100">
+            <div className="bg-white rounded-xl lg:rounded-2xl shadow-md border border-gray-200">
               <div className="p-4 sm:p-6 border-b border-slate-100">
                 <h3 className="text-lg sm:text-xl lg:text-2xl font-bold text-slate-800 flex items-center gap-2">
                   <FiPackage className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
@@ -280,7 +280,7 @@ function AdminHome() {
           <div className="xl:col-span-1 space-y-4 sm:space-y-6">
 
             {/* Quick Actions */}
-            <div className="bg-white rounded-xl lg:rounded-2xl shadow-lg p-4 sm:p-6 border border-slate-100">
+            <div className="bg-white rounded-xl lg:rounded-2xl shadow-md p-4 sm:p-6 border border-gray-200">
               <h3 className="text-lg sm:text-xl lg:text-2xl font-bold text-slate-800 mb-4 sm:mb-6 flex items-center gap-2">
                 <FiActivity className="w-5 h-5 sm:w-6 sm:h-6 text-green-600" />
                 Quick Actions
@@ -289,7 +289,7 @@ function AdminHome() {
               <div className="space-y-2 sm:space-y-3">
                 <button
                   onClick={openModal}
-                  className="w-full cursor-pointer group p-3 sm:p-4 bg-[#086cbe] hover:bg-[#0757a8] text-white rounded-lg lg:rounded-xl transition-all duration-300 text-left shadow-lg hover:shadow-xl"
+                  className="w-full cursor-pointer group p-3 sm:p-4 bg-[#086cbe] hover:bg-[#0757a8] text-white rounded-lg lg:rounded-xl transition-all duration-300 text-left shadow-md hover:shadow-lg"
                 >
                   <div className="flex items-center gap-2 sm:gap-3">
                     <div className="bg-white bg-opacity-20 p-1.5 sm:p-2 rounded-lg group-hover:bg-opacity-30 transition-all flex-shrink-0">
@@ -303,7 +303,7 @@ function AdminHome() {
                 </button>
 
                 <button
-                  className="w-full cursor-pointer group p-3 sm:p-4 bg-[#086cbe] hover:bg-[#0757a8] text-white rounded-lg lg:rounded-xl transition-all duration-300 text-left shadow-lg hover:shadow-xl"
+                  className="w-full cursor-pointer group p-3 sm:p-4 bg-[#086cbe] hover:bg-[#0757a8] text-white rounded-lg lg:rounded-xl transition-all duration-300 text-left shadow-md hover:shadow-lg"
                   onClick={() => { navigate("/Admin-products") }}
                 >
                   <div className="flex items-center gap-2 sm:gap-3">

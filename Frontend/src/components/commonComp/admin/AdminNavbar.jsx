@@ -151,7 +151,7 @@ function AdminNavbar() {
             </nav>
 
             {/* Mobile Header - Brand logo + Logout button - REMOVED z-40 and added z-50 */}
-            <div className="md:hidden fixed top-0 w-full z-50 bg-white shadow-lg">
+            <div className="md:hidden fixed top-0 w-full z-50 bg-white shadow-sm ">
                 <div className="px-4 py-3 flex justify-between items-center">
                     {/* Brand Logo */}
                     <Link to="/" className="flex flex-col items-start">
@@ -207,20 +207,16 @@ function AdminNavbar() {
                                             : 'text-gray-600 group-hover:text-[#086cbe]'
                                             }`}
                                     />
+                                 
                                 </div>
+                                 <p  className={`text-sm text-center ${isActiveLink(item.path)
+                                            ? 'text-[#086cbe]'
+                                            : 'text-gray-600 group-hover:text-[#086cbe]'
+                                            }`}>  {item.label}</p>
 
-                                {/* Active Indicator Dot */}
-                                {isActiveLink(item.path) && (
-                                    <div className="w-1.5 h-1.5 bg-[#086cbe] rounded-full mt-1 animate-pulse"></div>
-                                )}
+                               
 
-                                {/* Tooltip */}
-                                {showTooltip === item.label && (
-                                    <div className="absolute -top-12 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded-md whitespace-nowrap animate-fade-in">
-                                        {item.label}
-                                        <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-2 border-l-transparent border-r-2 border-r-transparent border-t-2 border-t-gray-900"></div>
-                                    </div>
-                                )}
+                             
                             </Link>
                         ))}
                     </div>

@@ -64,7 +64,7 @@ function Login() {
                     <p className="text-gray-600 text-sm lg:text-lg">Rental Management System</p>
                 </div>
 
-                <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
+                <div className="bg-white rounded-2xl shadow-md p-8 border border-gray-200">
                     {/* ✅ NO FORM - Just divs */}
                     <div className="space-y-6">
                         <div>
@@ -111,7 +111,7 @@ function Login() {
                         <button
                             onClick={handleLogin}
                             disabled={isLoading}
-                            className="w-full bg-[#086cbe] hover:bg-[#0757a8] text-white py-3 lg:py-4 rounded-lg font-bold lg:text-xl disabled:opacity-50 transition duration-200 shadow-lg"
+                            className="w-full bg-[#086cbe] hover:bg-[#0757a8] text-white py-3 lg:py-4 rounded-lg font-bold lg:text-xl disabled:opacity-50 transition duration-200 shadow-md"
                         >
                             {isLoading ? (
                                 <div className="flex items-center justify-center">

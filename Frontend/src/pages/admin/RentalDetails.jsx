@@ -883,7 +883,7 @@ function RentalDetails({ rentalId, onBack }) {
         const productActivities = getProductActivities(productItem.productId._id || productItem.productId);
 
         return (
-            <div key={index} className="bg-gray-50 p-4 sm:p-8 rounded-lg shadow-xl border border-[#eddbdb]">
+            <div key={index} className="bg-gray-50 p-4 sm:p-8 rounded-lg shadow-md border border-gray-200">
                 <div className="flex md:mt-5 flex-col lg:flex-row justify-between items-start mb-4 space-y-4 lg:space-y-0">
                     <div className="flex-1 w-full">
                         <div className="flex flex-wrap items-center gap-2 mb-2">
@@ -988,7 +988,7 @@ function RentalDetails({ rentalId, onBack }) {
                     </div>
                 </div>
 
-                <div className="mt-4 p-4 bg-white rounded-2xl shadow-xl shadow-gray-200">
+                <div className="mt-4 p-4 bg-white rounded-2xl shadow-md border border-gray-100">
                     <h5 className="text-base font-semibold text-gray-700 mb-3">Payment Summary</h5>
                     <div className="grid grid-cols-3 gap-2 sm:gap-4 text-sm">
                         <div className="text-center p-2 bg-gray-50 rounded">
@@ -1020,7 +1020,7 @@ function RentalDetails({ rentalId, onBack }) {
                     </div>
                 </div>
 
-                <div className="mt-4 p-3 sm:p-5 bg-white rounded-2xl shadow-xl shadow-gray-200">
+                <div className="mt-4 p-3 sm:p-5 bg-white rounded-2xl shadow-md border border-gray-100">
                     <div className="flex items-center justify-between mb-3">
                         <h5 className="text-sm font-medium text-gray-700">Product Activity History</h5>
                         <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
@@ -1049,7 +1049,7 @@ function RentalDetails({ rentalId, onBack }) {
     if (!rental) {
         return (
             <div className="p-4 sm:p-6 bg-gradient-to-br from-blue-50 to-white min-h-screen">
-                <div className="bg-white rounded-xl shadow-lg p-6 sm:p-8 text-center">
+                <div className="bg-white rounded-xl shadow-md border border-gray-200 p-6 sm:p-8 text-center">
                     <h2 className="text-xl font-semibold text-gray-800 mb-4">Rental Not Found</h2>
                     <button
                         onClick={onBack}
@@ -1352,7 +1352,7 @@ function RentalDetails({ rentalId, onBack }) {
             {/* Enhanced Modal with Multiple Products Support */}
             {isModalOpen && (
                 <div className="fixed inset-0 bg-black/50 bg-opacity-50 flex items-start sm:items-center justify-center z-50 p-2 sm:p-4 overflow-y-auto">
-                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden mt-4 sm:mt-0">
+                    <div className="bg-white rounded-xl shadow-lg border border-gray-200 w-full max-w-4xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden mt-4 sm:mt-0">
                         <div className="flex items-center justify-between p-4 sm:p-6 border-b">
                             <h3 className="text-lg sm:text-xl font-semibold text-gray-800 break-words">
                                 {modalType === 'add-products-bulk' ? 'Add Multiple Products' :
