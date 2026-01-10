@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useDispatch } from "react-redux";
 import { showToast } from "../../store/slices/toastSlice";
-import { openDeleteModal, closeDeleteModal, setDeleteModalLoading } from "../../store/slices/uiSlice";
+import { openDeleteModal, closeDeleteModal, setDeleteModalLoading, setGlobalLoading } from "../../store/slices/uiSlice";
 import {
     FiArrowLeft,
     FiX,
@@ -132,6 +132,7 @@ function RentalDetails({ rentalId, onBack }) {
 
     const fetchRentalDetails = async () => {
         try {
+            dispatch(setGlobalLoading(true));
             setIsLoading(true);
             const response = await axiosInstance.get(`/api/rentals/${rentalId}`);
             setRental(response.data);
@@ -147,6 +148,7 @@ function RentalDetails({ rentalId, onBack }) {
             console.error("Error:", error);
         } finally {
             setIsLoading(false);
+            dispatch(setGlobalLoading(false));
         }
     };
 
@@ -883,7 +885,7 @@ function RentalDetails({ rentalId, onBack }) {
         const productActivities = getProductActivities(productItem.productId._id || productItem.productId);
 
         return (
-            <div key={index} className="bg-gray-50 p-4 sm:p-8 rounded-lg shadow-md border border-gray-200">
+            <div key={index} className="bg-gray-50 p-4 sm:p-8 rounded-lg shadow-sm border border-gray-200">
                 <div className="flex md:mt-5 flex-col lg:flex-row justify-between items-start mb-4 space-y-4 lg:space-y-0">
                     <div className="flex-1 w-full">
                         <div className="flex flex-wrap items-center gap-2 mb-2">
@@ -988,7 +990,7 @@ function RentalDetails({ rentalId, onBack }) {
                     </div>
                 </div>
 
-                <div className="mt-4 p-4 bg-white rounded-2xl shadow-md border border-gray-100">
+                <div className="mt-4 p-4 bg-white rounded-2xl shadow-sm border border-gray-100">
                     <h5 className="text-base font-semibold text-gray-700 mb-3">Payment Summary</h5>
                     <div className="grid grid-cols-3 gap-2 sm:gap-4 text-sm">
                         <div className="text-center p-2 bg-gray-50 rounded">
@@ -997,11 +999,11 @@ function RentalDetails({ rentalId, onBack }) {
                         </div>
                         <div className="text-center p-2 bg-gray-50 rounded">
                             <div className="text-gray-600 text-xs sm:text-sm lg:text-lg font-medium">Paid Amount</div>
-                            <div className="font-bold text-sm sm:text-lg lg:text-3xl text-green-600">₹{paidAmount.toFixed(2)}</div>
+                            <div className="font-bold text-sm sm:text-lg lg:text-2xl text-green-600">₹{paidAmount.toFixed(2)}</div>
                         </div>
                         <div className="text-center p-2 bg-gray-50 rounded">
-                            <div className="text-gray-600 text-xs sm:text-sm lg:text-lg font-medium">Balance</div>
-                            <div className={`font-bold text-sm sm:text-lg lg:text-3xl ${isFullyPaid ? 'text-green-600' : 'text-red-600'}`}>
+                            <div className="text-gray-600 text-xs sm:text-sm lg:text-base font-medium">Balance</div>
+                            <div className={`font-bold text-sm sm:text-lg lg:text-2xl ${isFullyPaid ? 'text-green-600' : 'text-red-600'}`}>
                                 ₹{productBalance.toFixed(2)}
                             </div>
                         </div>
@@ -1020,7 +1022,7 @@ function RentalDetails({ rentalId, onBack }) {
                     </div>
                 </div>
 
-                <div className="mt-4 p-3 sm:p-5 bg-white rounded-2xl shadow-md border border-gray-100">
+                <div className="mt-4 p-3 sm:p-5 bg-white rounded-2xl shadow-sm border border-gray-100">
                     <div className="flex items-center justify-between mb-3">
                         <h5 className="text-sm font-medium text-gray-700">Product Activity History</h5>
                         <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
@@ -1046,10 +1048,18 @@ function RentalDetails({ rentalId, onBack }) {
     };
 
 
+    if (isLoading) {
+        return (
+            <div className="p-4 sm:p-6 bg-white min-h-screen flex items-center justify-center">
+                <LoadingSpinner size="lg" color="primary" />
+            </div>
+        );
+    }
+
     if (!rental) {
         return (
             <div className="p-4 sm:p-6 bg-gradient-to-br from-blue-50 to-white min-h-screen">
-                <div className="bg-white rounded-xl shadow-md border border-gray-200 p-6 sm:p-8 text-center">
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 sm:p-8 text-center">
                     <h2 className="text-xl font-semibold text-gray-800 mb-4">Rental Not Found</h2>
                     <button
                         onClick={onBack}
@@ -1083,15 +1093,15 @@ function RentalDetails({ rentalId, onBack }) {
                 <div className="flex items-center gap-3 sm:gap-4 mb-4">
                     <button
                         onClick={onBack}
-                        className="bg-white hover:bg-gray-50 p-2 rounded-lg shadow transition-colors"
+                        className="bg-white hover:bg-gray-50 p-2 rounded-lg border border-gray-200 shadow-sm transition-colors"
                     >
                         <FiArrowLeft className="w-5 h-5 text-gray-600" />
                     </button>
                     <div className="min-w-0 flex-1">
-                        <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-black break-words">
+                        <h2 className="text-2xl sm:text-3xl lg:text-3xl font-bold text-black break-words">
                             Rental Details
                         </h2>
-                        <p className="text-sm sm:text-base lg:text-xl text-gray-600 break-words">
+                        <p className="text-sm sm:text-base lg:text-lg text-gray-600 break-words">
                             <span className="uppercase font-bold">{rental.customerName}</span>'s rental management
                         </p>
                     </div>
@@ -1099,9 +1109,9 @@ function RentalDetails({ rentalId, onBack }) {
             </div>
 
             {/* Customer Information Card */}
-            <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 mb-6">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6 mb-6">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 space-y-3 sm:space-y-0">
-                    <h3 className="text-lg lg:text-2xl font-bold text-gray-800">Customer Information</h3>
+                    <h3 className="text-lg lg:text-xl font-bold text-gray-800">Customer Information</h3>
                     <div className="flex flex-wrap gap-1 w-full sm:w-auto">
                         {!isEditingCustomer && (
                             <button
@@ -1223,8 +1233,8 @@ function RentalDetails({ rentalId, onBack }) {
                                 <FiUser className="w-5 h-5 text-blue-600" />
                             </div>
                             <div className="min-w-0 flex-1">
-                                <p className="text-sm lg:text-lg text-gray-600">Customer Name</p>
-                                <p className="font-semibold lg:text-xl uppercase break-words">{rental.customerName}</p>
+                                <p className="text-sm lg:text-base text-gray-600">Customer Name</p>
+                                <p className="font-semibold lg:text-lg uppercase break-words">{rental.customerName}</p>
                             </div>
                         </div>
                         <div className="flex items-center gap-3">
@@ -1232,8 +1242,8 @@ function RentalDetails({ rentalId, onBack }) {
                                 <FiPhone className="w-5 h-5 text-green-600" />
                             </div>
                             <div className="min-w-0 flex-1">
-                                <p className="text-sm lg:text-lg text-gray-600">Phone Number</p>
-                                <p className="font-semibold lg:text-xl break-words">{rental.customerPhone || 'Not provided'}</p>
+                                <p className="text-sm lg:text-base text-gray-600">Phone Number</p>
+                                <p className="font-semibold lg:text-lg break-words">{rental.customerPhone || 'Not provided'}</p>
                             </div>
                         </div>
                         {rental.customerAddress && (
@@ -1242,8 +1252,8 @@ function RentalDetails({ rentalId, onBack }) {
                                     <FiUser className="w-5 h-5 text-[#086cbe]" />
                                 </div>
                                 <div className="min-w-0 flex-1">
-                                    <p className="text-sm lg:text-lg text-gray-600">Address</p>
-                                    <p className="font-semibold lg:text-xl break-words">{rental.customerAddress}</p>
+                                    <p className="text-sm lg:text-base text-gray-600">Address</p>
+                                    <p className="font-semibold lg:text-lg break-words">{rental.customerAddress}</p>
                                 </div>
                             </div>
                         )}
@@ -1254,42 +1264,42 @@ function RentalDetails({ rentalId, onBack }) {
             {/* Summary Cards */}
             <div className="w-full flex items-center justify-center mb-5">
                 <div className="w-full grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-[10%] max-w-6xl justify-center">
-                    <div className="bg-white rounded-xl shadow-lg p-4 px-6 sm:px-10">
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 px-6 sm:px-10">
                         <div className="flex items-center gap-3">
                             <div className="bg-blue-100 p-2 rounded-full flex-shrink-0">
                                 <FiPackage className="w-5 h-5 text-blue-600" />
                             </div>
                             <div className="min-w-0 flex-1">
-                                <p className="text-xs lg:text-base text-gray-600">Active Products</p>
-                                <p className="text-lg lg:text-3xl font-bold text-gray-900">
+                                <p className="text-xs lg:text-sm text-gray-600">Active Products</p>
+                                <p className="text-lg lg:text-2xl font-bold text-gray-900">
                                     {(rental.productItems || []).filter(item => item.currentQuantity > 0).length}
                                 </p>
                             </div>
                         </div>
                     </div>
 
-                    <div className="bg-white rounded-xl shadow-lg p-4 px-6 sm:px-10">
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 px-6 sm:px-10">
                         <div className="flex items-center gap-3">
                             <div className="bg-blue-50 p-2 rounded-full flex-shrink-0">
                                 <FiDollarSign className="w-5 h-5 text-[#086cbe]" />
                             </div>
                             <div className="min-w-0 flex-1">
-                                <p className="text-xs lg:text-base text-gray-600">Total Rental Amount</p>
-                                <p className="text-lg lg:text-3xl font-bold text-[#086cbe] break-words">
+                                <p className="text-xs lg:text-sm text-gray-600">Total Rental Amount</p>
+                                <p className="text-lg lg:text-2xl font-bold text-[#086cbe] break-words">
                                     ₹{calculateTotalRentalAmount().toFixed(2)}
                                 </p>
                             </div>
                         </div>
                     </div>
 
-                    <div className="bg-white rounded-xl shadow-lg p-4 px-6 sm:px-10">
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 px-6 sm:px-10">
                         <div className="flex items-center gap-3">
                             <div className="bg-red-100 p-2 rounded-full flex-shrink-0">
                                 <FiDollarSign className="w-5 h-5 text-red-600" />
                             </div>
                             <div className="min-w-0 flex-1">
-                                <p className="text-xs lg:text-base text-gray-600">Total Balance</p>
-                                <p className="text-lg lg:text-3xl font-bold text-red-600 break-words">
+                                <p className="text-xs lg:text-sm text-gray-600">Total Balance</p>
+                                <p className="text-lg lg:text-2xl font-bold text-red-600 break-words">
                                     ₹{calculateTotalBalance().toFixed(2)}
                                 </p>
                             </div>
@@ -1299,7 +1309,7 @@ function RentalDetails({ rentalId, onBack }) {
             </div>
 
             {/* Products Section */}
-            <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 mb-6">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6 mb-6">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 space-y-4 sm:space-y-0">
                     <h3 className="text-lg font-semibold text-gray-800">Rented Products</h3>
                     <div className="flex gap-2 w-full sm:w-auto">
@@ -1321,7 +1331,7 @@ function RentalDetails({ rentalId, onBack }) {
             </div>
 
             {/* General Actions */}
-            <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 mb-6">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6 mb-6">
                 <h3 className="text-lg font-semibold text-gray-800 mb-4">Payment Actions</h3>
                 <div className="flex flex-col sm:flex-row flex-wrap gap-4">
                     <button

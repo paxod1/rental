@@ -109,10 +109,10 @@ function AdminHome() {
         <div className="mb-6 sm:mb-8">
           <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-4 sm:gap-6">
             <div>
-              <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-6xl font-bold text-gray-900 mb-2 sm:mb-3">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-2 sm:mb-3">
                 Welcome Back! 👋
               </h1>
-              <p className="text-gray-700 text-sm sm:text-base lg:text-xl">
+              <p className="text-gray-700 text-sm sm:text-base lg:text-lg">
                 Here's what's happening with your rental business today
               </p>
             </div>
@@ -148,8 +148,8 @@ function AdminHome() {
               </div>
             </div>
             <div>
-              <h3 className="text-slate-600 text-xs sm:text-sm lg:text-base font-medium mb-1 sm:mb-2">Total Products</h3>
-              <p className="text-lg sm:text-xl lg:text-3xl xl:text-4xl font-bold text-slate-800">{analytics.totalProducts}</p>
+              <h3 className="text-slate-600 text-xs sm:text-sm lg:text-sm font-medium mb-1 sm:mb-2">Total Products</h3>
+              <p className="text-lg sm:text-xl lg:text-2xl font-bold text-slate-800">{analytics.totalProducts}</p>
             </div>
           </div>
 
@@ -165,8 +165,8 @@ function AdminHome() {
               </div>
             </div>
             <div>
-              <h3 className="text-slate-600 text-xs sm:text-sm lg:text-base font-medium mb-1 sm:mb-2">Active Rentals</h3>
-              <p className="text-lg sm:text-xl lg:text-3xl xl:text-4xl font-bold text-slate-800">{analytics.activeRentals}</p>
+              <h3 className="text-slate-600 text-xs sm:text-sm lg:text-sm font-medium mb-1 sm:mb-2">Active Rentals</h3>
+              <p className="text-lg sm:text-xl lg:text-2xl font-bold text-slate-800">{analytics.activeRentals}</p>
             </div>
           </div>
 
@@ -182,8 +182,8 @@ function AdminHome() {
               </div>
             </div>
             <div>
-              <h3 className="text-slate-600 text-xs sm:text-sm lg:text-base font-medium mb-1 sm:mb-2">Total Rentals</h3>
-              <p className="text-lg sm:text-xl lg:text-3xl xl:text-4xl font-bold text-slate-800">{analytics.totalRentals}</p>
+              <h3 className="text-slate-600 text-xs sm:text-sm lg:text-sm font-medium mb-1 sm:mb-2">Total Rentals</h3>
+              <p className="text-lg sm:text-xl lg:text-2xl font-bold text-slate-800">{analytics.totalRentals}</p>
             </div>
           </div>
 
@@ -206,8 +206,8 @@ function AdminHome() {
               </div>
             </div>
             <div>
-              <h3 className="text-slate-600 text-xs sm:text-sm lg:text-base font-medium mb-1 sm:mb-2">Stock Alerts</h3>
-              <p className="text-lg sm:text-xl lg:text-3xl xl:text-4xl font-bold text-slate-800">{lowStockProducts + outOfStockProducts}</p>
+              <h3 className="text-slate-600 text-xs sm:text-sm lg:text-sm font-medium mb-1 sm:mb-2">Stock Alerts</h3>
+              <p className="text-lg sm:text-xl lg:text-2xl font-bold text-slate-800">{lowStockProducts + outOfStockProducts}</p>
             </div>
           </div>
         </div>
@@ -219,7 +219,7 @@ function AdminHome() {
           <div className="xl:col-span-2">
             <div className="bg-white rounded-xl lg:rounded-2xl shadow-md border border-gray-200">
               <div className="p-4 sm:p-6 border-b border-slate-100">
-                <h3 className="text-lg sm:text-xl lg:text-2xl font-bold text-slate-800 flex items-center gap-2">
+                <h3 className="text-lg sm:text-xl lg:text-xl font-bold text-slate-800 flex items-center gap-2">
                   <FiPackage className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
                   Product Inventory
                 </h3>
@@ -238,14 +238,14 @@ function AdminHome() {
                               <FiPackage className="w-4 h-4 sm:w-5 sm:h-5 text-slate-600" />
                             </div>
                             <div className="min-w-0 flex-1">
-                              <h4 className="font-semibold text-slate-800 capitalize text-sm sm:text-base lg:text-lg truncate">{product.name}</h4>
-                              <p className="text-xs sm:text-sm lg:text-base text-slate-600">₹{product.rate}/{product.rateType}</p>
+                              <h4 className="font-semibold text-slate-800 capitalize text-sm sm:text-base lg:text-base truncate">{product.name}</h4>
+                              <p className="text-xs sm:text-sm lg:text-sm text-slate-600">₹{product.rate}/{product.rateType}</p>
                             </div>
                           </div>
 
                           <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
                             <div className="text-right">
-                              <p className="text-sm sm:text-base lg:text-lg font-bold text-slate-800">
+                              <p className="text-sm sm:text-base lg:text-base font-bold text-slate-800">
                                 {product.quantity.toLocaleString()}
                               </p>
                               <p className="text-xs text-slate-500 sm:hidden">units</p>
@@ -281,7 +281,7 @@ function AdminHome() {
 
             {/* Quick Actions */}
             <div className="bg-white rounded-xl lg:rounded-2xl shadow-md p-4 sm:p-6 border border-gray-200">
-              <h3 className="text-lg sm:text-xl lg:text-2xl font-bold text-slate-800 mb-4 sm:mb-6 flex items-center gap-2">
+              <h3 className="text-lg sm:text-xl lg:text-xl font-bold text-slate-800 mb-4 sm:mb-6 flex items-center gap-2">
                 <FiActivity className="w-5 h-5 sm:w-6 sm:h-6 text-green-600" />
                 Quick Actions
               </h3>
@@ -296,8 +296,8 @@ function AdminHome() {
                       <FiPlus className="w-4 h-4 sm:w-5 sm:h-5 text-black " />
                     </div>
                     <div className="min-w-0">
-                      <h4 className="font-semibold text-sm sm:text-base lg:text-lg">New Rental</h4>
-                      <p className="text-white text-opacity-90 text-xs sm:text-sm lg:text-base">Create booking</p>
+                      <h4 className="font-semibold text-sm sm:text-base lg:text-base">New Rental</h4>
+                      <p className="text-white text-opacity-90 text-xs sm:text-sm lg:text-sm">Create booking</p>
                     </div>
                   </div>
                 </button>
@@ -311,8 +311,8 @@ function AdminHome() {
                       <FiPackage className="w-4 h-4 sm:w-5 sm:h-5 text-black" />
                     </div>
                     <div className="min-w-0">
-                      <h4 className="font-semibold text-sm sm:text-base lg:text-lg">Manage Products</h4>
-                      <p className="text-white text-opacity-90 text-xs sm:text-sm lg:text-base">Update inventory</p>
+                      <h4 className="font-semibold text-sm sm:text-base lg:text-base">Manage Products</h4>
+                      <p className="text-white text-opacity-90 text-xs sm:text-sm lg:text-sm">Update inventory</p>
                     </div>
                   </div>
                 </button>
@@ -323,8 +323,8 @@ function AdminHome() {
                       <FiBarChart2 className="w-4 h-4 sm:w-5 sm:h-5 text-black" />
                     </div>
                     <div className="min-w-0">
-                      <h4 className="font-semibold text-sm sm:text-base lg:text-lg">View Reports</h4>
-                      <p className="text-white text-opacity-90 text-xs sm:text-sm lg:text-base">Business analytics</p>
+                      <h4 className="font-semibold text-sm sm:text-base lg:text-base">View Reports</h4>
+                      <p className="text-white text-opacity-90 text-xs sm:text-sm lg:text-sm">Business analytics</p>
                     </div>
                   </div>
                 </button>

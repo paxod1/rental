@@ -249,10 +249,10 @@ function RentalHistory() {
 
       {/* Header */}
       <div className="mb-6 md:mt-5 sm:mb-8">
-        <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900">
+        <h2 className="text-2xl sm:text-3xl lg:text-3xl font-bold text-gray-900">
           Rental History
         </h2>
-        <p className="text-gray-600 mt-2 text-sm sm:text-base lg:text-lg">Complete rental records and payment management</p>
+        <p className="text-gray-600 mt-2 text-sm sm:text-base lg:text-base">Complete rental records and payment management</p>
       </div>
 
       {/* Search and Filters */}
@@ -265,7 +265,7 @@ function RentalHistory() {
               placeholder="Search by customer name or phone..."
               value={searchTerm}
               onChange={handleSearch}
-              className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#086cbe] focus:border-transparent text-sm sm:text-base lg:text-lg"
+              className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#086cbe] focus:border-transparent text-sm sm:text-base lg:text-base"
             />
           </div>
           <div className="text-xs sm:text-sm text-gray-600 whitespace-nowrap">
@@ -277,7 +277,7 @@ function RentalHistory() {
         <div className="flex flex-wrap gap-2">
           <button
             onClick={() => handleStatusFilter('all')}
-            className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm lg:text-base font-medium transition-all ${statusFilter === 'all'
+            className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm lg:text-sm font-medium transition-all ${statusFilter === 'all'
               ? 'bg-[#086cbe] text-white'
               : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
               }`}
@@ -441,19 +441,19 @@ function RentalHistory() {
             <table className="w-full">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs lg:text-base font-bold text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs lg:text-sm font-bold text-gray-500 uppercase tracking-wider">
                     Customer
                   </th>
-                  <th className="px-6 py-3 text-left text-xs lg:text-base font-bold text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs lg:text-sm font-bold text-gray-500 uppercase tracking-wider">
                     Products
                   </th>
-                  <th className="px-6 py-3 text-left text-xs lg:text-base font-bold text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs lg:text-sm font-bold text-gray-500 uppercase tracking-wider">
                     Duration
                   </th>
-                  <th className="px-6 py-3 text-left text-xs lg:text-base font-bold text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs lg:text-sm font-bold text-gray-500 uppercase tracking-wider">
                     Financial Summary
                   </th>
-                  <th className="px-6 py-3 text-left text-xs lg:text-base font-bold text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs lg:text-sm font-bold text-gray-500 uppercase tracking-wider">
                     Status
                   </th>
                   <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -468,11 +468,11 @@ function RentalHistory() {
                     <tr key={rental._id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div>
-                          <div className="text-sm lg:text-lg font-medium text-gray-900">
+                          <div className="text-sm lg:text-base font-medium text-gray-900">
                             {rental.customerName}
                           </div>
                           {rental.customerPhone && (
-                            <div className="text-sm lg:text-base text-gray-500">
+                            <div className="text-sm lg:text-sm text-gray-500">
                               {rental.customerPhone}
                             </div>
                           )}
@@ -524,11 +524,11 @@ function RentalHistory() {
                         <div className="text-sm lg:text-lg font-medium text-gray-900">
                           Total: ₹{rental.paymentSummary?.totalAmount || rental.totalAmount || 0}
                         </div>
-                        <div className="text-sm lg:text-lg text-green-600">
+                        <div className="text-sm lg:text-base text-green-600">
                           Paid: ₹{rental.paymentSummary?.totalPaid || rental.totalPaid || 0}
                         </div>
                         {(rental.paymentSummary?.balanceAmount || rental.balanceAmount) > 0 && (
-                          <div className="text-sm lg:text-lg text-red-600 font-medium">
+                          <div className="text-sm lg:text-base text-red-600 font-medium">
                             Balance: ₹{rental.paymentSummary?.balanceAmount || rental.balanceAmount}
                           </div>
                         )}
@@ -610,7 +610,7 @@ function RentalHistory() {
           <div className="bg-white rounded-xl shadow-lg border border-gray-200 w-full max-w-lg mx-2 sm:mx-4 max-h-[95vh] overflow-y-auto">
             <div className="bg-[#086cbe] text-white px-3 sm:px-6 py-3 sm:py-4 rounded-t-xl">
               <div className="flex justify-between items-center">
-                <h3 className="text-base sm:text-lg lg:text-2xl font-semibold">Payment & Discount</h3>
+                <h3 className="text-base sm:text-lg lg:text-xl font-semibold">Payment & Discount</h3>
                 <button
                   onClick={closePaymentModal}
                   className="text-white hover:bg-white hover:bg-opacity-20 p-1 rounded transition-colors"

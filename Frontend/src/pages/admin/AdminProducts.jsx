@@ -158,7 +158,7 @@ function AdminProducts() {
 
       {/* Header */}
       <div className="flex md:mt-5 flex-col sm:flex-row sm:justify-between sm:items-start gap-4 mb-6 sm:mb-8">
-        <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900">
+        <h2 className="text-2xl sm:text-3xl lg:text-3xl font-bold text-gray-900">
           Product Management
         </h2>
         <button
@@ -187,11 +187,11 @@ function AdminProducts() {
               <table className="w-full border rounded-md border-gray-200 ">
                 <thead className="bg-white border-b border-gray-200 text-black">
                   <tr>
-                    <th className="px-6 py-4 text-left font-bold lg:text-lg">Product Name</th>
-                    <th className="px-6 py-4 text-left font-bold lg:text-lg">Quantity</th>
-                    <th className="px-6 py-4 text-left font-bold lg:text-lg">Rate</th>
-                    <th className="px-6 py-4 text-left font-bold lg:text-lg">Rate Type</th>
-                    <th className="px-6 py-4 text-center font-bold lg:text-lg">Actions</th>
+                    <th className="px-6 py-4 text-left font-bold text-sm lg:text-base">Product Name</th>
+                    <th className="px-6 py-4 text-left font-bold text-sm lg:text-base">Quantity</th>
+                    <th className="px-6 py-4 text-left font-bold text-sm lg:text-base">Rate</th>
+                    <th className="px-6 py-4 text-left font-bold text-sm lg:text-base">Rate Type</th>
+                    <th className="px-6 py-4 text-center font-bold text-sm lg:text-base">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
@@ -203,9 +203,9 @@ function AdminProducts() {
                         className={`hover:bg-blue-50 transition-colors duration-200 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
                           }`}
                       >
-                        <td className="px-6 py-4 font-medium text-gray-900 uppercase lg:text-lg">{product.name}</td>
-                        <td className="px-6 py-4 text-gray-700 lg:text-lg">{product.quantity}</td>
-                        <td className="px-6 py-4 text-gray-700 lg:text-lg">₹{product.rate}</td>
+                        <td className="px-6 py-4 font-medium text-gray-900 uppercase text-sm lg:text-base">{product.name}</td>
+                        <td className="px-6 py-4 text-gray-700 text-sm lg:text-base">{product.quantity}</td>
+                        <td className="px-6 py-4 text-gray-700 text-sm lg:text-base">₹{product.rate}</td>
                         <td className="px-6 py-4">
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-[#086cbe]">
                             {getRateTypeDisplay(product.rateType)}
@@ -356,7 +356,7 @@ function AdminProducts() {
 
             <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4">
               <div>
-                <label className="block text-sm lg:text-base font-medium text-gray-700 mb-2">
+                <label className="block text-sm lg:text-sm font-medium text-gray-700 mb-2">
                   Product Name
                 </label>
                 <input
@@ -367,12 +367,12 @@ function AdminProducts() {
                   onChange={handleChange}
                   required
                   disabled={isSubmitting}
-                  className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#086cbe] focus:border-transparent transition-all disabled:bg-gray-100 text-sm sm:text-base lg:text-lg"
+                  className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#086cbe] focus:border-transparent transition-all disabled:bg-gray-100 text-sm sm:text-base lg:text-base"
                 />
               </div>
 
               <div>
-                <label className="block text-sm lg:text-base font-medium text-gray-700 mb-2">
+                <label className="block text-sm lg:text-sm font-medium text-gray-700 mb-2">
                   Quantity
                 </label>
                 <input
@@ -384,7 +384,7 @@ function AdminProducts() {
                   required
                   min="0"
                   disabled={isSubmitting}
-                  className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#086cbe] focus:border-transparent transition-all disabled:bg-gray-100 text-sm sm:text-base lg:text-lg"
+                  className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#086cbe] focus:border-transparent transition-all disabled:bg-gray-100 text-sm sm:text-base lg:text-base"
                 />
               </div>
 
@@ -402,7 +402,7 @@ function AdminProducts() {
                   min="0"
                   step="0.01"
                   disabled={isSubmitting}
-                  className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#086cbe] focus:border-transparent transition-all disabled:bg-gray-100 text-sm sm:text-base lg:text-lg"
+                  className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#086cbe] focus:border-transparent transition-all disabled:bg-gray-100 text-sm sm:text-base lg:text-base"
                 />
               </div>
 
@@ -443,7 +443,7 @@ function AdminProducts() {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="flex-1 bg-[#086cbe] hover:bg-[#0757a8] text-white px-4 py-2 rounded-lg transition-all shadow-md hover:shadow-lg disabled:opacity-50 flex items-center justify-center gap-2 text-sm sm:text-base lg:text-lg"
+                  className="flex-1 bg-[#086cbe] hover:bg-[#0757a8] text-white px-4 py-2 rounded-lg transition-all shadow-md hover:shadow-lg disabled:opacity-50 flex items-center justify-center gap-2 text-sm sm:text-base lg:text-base"
                 >
                   {isSubmitting && <LoadingSpinner size="sm" color="gray" />}
                   {isEditing ? "Update" : "Add"} Product

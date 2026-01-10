@@ -85,10 +85,10 @@ function AdminNavbar() {
                         {/* Brand Logo */}
                         <div className="flex">
                             <Link to="/" className="flex flex-col items-start group">
-                                <h1 className='text-gray-900 text-xl lg:text-2xl font-bold whitespace-nowrap group-hover:text-[#086cbe] transition-colors duration-300'>
+                                <h1 className='text-gray-900 text-xl lg:text-xl font-bold whitespace-nowrap group-hover:text-[#086cbe] transition-colors duration-300'>
                                     Edasserikkudiyil
                                 </h1>
-                                <p className='text-[#086cbe] text-sm lg:text-base whitespace-nowrap w-full text-left group-hover:text-[#0757a8] transition-colors duration-300'>
+                                <p className='text-[#086cbe] text-sm lg:text-sm whitespace-nowrap w-full text-left group-hover:text-[#0757a8] transition-colors duration-300'>
                                     Quality Rentals You Can Trust
                                 </p>
                             </Link>
@@ -101,7 +101,7 @@ function AdminNavbar() {
                                     <Link
                                         key={item.path}
                                         to={item.path}
-                                        className={`flex items-center  py-2 text-sm lg:text-lg px-2 font-medium transition-all duration-300 ease-in-out relative ${isActiveLink(item.path)
+                                        className={`flex items-center  py-2 text-sm lg:text-base px-2 font-medium transition-all duration-300 ease-in-out relative ${isActiveLink(item.path)
                                             ? 'text-[#086cbe] border-b-3 border-[#086cbe]'
                                             : 'text-gray-700 hover:text-[#086cbe] border-b-3 border-transparent hover:border-gray-300'
                                             }`}
@@ -124,7 +124,7 @@ function AdminNavbar() {
                                 <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
                                     <FiUser className="w-4 h-4 text-[#086cbe]" />
                                 </div>
-                                <span className="text-sm lg:text-lg font-medium">{user?.username || 'Admin'}</span>
+                                <span className="text-sm lg:text-base font-medium">{user?.username || 'Admin'}</span>
                                 <FiChevronDown className={`w-4 h-4 transition-transform duration-200 ${isProfileMenuOpen ? 'rotate-180' : ''}`} />
                             </button>
 
@@ -207,16 +207,16 @@ function AdminNavbar() {
                                             : 'text-gray-600 group-hover:text-[#086cbe]'
                                             }`}
                                     />
-                                 
+
                                 </div>
-                                 <p  className={`text-sm text-center ${isActiveLink(item.path)
-                                            ? 'text-[#086cbe]'
-                                            : 'text-gray-600 group-hover:text-[#086cbe]'
-                                            }`}>  {item.label}</p>
+                                <p className={`text-sm text-center ${isActiveLink(item.path)
+                                    ? 'text-[#086cbe]'
+                                    : 'text-gray-600 group-hover:text-[#086cbe]'
+                                    }`}>  {item.label}</p>
 
-                               
 
-                             
+
+
                             </Link>
                         ))}
                     </div>

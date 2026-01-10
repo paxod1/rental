@@ -65,12 +65,6 @@ html {
   background: linear-gradient(180deg, #0757a8, #064a8f);
 }
 
-/* ✅ GLOBAL FONT SIZE INCREASE FOR DESKTOP */
-@media (min-width: 1024px) {
-  html {
-    font-size: 18px;
-  }
-}
 
 /* Custom Animations for Global Loader */
 @keyframes shimmer {

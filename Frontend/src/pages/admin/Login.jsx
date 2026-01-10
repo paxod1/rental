@@ -59,16 +59,16 @@ function Login() {
         <div className="min-h-screen bg-white flex items-center justify-center p-4">
             <div className="w-full max-w-md">
                 <div className="text-center mb-2">
-                    <h1 className="text-3xl lg:text-5xl font-bold text-gray-900 mb-2">Edasserikkudiyil</h1>
-                    <p className="text-lg lg:text-2xl text-[#086cbe] font-bold mb-1">Quality Rentals You Can Trust</p>
-                    <p className="text-gray-600 text-sm lg:text-lg">Rental Management System</p>
+                    <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-2">Edasserikkudiyil</h1>
+                    <p className="text-lg lg:text-xl text-[#086cbe] font-bold mb-1">Quality Rentals You Can Trust</p>
+                    <p className="text-gray-600 text-sm lg:text-base">Rental Management System</p>
                 </div>
 
                 <div className="bg-white rounded-2xl shadow-md p-8 border border-gray-200">
                     {/* ✅ NO FORM - Just divs */}
                     <div className="space-y-6">
                         <div>
-                            <label className="block text-sm lg:text-lg font-medium text-gray-700 mb-2">Username</label>
+                            <label className="block text-sm lg:text-base font-medium text-gray-700 mb-2">Username</label>
                             <div className="relative">
                                 <FiUser className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-[#086cbe]" />
                                 <input
@@ -76,7 +76,7 @@ function Login() {
                                     name="username"
                                     value={formData.username}
                                     onChange={handleChange}
-                                    className="w-full pl-10 pr-4 py-3 lg:py-4 border rounded-lg focus:ring-2 focus:ring-[#086cbe] outline-none lg:text-xl"
+                                    className="w-full pl-10 pr-4 py-3 lg:py-3 border rounded-lg focus:ring-2 focus:ring-[#086cbe] outline-none lg:text-lg"
                                     placeholder="Enter your username"
                                     disabled={isLoading}
                                 />
@@ -84,7 +84,7 @@ function Login() {
                         </div>
 
                         <div>
-                            <label className="block text-sm lg:text-lg font-medium text-gray-700 mb-2">Password</label>
+                            <label className="block text-sm lg:text-base font-medium text-gray-700 mb-2">Password</label>
                             <div className="relative">
                                 <FiLock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-[#086cbe]" />
                                 <input
@@ -93,7 +93,7 @@ function Login() {
                                     value={formData.password}
                                     onChange={handleChange}
                                     onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
-                                    className="w-full pl-10 pr-12 py-3 lg:py-4 border rounded-lg focus:ring-2 focus:ring-[#086cbe] outline-none lg:text-xl"
+                                    className="w-full pl-10 pr-12 py-3 lg:py-3 border rounded-lg focus:ring-2 focus:ring-[#086cbe] outline-none lg:text-lg"
                                     placeholder="Enter your password"
                                     disabled={isLoading}
                                 />
@@ -111,7 +111,7 @@ function Login() {
                         <button
                             onClick={handleLogin}
                             disabled={isLoading}
-                            className="w-full bg-[#086cbe] hover:bg-[#0757a8] text-white py-3 lg:py-4 rounded-lg font-bold lg:text-xl disabled:opacity-50 transition duration-200 shadow-md"
+                            className="w-full bg-[#086cbe] hover:bg-[#0757a8] text-white py-3 lg:py-3 rounded-lg font-bold lg:text-lg disabled:opacity-50 transition duration-200 shadow-md"
                         >
                             {isLoading ? (
                                 <div className="flex items-center justify-center">
