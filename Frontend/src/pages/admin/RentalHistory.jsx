@@ -18,7 +18,8 @@ import {
   FiAlertCircle,
   FiTrash2,
   FiPhone,
-  FiMapPin
+  FiMapPin,
+  FiDownload
 } from "react-icons/fi";
 import EmptyState from "../../components/commonComp/EmptyState";
 import LoadingSpinner from "../../components/commonComp/LoadingSpinner";
@@ -42,6 +43,7 @@ function RentalHistory() {
   const [rentalToDelete, setRentalToDelete] = useState(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   // Enhanced payment data with discount support (same as RentalDetails)
   const [paymentData, setPaymentData] = useState({
@@ -245,6 +247,35 @@ function RentalHistory() {
     }
   };
 
+  const handleDownloadPDF = async () => {
+    try {
+      setIsDownloading(true);
+      const response = await axiosInstance.get('/api/rentals/download/history-pdf-enhanced', {
+        params: {
+          search: searchTerm,
+          status: statusFilter
+        },
+        responseType: 'blob'
+      });
+
+      // Create blob link to download
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `Rental_History_Report_${new Date().toISOString().split('T')[0]}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      dispatch(showToast({ message: "Report downloaded successfully!", type: "success" }));
+    } catch (error) {
+      console.error("Download error:", error);
+      dispatch(showToast({ message: "Error downloading report", type: "error" }));
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
 
   return (
     <div className="p-3 sm:p-4 lg:p-6 bg-white min-h-screen">
@@ -276,35 +307,51 @@ function RentalHistory() {
           </div>
         </div>
 
-        {/* Status Filter Buttons */}
-        <div className="flex flex-wrap gap-2">
+        {/* Status Filter Buttons and Download */}
+        <div className="flex flex-col sm:flex-row justify-between gap-4">
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => handleStatusFilter('all')}
+              className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm lg:text-sm font-medium transition-all ${statusFilter === 'all'
+                ? 'bg-[#086cbe] text-white'
+                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+            >
+              All Rentals
+            </button>
+            <button
+              onClick={() => handleStatusFilter('completed')}
+              className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all ${statusFilter === 'completed'
+                ? 'bg-green-500 text-white'
+                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+            >
+              Fully Paid
+            </button>
+            <button
+              onClick={() => handleStatusFilter('pending_payment')}
+              className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all ${statusFilter === 'pending_payment'
+                ? 'bg-red-500 text-white'
+                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+            >
+              <span className="hidden sm:inline">Pending Payment</span>
+              <span className="sm:hidden">Pending</span>
+            </button>
+          </div>
+
           <button
-            onClick={() => handleStatusFilter('all')}
-            className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm lg:text-sm font-medium transition-all ${statusFilter === 'all'
-              ? 'bg-[#086cbe] text-white'
-              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-              }`}
+            onClick={handleDownloadPDF}
+            disabled={isDownloading || rentals.length === 0}
+            className="flex items-center justify-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            All Rentals
-          </button>
-          <button
-            onClick={() => handleStatusFilter('completed')}
-            className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all ${statusFilter === 'completed'
-              ? 'bg-green-500 text-white'
-              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-              }`}
-          >
-            Fully Paid
-          </button>
-          <button
-            onClick={() => handleStatusFilter('pending_payment')}
-            className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all ${statusFilter === 'pending_payment'
-              ? 'bg-red-500 text-white'
-              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-              }`}
-          >
-            <span className="hidden sm:inline">Pending Payment</span>
-            <span className="sm:hidden">Pending</span>
+            {isDownloading ? (
+              <LoadingSpinner size="sm" color="white" />
+            ) : (
+              <FiDownload className="w-4 h-4" />
+            )}
+            <span className="hidden sm:inline">Download Report</span>
+            <span className="sm:hidden">PDF</span>
           </button>
         </div>
       </div>

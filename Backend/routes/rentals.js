@@ -154,24 +154,24 @@ const calculateRentalAmounts = (rental) => {
 
       // ✅ CRITICAL FIX: Use REVERSE/LIFO order for active calculations
       let remainingActiveToDistribute = productItem.currentQuantity;
-      
+
       // Process rental transactions in REVERSE order (newest first)
       for (let i = rentalTransactions.length - 1; i >= 0 && remainingActiveToDistribute > 0; i--) {
         const rentalTx = rentalTransactions[i];
         const rentalDate = new Date(rentalTx.date);
-        
+
         // Take as much as possible from this rental period
         const quantityFromThisPeriod = Math.min(remainingActiveToDistribute, rentalTx.quantity);
-        
+
         if (quantityFromThisPeriod > 0) {
           const daysFromThisRental = calculateInclusiveDays(rentalDate, currentDate);
           const amountFromThisPeriod = quantityFromThisPeriod * daysFromThisRental * dailyRate;
-          
+
           console.log(`   📅 Active Period ${i + 1} (${rentalDate.toLocaleDateString()}):`);
           console.log(`      Quantity: ${quantityFromThisPeriod} units`);
           console.log(`      Days: ${daysFromThisRental}`);
           console.log(`      Amount: ${quantityFromThisPeriod} × ${daysFromThisRental} × ₹${dailyRate} = ₹${amountFromThisPeriod}`);
-          
+
           currentActiveAmount += amountFromThisPeriod;
           remainingActiveToDistribute -= quantityFromThisPeriod;
         }
@@ -374,9 +374,9 @@ router.get("/all-history", async (req, res) => {
       // Calculate product-level discounts
       const productDiscounts = rental.productItems.map(item => {
         const productDiscount = rental.payments
-          .filter(payment => 
-            payment.type === 'discount' && 
-            payment.productId && 
+          .filter(payment =>
+            payment.type === 'discount' &&
+            payment.productId &&
             payment.productId.toString() === (item.productId._id || item.productId).toString()
           )
           .reduce((sum, payment) => sum + (payment.amount || 0), 0);
@@ -423,15 +423,15 @@ router.get("/all-history", async (req, res) => {
         totalProducts: rental.productItems.length,
         activeProducts: rental.productItems.filter(item => item.currentQuantity > 0).length,
         returnedProducts: rental.productItems.filter(item => item.currentQuantity === 0).length,
-        
+
         // Product information
         productNames: rental.productItems.map(item =>
           item.productId?.name || item.productName
         ).join(', '),
-        
+
         // Payment and discount information
         paymentSummary: paymentSummary,
-        
+
         // Detailed discount information
         discountInfo: {
           totalDiscount: totalDiscount,
@@ -439,12 +439,12 @@ router.get("/all-history", async (req, res) => {
           discountTransactions: discountTransactions,
           hasDiscount: totalDiscount > 0
         },
-        
+
         // Date information
         rentalStartDate: rental.startDate,
-        rentalEndDate: rental.productItems.every(item => item.currentQuantity === 0) ? 
+        rentalEndDate: rental.productItems.every(item => item.currentQuantity === 0) ?
           rental.updatedAt : null,
-        
+
         // Status flags
         isActive: rental.status === 'active',
         isCompleted: rental.status === 'completed',
@@ -485,9 +485,9 @@ router.get("/all-history", async (req, res) => {
     });
   } catch (error) {
     console.error('❌ Error in all-history:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       message: error.message,
-      error: "Failed to fetch rental history" 
+      error: "Failed to fetch rental history"
     });
   }
 });
@@ -1957,7 +1957,7 @@ router.put("/:id/close-all-rentals", async (req, res) => {
     for (const productItem of activeProducts) {
       const productId = productItem.productId._id || productItem.productId;
       const returnQuantity = productItem.currentQuantity;
-      
+
       console.log(`\n🔄 Processing return for: ${productItem.productName}`);
       console.log(`   📦 Quantity to return: ${returnQuantity}`);
 
@@ -1968,9 +1968,9 @@ router.put("/:id/close-all-rentals", async (req, res) => {
 
         // Get all rental transactions for this product
         const rentalTransactions = rental.transactions
-          .filter(t => 
-            t.type === 'rental' && 
-            t.productId && 
+          .filter(t =>
+            t.type === 'rental' &&
+            t.productId &&
             t.productId.toString() === productId.toString()
           )
           .sort((a, b) => new Date(a.date) - new Date(b.date));
@@ -1990,7 +1990,7 @@ router.put("/:id/close-all-rentals", async (req, res) => {
           if (remainingToReturn <= 0) break;
 
           const rentalDate = new Date(rentalTx.date);
-          
+
           // Skip if rental date is after return date
           if (rentalDate > selectedReturnDate) {
             console.log(`   ⏩ Skipping rental from ${rentalDate.toLocaleDateString()} (after return date)`);
@@ -2077,7 +2077,7 @@ router.put("/:id/close-all-rentals", async (req, res) => {
 
       if (productsWithBalance.length > 0) {
         const totalBalance = productsWithBalance.reduce((sum, item) => sum + item.balance, 0);
-        
+
         for (const product of productsWithBalance) {
           if (remainingDiscount <= 0) break;
 
@@ -2148,8 +2148,8 @@ router.put("/:id/close-all-rentals", async (req, res) => {
           productId: item.productId._id || item.productId,
           productName: item.productName,
           balance: item.balanceAmount,
-          originalIndex: rental.productItems.findIndex(i => 
-            (i.productId._id || i.productId).toString() === 
+          originalIndex: rental.productItems.findIndex(i =>
+            (i.productId._id || i.productId).toString() ===
             (item.productId._id || item.productId).toString()
           )
         }))
@@ -2189,7 +2189,7 @@ router.put("/:id/close-all-rentals", async (req, res) => {
       // If there's still payment remaining (overpayment), create a refund or note
       if (remainingPayment > 0) {
         console.log(`   ⚠️  Overpayment detected: ₹${remainingPayment}`);
-        
+
         // Option 1: Create a refund entry
         rental.payments.push({
           amount: remainingPayment,
@@ -2210,7 +2210,7 @@ router.put("/:id/close-all-rentals", async (req, res) => {
 
     // Step 6: Final calculation and status update
     calculateRentalAmounts(rental);
-    
+
     // Determine final status
     const hasActiveProducts = rental.productItems.some(item => item.currentQuantity > 0);
     const hasUnpaidBalance = rental.balanceAmount > 0;
@@ -2233,8 +2233,8 @@ router.put("/:id/close-all-rentals", async (req, res) => {
       amount: 0,
       date: new Date(),
       notes: `BULK CLOSE: All rentals returned on ${selectedReturnDate.toLocaleDateString()}. ` +
-             `Payment: ₹${payAllAmount || 0}, Discount: ₹${discountAmount || 0}. ` +
-             `Final status: ${rental.status}`
+        `Payment: ₹${payAllAmount || 0}, Discount: ₹${discountAmount || 0}. ` +
+        `Final status: ${rental.status}`
     });
 
     // Save all changes
@@ -2298,6 +2298,380 @@ router.put("/:id/close-all-rentals", async (req, res) => {
       error: error.message,
       stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
+  }
+});
+
+
+
+// ✅ ENHANCED PDF DOWNLOAD WITH PDFKIT-TABLE
+const PDFDocument = require('pdfkit-table');
+
+router.get("/download/history-pdf-enhanced", async (req, res) => {
+  try {
+    const { search = '', status = 'all', dateFrom, dateTo } = req.query;
+
+    // Build query
+    let query = buildRentalQuery(search, status, dateFrom, dateTo);
+
+    // Get rentals with full history
+    const rentals = await Rental.find(query)
+      .populate('productItems.productId', 'name rate rateType')
+      .sort({ createdAt: -1 });
+
+    if (rentals.length === 0) {
+      return res.status(404).json({ message: "No rentals found" });
+    }
+
+    // Create PDF document
+    const doc = new PDFDocument({
+      size: 'A4',
+      margin: 40,
+      bufferPages: true
+    });
+
+    const filename = `Detailed-Rental-Report-${Date.now()}.pdf`;
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+
+    doc.pipe(res);
+
+    // --- HEADER PAGE ---
+    doc.fontSize(24).font('Helvetica-Bold').text('RENTAL MANAGEMENT SYSTEM', { align: 'center' });
+    doc.moveDown(0.5);
+    doc.fontSize(16).font('Helvetica').text('Detailed Regulatory Report', { align: 'center' });
+    doc.moveDown(0.5);
+    doc.fontSize(10).font('Helvetica-Oblique').text(`Generated on: ${new Date().toLocaleString()}`, { align: 'center' });
+    doc.moveDown(2);
+
+    // Summary Section
+    doc.fontSize(14).font('Helvetica-Bold').text('Executive Summary', { underline: true });
+    doc.moveDown(0.5);
+
+    const summaryData = generateSummaryRows(rentals);
+    // Convert to simple text summary for better readability
+    doc.fontSize(10).font('Helvetica');
+    let yPos = doc.y;
+
+    summaryData.forEach((row, i) => {
+      // Two column layout for summary
+      const xPos = (i % 2) === 0 ? 40 : 300;
+      if (i % 2 === 0 && i !== 0) yPos += 20;
+
+      doc.font('Helvetica-Bold').text(`${row[0]}: `, xPos, yPos, { continued: true });
+      doc.font('Helvetica').text(row[1]);
+    });
+
+    doc.moveDown(3);
+
+    // --- DETAILED RECORDS ---
+    // Start detailed records on a new page after summary
+    doc.addPage();
+
+    rentals.forEach((rental, index) => {
+      // Smart Pagination: Check if there is enough space for the Header + Financial Overview (approx 150px)
+      // If not, add a new page. 
+      if (doc.y > 650) {
+        doc.addPage();
+      } else if (index > 0) {
+        // Add some spacing between rentals if on the same page
+        doc.moveDown(2);
+        doc.lineWidth(0.5).strokeColor('#cccccc').moveTo(40, doc.y).lineTo(555, doc.y).stroke();
+        doc.moveDown(2);
+      }
+
+      const startY = doc.y;
+
+      // 1. HEADER: Customer & Status
+      // Background box
+      doc.rect(40, startY, 515, 70).fillAndStroke('#f0f9ff', '#086cbe');
+      doc.fillColor('black');
+
+      // Customer Name
+      doc.fontSize(16).font('Helvetica-Bold')
+        .text(rental.customerName, 50, startY + 15);
+
+      // Phone
+      doc.fontSize(10).font('Helvetica')
+        .text(`Phone: ${rental.customerPhone}`, 50, startY + 40);
+
+      // Status Badge (Text representation)
+      const statusText = rental.status.replace(/_/g, ' ').toUpperCase();
+
+      // Measure height of status text to ensure Date doesn't overlap
+      doc.fontSize(10).font('Helvetica-Bold');
+      const statusWidth = 180;
+      const statusHeight = doc.heightOfString(statusText, { width: statusWidth, align: 'right' });
+
+      doc.text(statusText, 360, startY + 15, { align: 'right', width: statusWidth });
+
+      // Position Date relative to Status height
+      doc.font('Helvetica')
+        .text(`Date: ${new Date(rental.createdAt).toLocaleDateString()}`, 360, startY + 15 + statusHeight + 5, { align: 'right', width: statusWidth });
+
+      // Reset text position for next section
+      doc.y = startY + 85;
+      doc.x = 40;
+
+      // 2. FINANCIAL OVERVIEW STATEMENT
+      doc.fontSize(12).font('Helvetica-Bold').fillColor('#086cbe').text('Financial Overview');
+      doc.moveDown(0.5);
+
+      const totalDiscount = rental.payments.filter(p => p.type === 'discount').reduce((sum, p) => sum + p.amount, 0);
+      const netTotal = (rental.totalAmount || 0) - totalDiscount;
+      const balance = rental.balanceAmount || 0;
+
+      // FIXED: Added continued: true to the first segment and intermediate segments
+      doc.fontSize(10).font('Helvetica').fillColor('black');
+      doc.text(`This rental agreement has a total gross value of `, { continued: true })
+        .font('Helvetica-Bold').text(`₹${(rental.totalAmount || 0).toFixed(2)}`, { continued: true })
+        .font('Helvetica').text(`. A total discount of `, { continued: true })
+        .font('Helvetica-Bold').text(`₹${totalDiscount.toFixed(2)}`, { continued: true })
+        .font('Helvetica').text(` was applied, resulting in a net payable amount of `, { continued: true })
+        .font('Helvetica-Bold').text(`₹${netTotal.toFixed(2)}`, { continued: true })
+        .font('Helvetica').text(`. To date, `, { continued: true })
+        .font('Helvetica-Bold').text(`₹${(rental.totalPaid || 0).toFixed(2)}`, { continued: true })
+        .font('Helvetica').text(` has been paid, leaving an outstanding balance of `, { continued: true })
+        .font('Helvetica-Bold').fillColor(balance > 0 ? 'red' : 'green')
+        .text(`₹${balance.toFixed(2)}`, { continued: true })
+        .fillColor('black').font('Helvetica').text(`.`);
+
+      doc.moveDown(1.5);
+
+      // 3. PRODUCT DETAILS (Narrative)
+      // Check for space before starting section
+      if (doc.y > 700) doc.addPage();
+
+      doc.fontSize(12).font('Helvetica-Bold').fillColor('#086cbe').text('Product Details');
+      doc.moveDown(0.5);
+
+      rental.productItems.forEach((item, i) => {
+        // Check space for item
+        if (doc.y > 750) doc.addPage();
+
+        const prodName = item.productId?.name || item.productName;
+        const status = item.currentQuantity === 0 ? "Returned" : "Active";
+
+        doc.fontSize(10).font('Helvetica-Bold').fillColor('black')
+          .text(`${i + 1}. ${prodName}`, { continued: true });
+        doc.font('Helvetica').text(` - ${item.quantity} Unit(s) @ ₹${item.rate}/${item.rateType}`);
+
+        doc.fontSize(9).fillColor('#444444')
+          .text(`   Current Status: ${status} | Total Item Cost: ₹${(item.amount || 0).toFixed(2)}`);
+        doc.moveDown(0.3);
+      });
+
+      doc.moveDown(1);
+
+      // 4. TRANSACTION HISTORY
+      if (doc.y > 680) doc.addPage();
+
+      doc.fontSize(12).font('Helvetica-Bold').fillColor('#086cbe').text('Activity Log (Rentals & Returns)');
+      doc.moveDown(0.5);
+
+      const historyEvents = rental.transactions.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+      if (historyEvents.length > 0) {
+        historyEvents.forEach(tx => {
+          if (doc.y > 750) doc.addPage();
+
+          const dateStr = new Date(tx.date).toLocaleDateString();
+          const typeStr = tx.type.charAt(0).toUpperCase() + tx.type.slice(1);
+          const desc = `${typeStr}: ${tx.quantity} unit(s) of ${tx.productName}`;
+
+          doc.fontSize(9).font('Helvetica').fillColor('black')
+            .text(`• ${dateStr} - `, { continued: true })
+            .font('Helvetica-Bold').text(desc);
+
+          if (tx.notes) {
+            doc.fontSize(8).font('Helvetica-Oblique').fillColor('gray')
+              .text(`  Note: ${tx.notes}`, { indent: 15 });
+          }
+          doc.moveDown(0.3);
+        });
+      } else {
+        doc.fontSize(9).font('Helvetica-Oblique').text('No activity recorded.');
+      }
+
+      doc.moveDown(1);
+
+      // 5. PAYMENT & DISCOUNT HISTORY
+      if (doc.y > 680) doc.addPage();
+
+      doc.fontSize(12).font('Helvetica-Bold').fillColor('#086cbe').text('Payment & Discount History');
+      doc.moveDown(0.5);
+
+      const paymentEvents = rental.payments.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+      if (paymentEvents.length > 0) {
+        paymentEvents.forEach(pay => {
+          if (doc.y > 750) doc.addPage();
+
+          const dateStr = new Date(pay.date).toLocaleString();
+          const isDiscount = pay.type === 'discount';
+          const label = isDiscount ? 'DISCOUNT APPLIED' : 'PAYMENT RECEIVED';
+          const color = isDiscount ? 'orange' : 'green';
+
+          doc.fontSize(9).font('Helvetica').fillColor('black')
+            .text(`• ${dateStr} - `, { continued: true })
+            .font('Helvetica-Bold').fillColor(color).text(`${label}: ₹${pay.amount.toFixed(2)}`);
+
+          if (pay.notes) {
+            doc.fontSize(8).font('Helvetica-Oblique').fillColor('gray')
+              .text(`  Note: ${pay.notes}`, { indent: 15 });
+          }
+          doc.moveDown(0.3);
+        });
+      } else {
+        doc.fontSize(9).font('Helvetica-Oblique').fillColor('black').text('No payments recorded.');
+      }
+    });
+
+    // Page Numbering Footer
+    const totalPages = doc.bufferedPageRange().count;
+    for (let i = 0; i < totalPages; i++) {
+      doc.switchToPage(i);
+      doc.fontSize(8).fillColor('gray').font('Helvetica')
+        .text(`Page ${i + 1} of ${totalPages}`, 40, doc.page.height - 30, { align: 'center', width: 515 });
+    }
+
+    doc.end();
+
+  } catch (error) {
+    console.error('PDF generation error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+function buildRentalQuery(search, status, dateFrom, dateTo) {
+  let query = {};
+
+  switch (status) {
+    case 'completed': query.status = 'completed'; break;
+    case 'pending_payment':
+      query = { $or: [{ status: 'returned_pending_payment' }, { balanceAmount: { $gt: 0 } }] };
+      break;
+    case 'active': query.status = 'active'; break;
+    case 'partially_returned': query.status = 'partially_returned'; break;
+    default:
+      query.status = { $in: ['active', 'completed', 'partially_returned', 'returned_pending_payment'] };
+      break;
+  }
+
+  if (dateFrom || dateTo) {
+    query.createdAt = {};
+    if (dateFrom) query.createdAt.$gte = new Date(dateFrom);
+    if (dateTo) query.createdAt.$lte = new Date(dateTo);
+  }
+
+  if (search) {
+    query.$or = [
+      { customerName: { $regex: search, $options: 'i' } },
+      { customerPhone: { $regex: search, $options: 'i' } }
+    ];
+  }
+
+  return query;
+}
+
+function generateSummaryRows(rentals) {
+  const summary = {
+    totalRentals: rentals.length,
+    active: rentals.filter(r => r.status === 'active').length,
+    completed: rentals.filter(r => r.status === 'completed').length,
+    pending: rentals.filter(r => r.balanceAmount > 0).length,
+    totalAmount: rentals.reduce((sum, r) => sum + (r.totalAmount || 0), 0),
+    totalPaid: rentals.reduce((sum, r) => sum + (r.totalPaid || 0), 0),
+    totalDiscount: rentals.reduce((sum, r) =>
+      sum + r.payments.filter(p => p.type === 'discount').reduce((s, p) => s + p.amount, 0), 0),
+    totalBalance: rentals.reduce((sum, r) => sum + (r.balanceAmount || 0), 0),
+    avgRentalValue: rentals.length > 0 ?
+      rentals.reduce((sum, r) => sum + (r.totalAmount || 0), 0) / rentals.length : 0
+  };
+
+  return [
+    ['Total Rentals', summary.totalRentals.toString()],
+    ['Active Rentals', summary.active.toString()],
+    ['Completed Rentals', summary.completed.toString()],
+    ['Pending Payment', summary.pending.toString()],
+    ['Gross Revenue', `₹${summary.totalAmount.toFixed(2)}`],
+    ['Total Discounts', `₹${summary.totalDiscount.toFixed(2)}`],
+    ['Net Revenue', `₹${(summary.totalAmount - summary.totalDiscount).toFixed(2)}`],
+    ['Amount Collected', `₹${summary.totalPaid.toFixed(2)}`],
+    ['Outstanding Balance', `₹${summary.totalBalance.toFixed(2)}`],
+    ['Collection Rate', `${summary.totalAmount > 0 ? ((summary.totalPaid / summary.totalAmount) * 100).toFixed(1) : 0}%`],
+    ['Average Rental Value', `₹${summary.avgRentalValue.toFixed(2)}`]
+  ];
+}
+
+// ✅ SIMPLE PDF DOWNLOAD API
+router.get("/download/simple-pdf", async (req, res) => {
+  try {
+    const rentals = await Rental.find({})
+      .populate('productItems.productId', 'name rate rateType')
+      .sort({ createdAt: -1 })
+      .limit(100); // Limit to 100 records for performance
+
+    if (rentals.length === 0) {
+      return res.status(404).json({ message: "No rentals found" });
+    }
+
+    const doc = new PDFDocument();
+    const filename = `rentals-${Date.now()}.pdf`;
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+
+    doc.pipe(res);
+
+    // Title
+    doc.fontSize(20)
+      .text('Rental Report', { align: 'center' });
+
+    doc.moveDown();
+
+    // Generate report
+    rentals.forEach((rental, index) => {
+      // Check for page break
+      if (doc.y > 700) {
+        doc.addPage();
+      }
+
+      doc.fontSize(12)
+        .font('Helvetica-Bold')
+        .text(`${index + 1}. ${rental.customerName} (${rental.customerPhone})`);
+
+      doc.fontSize(10)
+        .font('Helvetica')
+        .text(`Date: ${new Date(rental.createdAt).toLocaleDateString()} | Status: ${rental.status}`);
+
+      doc.text(`Total: ₹${rental.totalAmount || 0} | Paid: ₹${rental.totalPaid || 0} | Balance: ₹${rental.balanceAmount || 0}`);
+
+      // Products
+      if (rental.productItems.length > 0) {
+        doc.text('Products:');
+        rental.productItems.forEach(item => {
+          const name = item.productId?.name || item.productName;
+          doc.text(`  • ${name} - Qty: ${item.quantity}, Rate: ₹${item.rate}/${item.rateType}, Amount: ₹${item.amount || 0}`);
+        });
+      }
+
+      doc.moveDown();
+      doc.moveTo(50, doc.y)
+        .lineTo(550, doc.y)
+        .stroke();
+      doc.moveDown();
+    });
+
+    // Footer
+    doc.fontSize(8)
+      .text(`Generated on ${new Date().toLocaleDateString()} | Total: ${rentals.length} rentals`,
+        50, doc.page.height - 50, { align: 'center' });
+
+    doc.end();
+
+  } catch (error) {
+    console.error('PDF error:', error);
+    res.status(500).json({ message: error.message });
   }
 });
 
