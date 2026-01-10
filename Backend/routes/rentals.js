@@ -2364,63 +2364,59 @@ router.get("/download/history-pdf-enhanced", async (req, res) => {
     doc.moveDown(3);
 
     // --- DETAILED RECORDS ---
-    // Start detailed records on a new page after summary
     doc.addPage();
 
     rentals.forEach((rental, index) => {
-      // Smart Pagination: Check if there is enough space for the Header + Financial Overview (approx 150px)
-      // If not, add a new page. 
-      if (doc.y > 650) {
+      // Smart Pagination for Rental Header
+      // If less than 150px remaining, start new page for new rental
+      if (doc.y > doc.page.height - 150) {
         doc.addPage();
       } else if (index > 0) {
-        // Add some spacing between rentals if on the same page
-        doc.moveDown(2);
+        doc.moveDown(1);
         doc.lineWidth(0.5).strokeColor('#cccccc').moveTo(40, doc.y).lineTo(555, doc.y).stroke();
-        doc.moveDown(2);
+        doc.moveDown(1);
       }
 
-      const startY = doc.y;
+      let startY = doc.y;
 
       // 1. HEADER: Customer & Status
-      // Background box
       doc.rect(40, startY, 515, 70).fillAndStroke('#f0f9ff', '#086cbe');
       doc.fillColor('black');
 
-      // Customer Name
       doc.fontSize(16).font('Helvetica-Bold')
         .text(rental.customerName, 50, startY + 15);
 
-      // Phone
       doc.fontSize(10).font('Helvetica')
         .text(`Phone: ${rental.customerPhone}`, 50, startY + 40);
 
-      // Status Badge (Text representation)
+      // Status Badge
       const statusText = rental.status.replace(/_/g, ' ').toUpperCase();
 
-      // Measure height of status text to ensure Date doesn't overlap
       doc.fontSize(10).font('Helvetica-Bold');
       const statusWidth = 180;
       const statusHeight = doc.heightOfString(statusText, { width: statusWidth, align: 'right' });
 
       doc.text(statusText, 360, startY + 15, { align: 'right', width: statusWidth });
 
-      // Position Date relative to Status height
+      // Date
       doc.font('Helvetica')
         .text(`Date: ${new Date(rental.createdAt).toLocaleDateString()}`, 360, startY + 15 + statusHeight + 5, { align: 'right', width: statusWidth });
 
-      // Reset text position for next section
-      doc.y = startY + 85;
+      // IMPORTANT: Reset doc.x and explicitly set doc.y below the header box
       doc.x = 40;
+      doc.y = startY + 80;
 
-      // 2. FINANCIAL OVERVIEW STATEMENT
+      // 2. FINANCIAL OVERVIEW
+      // Avoid orphan header
+      if (doc.y > doc.page.height - 100) doc.addPage();
+
       doc.fontSize(12).font('Helvetica-Bold').fillColor('#086cbe').text('Financial Overview');
-      doc.moveDown(0.5);
+      doc.moveDown(0.2);
 
       const totalDiscount = rental.payments.filter(p => p.type === 'discount').reduce((sum, p) => sum + p.amount, 0);
       const netTotal = (rental.totalAmount || 0) - totalDiscount;
       const balance = rental.balanceAmount || 0;
 
-      // FIXED: Added continued: true to the first segment and intermediate segments
       doc.fontSize(10).font('Helvetica').fillColor('black');
       doc.text(`This rental agreement has a total gross value of `, { continued: true })
         .font('Helvetica-Bold').text(`₹${(rental.totalAmount || 0).toFixed(2)}`, { continued: true })
@@ -2435,45 +2431,46 @@ router.get("/download/history-pdf-enhanced", async (req, res) => {
         .text(`₹${balance.toFixed(2)}`, { continued: true })
         .fillColor('black').font('Helvetica').text(`.`);
 
-      doc.moveDown(1.5);
+      doc.moveDown(1);
 
-      // 3. PRODUCT DETAILS (Narrative)
-      // Check for space before starting section
-      if (doc.y > 700) doc.addPage();
+      // 3. PRODUCT DETAILS
+      // Header check
+      if (doc.y > doc.page.height - 100) doc.addPage();
 
       doc.fontSize(12).font('Helvetica-Bold').fillColor('#086cbe').text('Product Details');
-      doc.moveDown(0.5);
+      doc.moveDown(0.2);
+
+      doc.fontSize(10).font('Helvetica-Bold').fillColor('black'); // Set font once for loop
 
       rental.productItems.forEach((item, i) => {
-        // Check space for item
-        if (doc.y > 750) doc.addPage();
+        // REMOVED manual doc.addPage() inside logic loops
+        // pdfkit handles text flow automatically
 
         const prodName = item.productId?.name || item.productName;
         const status = item.currentQuantity === 0 ? "Returned" : "Active";
 
-        doc.fontSize(10).font('Helvetica-Bold').fillColor('black')
+        doc.font('Helvetica-Bold').fillColor('black')
           .text(`${i + 1}. ${prodName}`, { continued: true });
         doc.font('Helvetica').text(` - ${item.quantity} Unit(s) @ ₹${item.rate}/${item.rateType}`);
 
         doc.fontSize(9).fillColor('#444444')
           .text(`   Current Status: ${status} | Total Item Cost: ₹${(item.amount || 0).toFixed(2)}`);
-        doc.moveDown(0.3);
+        doc.moveDown(0.2);
+        doc.fontSize(10).fillColor('black'); // Reset for next item title
       });
 
-      doc.moveDown(1);
+      doc.moveDown(0.5);
 
       // 4. TRANSACTION HISTORY
-      if (doc.y > 680) doc.addPage();
+      if (doc.y > doc.page.height - 100) doc.addPage();
 
       doc.fontSize(12).font('Helvetica-Bold').fillColor('#086cbe').text('Activity Log (Rentals & Returns)');
-      doc.moveDown(0.5);
+      doc.moveDown(0.2);
 
       const historyEvents = rental.transactions.sort((a, b) => new Date(a.date) - new Date(b.date));
 
       if (historyEvents.length > 0) {
         historyEvents.forEach(tx => {
-          if (doc.y > 750) doc.addPage();
-
           const dateStr = new Date(tx.date).toLocaleDateString();
           const typeStr = tx.type.charAt(0).toUpperCase() + tx.type.slice(1);
           const desc = `${typeStr}: ${tx.quantity} unit(s) of ${tx.productName}`;
@@ -2486,26 +2483,24 @@ router.get("/download/history-pdf-enhanced", async (req, res) => {
             doc.fontSize(8).font('Helvetica-Oblique').fillColor('gray')
               .text(`  Note: ${tx.notes}`, { indent: 15 });
           }
-          doc.moveDown(0.3);
+          doc.moveDown(0.2);
         });
       } else {
         doc.fontSize(9).font('Helvetica-Oblique').text('No activity recorded.');
       }
 
-      doc.moveDown(1);
+      doc.moveDown(0.5);
 
       // 5. PAYMENT & DISCOUNT HISTORY
-      if (doc.y > 680) doc.addPage();
+      if (doc.y > doc.page.height - 100) doc.addPage();
 
       doc.fontSize(12).font('Helvetica-Bold').fillColor('#086cbe').text('Payment & Discount History');
-      doc.moveDown(0.5);
+      doc.moveDown(0.2);
 
       const paymentEvents = rental.payments.sort((a, b) => new Date(a.date) - new Date(b.date));
 
       if (paymentEvents.length > 0) {
         paymentEvents.forEach(pay => {
-          if (doc.y > 750) doc.addPage();
-
           const dateStr = new Date(pay.date).toLocaleString();
           const isDiscount = pay.type === 'discount';
           const label = isDiscount ? 'DISCOUNT APPLIED' : 'PAYMENT RECEIVED';
@@ -2519,7 +2514,7 @@ router.get("/download/history-pdf-enhanced", async (req, res) => {
             doc.fontSize(8).font('Helvetica-Oblique').fillColor('gray')
               .text(`  Note: ${pay.notes}`, { indent: 15 });
           }
-          doc.moveDown(0.3);
+          doc.moveDown(0.2);
         });
       } else {
         doc.fontSize(9).font('Helvetica-Oblique').fillColor('black').text('No payments recorded.');

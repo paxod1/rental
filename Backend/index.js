@@ -89,7 +89,7 @@ const PORT = process.env.PORT || 8000;
 app.listen(PORT, async () => {
   console.log(`Server running on port ${PORT}`);
   console.log('🔐 Authentication middleware applied to protected routes');
-  
+
   // ✅ ULTRAMSG WHATSAPP STARTUP
   try {
     console.log('\n🟢 Starting UltraMsg WhatsApp service...');
