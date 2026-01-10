@@ -36,24 +36,24 @@ const WhatsAppBill = ({ rental, isOpen, onClose }) => {
         }
     };
 
-const generateBillText = () => {
-    if (!rental) return;
+    const generateBillText = () => {
+        if (!rental) return;
 
-    const formatDate = (date) => new Date(date).toLocaleDateString('en-IN');
-    const formatCurrency = (amount) => `₹${amount?.toFixed(2) || '0.00'}`;
+        const formatDate = (date) => new Date(date).toLocaleDateString('en-IN');
+        const formatCurrency = (amount) => `₹${amount?.toFixed(2) || '0.00'}`;
 
-    // Calculate totals
-    const subtotal = rental.totalAmount || 0;
-    const totalPaid = rental.totalPaid || 0;
-    const totalDiscount = getTotalDiscounts();
-    const balance = rental.balanceAmount || 0;
-    const netAmount = subtotal - totalDiscount;
+        // Calculate totals
+        const subtotal = rental.totalAmount || 0;
+        const totalPaid = rental.totalPaid || 0;
+        const totalDiscount = getTotalDiscounts();
+        const balance = rental.balanceAmount || 0;
+        const netAmount = subtotal - totalDiscount;
 
-    // Generate invoice number
-    const invoiceNo = `INV-${rental._id?.slice(-6)?.toUpperCase() || '000000'}`;
-    const currentDate = formatDate(new Date());
+        // Generate invoice number
+        const invoiceNo = `INV-${rental._id?.slice(-6)?.toUpperCase() || '000000'}`;
+        const currentDate = formatDate(new Date());
 
-    let billText = `*EDASSERIKKUDIYIL RENTALS PVT LTD*
+        let billText = `*EDASSERIKKUDIYIL RENTALS PVT LTD*
 *Mammattikkanam, Idukki, Kerala*
 
 *INVOICE / BILL RECEIPT*
@@ -70,147 +70,147 @@ const generateBillText = () => {
 
 *PRODUCTS & AMOUNT DETAILS*`;
 
-    // Add product items with detailed calculation
-    let totalProductsAmount = 0;
-    let totalProductsPaid = 0;
-    let totalProductsBalance = 0;
+        // Add product items with detailed calculation
+        let totalProductsAmount = 0;
+        let totalProductsPaid = 0;
+        let totalProductsBalance = 0;
 
-    rental.productItems.forEach((product, index) => {
-        const productBalance = calculateProductBalance(product);
-        const paidAmount = (product.amount || 0) - productBalance;
-        
-        totalProductsAmount += product.amount || 0;
-        totalProductsPaid += paidAmount;
-        totalProductsBalance += productBalance;
-        
-        billText += `\n
+        rental.productItems.forEach((product, index) => {
+            const productBalance = calculateProductBalance(product);
+            const paidAmount = (product.amount || 0) - productBalance;
+
+            totalProductsAmount += product.amount || 0;
+            totalProductsPaid += paidAmount;
+            totalProductsBalance += productBalance;
+
+            billText += `\n
 *${index + 1}. ${product.productName.toUpperCase()}*
 Rate: ${formatCurrency(product.rate)}/${product.rateType}
 Quantity: ${product.quantity} units (Current: ${product.currentQuantity} units)
 Amount: ${formatCurrency(product.amount || 0)}
 Paid: ${formatCurrency(paidAmount)}
 Balance: ${formatCurrency(productBalance)}`;
-    });
-
-    
+        });
 
 
-    // Transaction details
-    billText += `\n
+
+
+        // Transaction details
+        billText += `\n
 *TRANSACTION HISTORY* 
 `;
 
-    // Returns summary with product names
-    const returnTransactions = rental.transactions?.filter(t => 
-        t.type === 'return' || t.type === 'partial_return'
-    ) || [];
+        // Returns summary with product names
+        const returnTransactions = rental.transactions?.filter(t =>
+            t.type === 'return' || t.type === 'partial_return'
+        ) || [];
 
-    if (returnTransactions.length > 0) {
-        billText += `\n*Returns Made:*`;
-        returnTransactions.forEach((returnTx, index) => {
-            const returnDate = formatDate(returnTx.date);
-            const product = rental.productItems.find(item => 
-                (item.productId._id || item.productId).toString() === returnTx.productId.toString()
-            );
-            const productName = product ? product.productName : 'Unknown Product';
-            
-            // Check if return amount was paid
-            const isPaid = returnTx.amount <= totalPaid;
-            
-            billText += `
+        if (returnTransactions.length > 0) {
+            billText += `\n*Returns Made:*`;
+            returnTransactions.forEach((returnTx, index) => {
+                const returnDate = formatDate(returnTx.date);
+                const product = rental.productItems.find(item =>
+                    (item.productId._id || item.productId).toString() === returnTx.productId.toString()
+                );
+                const productName = product ? product.productName : 'Unknown Product';
+
+                // Check if return amount was paid
+                const isPaid = returnTx.amount <= totalPaid;
+
+                billText += `
             \n${index + 1}. ${returnDate}: ${returnTx.quantity} units of ${productName} - ${formatCurrency(returnTx.amount || 0)} }`;
-        });
-    }
+            });
+        }
 
-    // Additional rentals summary
-    const additionalRentals = rental.transactions?.filter(t => 
-        t.type === 'additional_rental'
-    ) || [];
+        // Additional rentals summary
+        const additionalRentals = rental.transactions?.filter(t =>
+            t.type === 'additional_rental'
+        ) || [];
 
-    if (additionalRentals.length > 0) {
-        billText += `\n*Additional Rentals:*`;
-        additionalRentals.forEach((addTx, index) => {
-            const addDate = formatDate(addTx.date);
-            const product = rental.productItems.find(item => 
-                (item.productId._id || item.productId).toString() === addTx.productId.toString()
-            );
-            const productName = product ? product.productName : 'Unknown Product';
-            
-            billText += `\n${index + 1}. ${addDate}: +${addTx.quantity} units of ${productName}`;
-        });
-    }
+        if (additionalRentals.length > 0) {
+            billText += `\n*Additional Rentals:*`;
+            additionalRentals.forEach((addTx, index) => {
+                const addDate = formatDate(addTx.date);
+                const product = rental.productItems.find(item =>
+                    (item.productId._id || item.productId).toString() === addTx.productId.toString()
+                );
+                const productName = product ? product.productName : 'Unknown Product';
 
-    // Payments summary
-    if (rental.payments && rental.payments.length > 0) {
-        billText += `
+                billText += `\n${index + 1}. ${addDate}: +${addTx.quantity} units of ${productName}`;
+            });
+        }
+
+        // Payments summary
+        if (rental.payments && rental.payments.length > 0) {
+            billText += `
         \n*Payments Received:*`;
-        let paymentCount = 1;
-        rental.payments.forEach((payment) => {
-            const payDate = payment.date ? formatDate(payment.date) : 'Unknown';
-            
-            if (payment.amount > 0) {
-                let paymentInfo = `\n${paymentCount}. ${payDate}: ${formatCurrency(payment.amount)}`;
-                
-                // Add product name if specific payment
-                if (payment.productId) {
-                    const product = rental.productItems.find(item => 
-                        (item.productId._id || item.productId).toString() === payment.productId.toString()
-                    );
-                    if (product) {
-                        paymentInfo += `
-                         for ${product.productName} `;
-                    }
-                }
-            
-                
-                billText += paymentInfo;
-                paymentCount++;
-            }
-        });
-    }
+            let paymentCount = 1;
+            rental.payments.forEach((payment) => {
+                const payDate = payment.date ? formatDate(payment.date) : 'Unknown';
 
-    // Discount summary
-    if (totalDiscount > 0) {
-        billText += `\n*Discount Applied:* ${formatCurrency(totalDiscount)}`;
-        
-        // Show discount breakdown
-        const discountPayments = rental.payments?.filter(p => p.discountAmount && p.discountAmount > 0) || [];
-        if (discountPayments.length > 0) {
-            discountPayments.forEach((discount, index) => {
-                const discDate = formatDate(discount.date);
-                billText += `\n  - ${discDate}: ${formatCurrency(discount.discountAmount)}`;
-                if (discount.discountNotes) {
-                    billText += ` (${discount.discountNotes})`;
+                if (payment.amount > 0) {
+                    let paymentInfo = `\n${paymentCount}. ${payDate}: ${formatCurrency(payment.amount)}`;
+
+                    // Add product name if specific payment
+                    if (payment.productId) {
+                        const product = rental.productItems.find(item =>
+                            (item.productId._id || item.productId).toString() === payment.productId.toString()
+                        );
+                        if (product) {
+                            paymentInfo += `
+                         for ${product.productName} `;
+                        }
+                    }
+
+
+                    billText += paymentInfo;
+                    paymentCount++;
                 }
             });
         }
-    }
 
-    billText += `\n
+        // Discount summary
+        if (totalDiscount > 0) {
+            billText += `\n*Discount Applied:* ${formatCurrency(totalDiscount)}`;
+
+            // Show discount breakdown
+            const discountPayments = rental.payments?.filter(p => p.discountAmount && p.discountAmount > 0) || [];
+            if (discountPayments.length > 0) {
+                discountPayments.forEach((discount, index) => {
+                    const discDate = formatDate(discount.date);
+                    billText += `\n  - ${discDate}: ${formatCurrency(discount.discountAmount)}`;
+                    if (discount.discountNotes) {
+                        billText += ` (${discount.discountNotes})`;
+                    }
+                });
+            }
+        }
+
+        billText += `\n
 *BILL CALCULATION SUMMARY*
 Total Products Amount: ${formatCurrency(totalProductsAmount)}`;
 
-    if (totalDiscount > 0) {
-        billText += `
+        if (totalDiscount > 0) {
+            billText += `
 Discount: -${formatCurrency(totalDiscount)}
 *Net Amount:* ${formatCurrency(netAmount)}`;
-    }
+        }
 
-    billText += `
+        billText += `
 Total Paid: ${formatCurrency(totalPaid)}
 *BALANCE DUE:* ${formatCurrency(balance)}`;
 
 
-    // Payment status
-    let statusText = balance > 0 ? 'PENDING PAYMENT' : 'FULLY PAID';
-    let paymentPercentage = subtotal > 0 ? ((totalPaid / subtotal) * 100).toFixed(1) : '0.0';
+        // Payment status
+        let statusText = balance > 0 ? 'PENDING PAYMENT' : 'FULLY PAID';
+        let paymentPercentage = subtotal > 0 ? ((totalPaid / subtotal) * 100).toFixed(1) : '0.0';
 
-    billText += `\n
+        billText += `\n
 *PAYMENT STATUS*
 ${statusText}`;
 
 
-    billText += `\n
+        billText += `\n
 *CONTACT INFORMATION*
 EDASSERIKKUDIYIL RENTALS PVT LTD
 Mammattikkanam, Idukki, Kerala
@@ -226,76 +226,76 @@ Invoice ID: ${invoiceNo}
 Thank you for choosing EDASSERIKKUDIYIL RENTALS!
 We appreciate your business and look forward to serving you again.`;
 
-    setBillPreview(billText.trim());
-};
+        setBillPreview(billText.trim());
+    };
 
-// Helper function to calculate product balance
-const calculateProductBalance = (productItem) => {
-    if (!productItem) return 0;
-    
-    // If product has balanceAmount, use it
-    if (productItem.balanceAmount !== undefined) {
-        return productItem.balanceAmount;
-    }
-    
-    // Otherwise calculate from transactions
-    if (!rental || !rental.transactions) return productItem.amount || 0;
-    
-    const productId = productItem.productId._id || productItem.productId;
-    
-    const productPayments = rental.payments?.filter(payment => 
-        payment.productId && payment.productId.toString() === productId.toString()
-    ) || [];
-    
-    const totalPaid = productPayments.reduce((sum, payment) => sum + (payment.amount || 0), 0);
-    
-    return Math.max(0, (productItem.amount || 0) - totalPaid);
-};
+    // Helper function to calculate product balance
+    const calculateProductBalance = (productItem) => {
+        if (!productItem) return 0;
 
-// Helper function to get all activities
-const getAllActivities = () => {
-    if (!rental) return [];
-    
-    const activities = [];
+        // If product has balanceAmount, use it
+        if (productItem.balanceAmount !== undefined) {
+            return productItem.balanceAmount;
+        }
 
-    // Add transactions
-    const transactions = rental.transactions || [];
-    transactions.forEach(transaction => {
-        // Find product name for transaction
-        const productItem = rental.productItems.find(item => 
-            (item.productId._id || item.productId).toString() === transaction.productId?.toString()
-        );
-        
-        activities.push({
-            ...transaction,
-            activityType: 'transaction',
-            productName: productItem ? productItem.productName : 'Unknown Product',
-            date: transaction.date,
-            displayDate: new Date(transaction.date).toLocaleDateString(),
-            rate: productItem ? productItem.rate : 0
+        // Otherwise calculate from transactions
+        if (!rental || !rental.transactions) return productItem.amount || 0;
+
+        const productId = productItem.productId._id || productItem.productId;
+
+        const productPayments = rental.payments?.filter(payment =>
+            payment.productId && payment.productId.toString() === productId.toString()
+        ) || [];
+
+        const totalPaid = productPayments.reduce((sum, payment) => sum + (payment.amount || 0), 0);
+
+        return Math.max(0, (productItem.amount || 0) - totalPaid);
+    };
+
+    // Helper function to get all activities
+    const getAllActivities = () => {
+        if (!rental) return [];
+
+        const activities = [];
+
+        // Add transactions
+        const transactions = rental.transactions || [];
+        transactions.forEach(transaction => {
+            // Find product name for transaction
+            const productItem = rental.productItems.find(item =>
+                (item.productId._id || item.productId).toString() === transaction.productId?.toString()
+            );
+
+            activities.push({
+                ...transaction,
+                activityType: 'transaction',
+                productName: productItem ? productItem.productName : 'Unknown Product',
+                date: transaction.date,
+                displayDate: new Date(transaction.date).toLocaleDateString(),
+                rate: productItem ? productItem.rate : 0
+            });
         });
-    });
 
-    // Add payments
-    const payments = rental.payments || [];
-    payments.forEach(payment => {
-        // Find product name for payment if applicable
-        const productItem = payment.productId ? rental.productItems.find(item => 
-            (item.productId._id || item.productId).toString() === payment.productId.toString()
-        ) : null;
-        
-        activities.push({
-            ...payment,
-            activityType: 'payment',
-            productName: productItem ? productItem.productName : null,
-            date: payment.date,
-            displayDate: new Date(payment.date).toLocaleDateString()
+        // Add payments
+        const payments = rental.payments || [];
+        payments.forEach(payment => {
+            // Find product name for payment if applicable
+            const productItem = payment.productId ? rental.productItems.find(item =>
+                (item.productId._id || item.productId).toString() === payment.productId.toString()
+            ) : null;
+
+            activities.push({
+                ...payment,
+                activityType: 'payment',
+                productName: productItem ? productItem.productName : null,
+                date: payment.date,
+                displayDate: new Date(payment.date).toLocaleDateString()
+            });
         });
-    });
 
-    // Sort by date (newest first)
-    return activities.sort((a, b) => new Date(b.date) - new Date(a.date));
-};
+        // Sort by date (newest first)
+        return activities.sort((a, b) => new Date(b.date) - new Date(a.date));
+    };
 
     const generateSimpleBill = () => {
         if (!rental) return;
@@ -499,7 +499,7 @@ EDASSERIKKUDIYIL RENTALS
         <div className="fixed inset-0 bg-black/50 bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
                 {/* Header */}
-                <div className="flex items-center justify-between p-6 border-b bg-gradient-to-r from-green-500 to-green-600 text-white">
+                <div className="flex items-center justify-between p-6 border-b bg-[#086cbe] text-white">
                     <div className="flex items-center gap-3">
                         <FiMessageSquare className="w-6 h-6" />
                         <div>
@@ -606,7 +606,7 @@ EDASSERIKKUDIYIL RENTALS
                                 <button
                                     onClick={openWhatsApp}
                                     disabled={!phoneNumber || !validatePhoneNumber(phoneNumber) || !billPreview}
-                                    className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-6 py-3 rounded-lg transition-all flex items-center justify-center gap-2 font-medium"
+                                    className="w-full bg-[#086cbe] hover:bg-[#0757a8] disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-6 py-3 rounded-lg transition-all flex items-center justify-center gap-2 font-medium"
                                 >
                                     <FiExternalLink className="w-5 h-5" />
                                     📱 Open WhatsApp & Send

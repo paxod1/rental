@@ -22,7 +22,7 @@ const RentalForm = ({
     advancePayment: "",
     notes: ""
   });
-  
+
   const [productItems, setProductItems] = useState([
     { productId: "", quantity: 1, days: "" }
   ]);
@@ -40,7 +40,7 @@ const RentalForm = ({
         advancePayment: initialData.advancePayment || "",
         notes: initialData.notes || ""
       });
-      
+
       if (initialData.productId) {
         setProductItems([{
           productId: initialData.productId,
@@ -96,7 +96,7 @@ const RentalForm = ({
   const validateQuantity = (index, quantity, productId) => {
     const newErrors = { ...quantityErrors };
     const product = getSelectedProduct(productId);
-    
+
     if (product && quantity) {
       const qty = parseInt(quantity);
       if (qty > product.quantity) {
@@ -111,7 +111,7 @@ const RentalForm = ({
     } else {
       delete newErrors[index];
     }
-    
+
     setQuantityErrors(newErrors);
   };
 
@@ -148,12 +148,12 @@ const RentalForm = ({
 
   const calculateItemTotal = (item) => {
     if (!item.productId || !item.quantity) return 0;
-    
+
     const product = getSelectedProduct(item.productId);
     if (!product) return 0;
-    
+
     let rate = 0;
-    
+
     // ✅ If days field is shown and has value, calculate based on days
     if (showDaysField && item.days) {
       switch (product.rateType) {
@@ -173,7 +173,7 @@ const RentalForm = ({
       // ✅ If days field is not shown or empty, use base rate
       rate = product.rate;
     }
-    
+
     return rate * parseInt(item.quantity || 1);
   };
 
@@ -189,7 +189,7 @@ const RentalForm = ({
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    
+
     // Validate required fields
     if (!formData.customerName.trim()) {
       toast.error('❌ Customer name is required');
@@ -202,7 +202,7 @@ const RentalForm = ({
     }
 
     // Validate product items
-    const validItems = productItems.filter(item => 
+    const validItems = productItems.filter(item =>
       item.productId && item.quantity > 0
     );
 
@@ -225,10 +225,10 @@ const RentalForm = ({
         return;
       }
     }
-    
+
     // ✅ Show loading toast
     toast.info('📝 Creating rental...', { autoClose: 1000 });
-    
+
     // Prepare data for submission
     const submissionData = {
       customerName: formData.customerName.trim(),
@@ -254,7 +254,7 @@ const RentalForm = ({
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-6 py-4 rounded-t-xl">
+        <div className="bg-[#086cbe] text-white px-6 py-4 rounded-t-xl">
           <div className="flex justify-between items-center">
             <h3 className="text-xl font-semibold">{title}</h3>
             <button
@@ -266,7 +266,7 @@ const RentalForm = ({
             </button>
           </div>
         </div>
-        
+
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           {/* Customer Information */}
           <div className="border-b border-gray-200 pb-6">
@@ -355,7 +355,7 @@ const RentalForm = ({
                 const selectedProduct = getSelectedProduct(item.productId);
                 const stockStatus = getStockStatus(selectedProduct);
                 const hasQuantityError = quantityErrors[index];
-                
+
                 return (
                   <div key={index} className="bg-gray-50 p-4 rounded-lg border">
                     <div className="flex justify-between items-start mb-3">
@@ -373,9 +373,8 @@ const RentalForm = ({
                     </div>
 
                     {/* ✅ Conditional grid columns based on showDaysField */}
-                    <div className={`grid grid-cols-1 gap-4 ${
-                      showDaysField ? 'md:grid-cols-4' : 'md:grid-cols-3'
-                    }`}>
+                    <div className={`grid grid-cols-1 gap-4 ${showDaysField ? 'md:grid-cols-4' : 'md:grid-cols-3'
+                      }`}>
                       <div className={showDaysField ? 'md:col-span-2' : 'md:col-span-1'}>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           Select Product *
@@ -392,15 +391,15 @@ const RentalForm = ({
                             {products.map((product) => {
                               const status = getStockStatus(product);
                               const isOutOfStock = product.quantity <= 0;
-                              
+
                               return (
-                                <option 
-                                  key={product._id} 
+                                <option
+                                  key={product._id}
                                   value={product._id}
                                   disabled={isOutOfStock}
                                   className={isOutOfStock ? 'text-gray-400 bg-gray-100' : ''}
                                 >
-                                  {product.name} - ₹{product.rate}/{product.rateType} 
+                                  {product.name} - ₹{product.rate}/{product.rateType}
                                   {isOutOfStock ? ' (Out of Stock)' : ` (Available: ${product.quantity})`}
                                 </option>
                               );
@@ -410,21 +409,20 @@ const RentalForm = ({
                             <FiChevronDown className="w-4 h-4 text-gray-400" />
                           </div>
                         </div>
-                        
+
                         {/* Stock Status Indicator */}
                         {selectedProduct && (
                           <div className="mt-2 flex items-center gap-2">
-                            <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
-                              stockStatus.status === 'out-of-stock' ? 'bg-red-100 text-red-700' :
+                            <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${stockStatus.status === 'out-of-stock' ? 'bg-red-100 text-red-700' :
                               stockStatus.status === 'low-stock' ? 'bg-amber-100 text-amber-700' :
-                              'bg-green-100 text-green-700'
-                            }`}>
+                                'bg-green-100 text-green-700'
+                              }`}>
                               {stockStatus.status === 'out-of-stock' && <FiAlertTriangle className="w-3 h-3" />}
                               {stockStatus.status === 'low-stock' && <FiAlertCircle className="w-3 h-3" />}
                               <span>
                                 {stockStatus.status === 'out-of-stock' ? 'Out of Stock' :
-                                 stockStatus.status === 'low-stock' ? 'Low Stock' :
-                                 'In Stock'}
+                                  stockStatus.status === 'low-stock' ? 'Low Stock' :
+                                    'In Stock'}
                               </span>
                             </div>
                             <span className="text-xs text-gray-600">
@@ -447,11 +445,10 @@ const RentalForm = ({
                           min="1"
                           max={selectedProduct?.quantity || 999}
                           disabled={isSubmitting || !selectedProduct || selectedProduct.quantity <= 0}
-                          className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all disabled:bg-gray-100 ${
-                            hasQuantityError ? 'border-red-500 bg-red-50' : 'border-gray-300'
-                          }`}
+                          className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all disabled:bg-gray-100 ${hasQuantityError ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                            }`}
                         />
-                        
+
                         {/* Quantity Error Message */}
                         {hasQuantityError && (
                           <div className="mt-1 flex items-center gap-1 text-red-600 text-xs">
@@ -459,7 +456,7 @@ const RentalForm = ({
                             <span>{hasQuantityError}</span>
                           </div>
                         )}
-                        
+
                         {/* Available Stock Helper */}
                         {selectedProduct && !hasQuantityError && (
                           <div className="mt-1 text-xs text-gray-500">
@@ -581,7 +578,7 @@ const RentalForm = ({
               </div>
             </div>
           )}
-          
+
           {/* Form Actions */}
           <div className="flex gap-3 pt-4 border-t border-gray-200">
             <button
@@ -595,14 +592,14 @@ const RentalForm = ({
             <button
               type="submit"
               disabled={
-                isSubmitting || 
-                !formData.customerName || 
-                !formData.customerPhone || 
-                !formData.startDate || 
+                isSubmitting ||
+                !formData.customerName ||
+                !formData.customerPhone ||
+                !formData.startDate ||
                 productItems.filter(item => item.productId).length === 0 ||
                 Object.keys(quantityErrors).length > 0
               }
-              className="flex-1 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white px-4 py-2 rounded-lg transition-all shadow-md hover:shadow-lg disabled:opacity-50 flex items-center justify-center gap-2"
+              className="flex-1 bg-[#086cbe] hover:bg-[#0757a8] text-white px-4 py-2 rounded-lg transition-all shadow-md hover:shadow-lg disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {isSubmitting && <LoadingSpinner size="sm" color="gray" />}
               Create Rental

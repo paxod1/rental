@@ -1,7 +1,8 @@
-// pages/admin/RentalHistory.jsx - Complete with Payment & Discount System
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import toast, { Toaster } from "react-hot-toast";
+import { useDispatch } from "react-redux";
+import { showToast } from "../../store/slices/toastSlice";
+import { openDeleteModal, closeDeleteModal, setDeleteModalLoading, setGlobalLoading } from "../../store/slices/uiSlice";
 import {
   FiSearch,
   FiEye,
@@ -19,12 +20,13 @@ import {
   FiPhone,
   FiMapPin
 } from "react-icons/fi";
-import PageLoading from "../../components/commonComp/PageLoading";
 import EmptyState from "../../components/commonComp/EmptyState";
 import LoadingSpinner from "../../components/commonComp/LoadingSpinner";
 import axiosInstance from "../../../axiosCreate";
+import Pagination from "../../components/global/Pagination";
 
 function RentalHistory() {
+  const dispatch = useDispatch();
   const [rentals, setRentals] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
@@ -36,6 +38,7 @@ function RentalHistory() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   // Enhanced payment data with discount support (same as RentalDetails)
   const [paymentData, setPaymentData] = useState({
@@ -46,25 +49,19 @@ function RentalHistory() {
     discountNotes: ''
   });
 
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [rentalToDelete, setRentalToDelete] = useState(null);
-  const [isDeleting, setIsDeleting] = useState(false);
-
   useEffect(() => {
-    async function firstFetch() {
-      setIsLoading(true);
-      await fetchRentalHistory();
-      setIsLoading(false);
-    }
-    firstFetch()
+    fetchRentalHistory(isInitialLoad);
+    if (isInitialLoad) setIsInitialLoad(false);
   }, [currentPage, statusFilter]);
 
-  const fetchRentalHistory = async () => {
+  const fetchRentalHistory = async (showGlobalLoader = false) => {
     try {
+      if (showGlobalLoader) dispatch(setGlobalLoading(true));
+      setIsLoading(true);
       const response = await axiosInstance.get("/api/rentals/all-history", {
         params: {
           page: currentPage,
-          limit: 10,
+          limit: 5,
           search: searchTerm,
           status: statusFilter
         }
@@ -74,8 +71,11 @@ function RentalHistory() {
       setTotalPages(response.data.totalPages);
       setTotalRentals(response.data.totalRentals);
     } catch (error) {
-      toast.error("Error fetching rental history");
+      dispatch(showToast({ message: "Error fetching rental history", type: "error" }));
       console.error("Error:", error);
+    } finally {
+      setIsLoading(false);
+      dispatch(setGlobalLoading(false));
     }
   };
 
@@ -160,12 +160,12 @@ function RentalHistory() {
       }
       message += ` = Total: ₹${totalReduction.toFixed(2)} processed successfully!`;
 
-      toast.success(message, { duration: 4000 });
+      dispatch(showToast({ message: message, type: "success" }));
       closePaymentModal();
-      fetchRentalHistory();
+      fetchRentalHistory(false);
     } catch (error) {
-      toast.error(error.response?.data?.message || "Error processing payment");
-      console.error("Error:", error);
+      console.error("Payment error:", error);
+      dispatch(showToast({ message: error.response?.data?.message || "Error processing payment", type: "error" }));
     } finally {
       setIsSubmitting(false);
     }
@@ -242,40 +242,30 @@ function RentalHistory() {
     }
   };
 
-  if (isLoading) {
-    return <PageLoading message="Loading Rental History..." />;
-  }
 
   return (
-    <div className="p-3 sm:p-4 lg:p-6 bg-gradient-to-br from-rose-50 to-pink-50 min-h-screen">
-      <Toaster
-        position="top-right"
-        toastOptions={{
-          style: { background: '#fdf2f8', border: '2px solid #f43f5e', color: '#881337' },
-          success: { style: { background: '#f0fdf4', border: '2px solid #22c55e', color: '#15803d' } },
-          error: { style: { background: '#fef2f2', border: '2px solid #ef4444', color: '#dc2626' } },
-        }}
-      />
+    <div className="p-3 sm:p-4 lg:p-6 bg-white min-h-screen">
+
 
       {/* Header */}
-      <div className="mb-6 sm:mb-8">
-        <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 bg-gradient-to-r from-rose-600 to-pink-600 bg-clip-text text-transparent">
+      <div className="mb-6 md:mt-5 sm:mb-8">
+        <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900">
           Rental History
         </h2>
-        <p className="text-gray-600 mt-2 text-sm sm:text-base">Complete rental records and payment management</p>
+        <p className="text-gray-600 mt-2 text-sm sm:text-base lg:text-lg">Complete rental records and payment management</p>
       </div>
 
       {/* Search and Filters */}
       <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 mb-4 sm:mb-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
           <div className="relative flex-1 max-w-md w-full">
-            <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 sm:w-5 sm:h-5" />
+            <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#086cbe] w-4 h-4 sm:w-5 sm:h-5" />
             <input
               type="text"
               placeholder="Search by customer name or phone..."
               value={searchTerm}
               onChange={handleSearch}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent text-sm sm:text-base"
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#086cbe] focus:border-transparent text-sm sm:text-base lg:text-lg"
             />
           </div>
           <div className="text-xs sm:text-sm text-gray-600 whitespace-nowrap">
@@ -287,8 +277,8 @@ function RentalHistory() {
         <div className="flex flex-wrap gap-2">
           <button
             onClick={() => handleStatusFilter('all')}
-            className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all ${statusFilter === 'all'
-              ? 'bg-rose-500 text-white'
+            className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm lg:text-base font-medium transition-all ${statusFilter === 'all'
+              ? 'bg-[#086cbe] text-white'
               : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
               }`}
           >
@@ -366,7 +356,7 @@ function RentalHistory() {
                     </div>
                     <div className="flex flex-wrap gap-1">
                       {rental.productItems.slice(0, 2).map((item, index) => (
-                        <span key={index} className="bg-blue-50 text-blue-700 px-2 py-1 rounded text-xs">
+                        <span key={index} className="bg-blue-50 text-[#086cbe] px-2 py-1 rounded text-xs">
                           {item.productId?.name || item.productName} ({item.quantity})
                         </span>
                       ))}
@@ -419,7 +409,7 @@ function RentalHistory() {
                   <div className="flex gap-2">
                     <button
                       onClick={() => openModal(rental)}
-                      className="flex-1 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white px-3 py-2 rounded text-xs flex items-center justify-center gap-1"
+                      className="flex-1 bg-[#086cbe] hover:bg-[#0757a8] text-white px-3 py-2 rounded text-xs flex items-center justify-center gap-1"
                     >
                       <FiEye className="w-3 h-3" />
                       View
@@ -427,7 +417,7 @@ function RentalHistory() {
                     {(rental.paymentSummary?.balanceAmount || rental.balanceAmount) > 0 && (
                       <button
                         onClick={() => openPaymentModal(rental)}
-                        className="flex-1 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white px-3 py-2 rounded text-xs flex items-center justify-center gap-1"
+                        className="flex-1 bg-[#086cbe] hover:bg-[#0757a8] text-white px-3 py-2 rounded text-xs flex items-center justify-center gap-1"
                       >
                         <FiCreditCard className="w-3 h-3" />
                         Pay
@@ -435,7 +425,7 @@ function RentalHistory() {
                     )}
                     <button
                       onClick={() => openDeleteModal(rental)}
-                      className="bg-gradient-to-r from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600 text-white px-3 py-2 rounded text-xs flex items-center justify-center gap-1"
+                      className="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded text-xs flex items-center justify-center gap-1"
                     >
                       <FiTrash2 className="w-3 h-3" />
                       <span className="hidden sm:inline">Delete</span>
@@ -451,19 +441,19 @@ function RentalHistory() {
             <table className="w-full">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs lg:text-base font-bold text-gray-500 uppercase tracking-wider">
                     Customer
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs lg:text-base font-bold text-gray-500 uppercase tracking-wider">
                     Products
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs lg:text-base font-bold text-gray-500 uppercase tracking-wider">
                     Duration
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs lg:text-base font-bold text-gray-500 uppercase tracking-wider">
                     Financial Summary
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs lg:text-base font-bold text-gray-500 uppercase tracking-wider">
                     Status
                   </th>
                   <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -478,11 +468,11 @@ function RentalHistory() {
                     <tr key={rental._id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div>
-                          <div className="text-sm font-medium text-gray-900">
+                          <div className="text-sm lg:text-lg font-medium text-gray-900">
                             {rental.customerName}
                           </div>
                           {rental.customerPhone && (
-                            <div className="text-sm text-gray-500">
+                            <div className="text-sm lg:text-base text-gray-500">
                               {rental.customerPhone}
                             </div>
                           )}
@@ -508,7 +498,7 @@ function RentalHistory() {
                           ))}
 
                           {rental.productItems.length > 2 && (
-                            <div className="text-xs text-blue-600 font-medium">
+                            <div className="text-xs text-[#086cbe] font-medium">
                               +{rental.productItems.length - 2} more products
                             </div>
                           )}
@@ -531,14 +521,14 @@ function RentalHistory() {
                       </td>
 
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">
+                        <div className="text-sm lg:text-lg font-medium text-gray-900">
                           Total: ₹{rental.paymentSummary?.totalAmount || rental.totalAmount || 0}
                         </div>
-                        <div className="text-sm text-green-600">
+                        <div className="text-sm lg:text-lg text-green-600">
                           Paid: ₹{rental.paymentSummary?.totalPaid || rental.totalPaid || 0}
                         </div>
                         {(rental.paymentSummary?.balanceAmount || rental.balanceAmount) > 0 && (
-                          <div className="text-sm text-red-600 font-medium">
+                          <div className="text-sm lg:text-lg text-red-600 font-medium">
                             Balance: ₹{rental.paymentSummary?.balanceAmount || rental.balanceAmount}
                           </div>
                         )}
@@ -572,7 +562,7 @@ function RentalHistory() {
                         <div className="flex items-center justify-center gap-2">
                           <button
                             onClick={() => openModal(rental)}
-                            className="bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white px-3 py-1 rounded text-sm flex items-center gap-1"
+                            className="bg-[#086cbe] hover:bg-[#0757a8] text-white px-3 py-1 rounded text-sm flex items-center gap-1"
                           >
                             <FiEye className="w-4 h-4" />
                             View
@@ -580,7 +570,7 @@ function RentalHistory() {
                           {(rental.paymentSummary?.balanceAmount || rental.balanceAmount) > 0 && (
                             <button
                               onClick={() => openPaymentModal(rental)}
-                              className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white px-3 py-1 rounded text-sm flex items-center gap-1"
+                              className="bg-[#086cbe] hover:bg-[#0757a8] text-white px-3 py-1 rounded text-sm flex items-center gap-1"
                             >
                               <FiCreditCard className="w-4 h-4" />
                               Pay
@@ -588,7 +578,7 @@ function RentalHistory() {
                           )}
                           <button
                             onClick={() => openDeleteModal(rental)}
-                            className="bg-gradient-to-r from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600 text-white px-3 py-1 rounded text-sm flex items-center gap-1"
+                            className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm flex items-center gap-1"
                           >
                             <FiTrash2 className="w-4 h-4" />
                             Delete
@@ -604,65 +594,12 @@ function RentalHistory() {
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
-              <div className="flex-1 flex justify-between sm:hidden">
-                <button
-                  onClick={() => handlePageChange(currentPage - 1)}
-                  disabled={currentPage === 1}
-                  className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
-                >
-                  Previous
-                </button>
-                <button
-                  onClick={() => handlePageChange(currentPage + 1)}
-                  disabled={currentPage === totalPages}
-                  className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
-                >
-                  Next
-                </button>
-              </div>
-              <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-sm text-gray-700">
-                    Showing page <span className="font-medium">{currentPage}</span> of{' '}
-                    <span className="font-medium">{totalPages}</span>
-                  </p>
-                </div>
-                <div>
-                  <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
-                    <button
-                      onClick={() => handlePageChange(currentPage - 1)}
-                      disabled={currentPage === 1}
-                      className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
-                    >
-                      <FiChevronLeft className="h-5 w-5" />
-                    </button>
-                    {[...Array(Math.min(5, totalPages))].map((_, index) => {
-                      const page = index + 1;
-                      return (
-                        <button
-                          key={page}
-                          onClick={() => handlePageChange(page)}
-                          className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${currentPage === page
-                            ? 'z-10 bg-rose-50 border-rose-500 text-rose-600'
-                            : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
-                            }`}
-                        >
-                          {page}
-                        </button>
-                      );
-                    })}
-                    <button
-                      onClick={() => handlePageChange(currentPage + 1)}
-                      disabled={currentPage === totalPages}
-                      className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
-                    >
-                      <FiChevronRight className="h-5 w-5" />
-                    </button>
-                  </nav>
-                </div>
-              </div>
-            </div>
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={handlePageChange}
+              maxVisiblePages={5}
+            />
           )}
         </div>
       )}
@@ -671,9 +608,9 @@ function RentalHistory() {
       {isPaymentModalOpen && selectedRental && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2 sm:p-4">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg mx-2 sm:mx-4 max-h-[95vh] overflow-y-auto">
-            <div className="bg-gradient-to-r from-green-500 to-emerald-500 text-white px-3 sm:px-6 py-3 sm:py-4 rounded-t-xl">
+            <div className="bg-[#086cbe] text-white px-3 sm:px-6 py-3 sm:py-4 rounded-t-xl">
               <div className="flex justify-between items-center">
-                <h3 className="text-base sm:text-lg lg:text-xl font-semibold">Payment & Discount</h3>
+                <h3 className="text-base sm:text-lg lg:text-2xl font-semibold">Payment & Discount</h3>
                 <button
                   onClick={closePaymentModal}
                   className="text-white hover:bg-white hover:bg-opacity-20 p-1 rounded transition-colors"
@@ -787,7 +724,7 @@ function RentalHistory() {
                   <p className="text-sm font-medium text-blue-800 mb-2 sm:mb-3">Summary</p>
                   <div className="space-y-2">
                     {/* Mobile: Stack vertically, Desktop: Show inline */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4 text-xs sm:text-sm text-blue-700">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4 text-xs sm:text-sm text-[#086cbe]">
                       {paymentData.amount && (
                         <div className="flex justify-between sm:block">
                           <span>Payment:</span>
@@ -829,7 +766,7 @@ function RentalHistory() {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="flex-1 w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white px-4 py-3 sm:py-2 rounded-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50 text-sm sm:text-base font-medium"
+                  className="flex-1 w-full bg-[#086cbe] hover:bg-[#0757a8] text-white px-4 py-3 sm:py-2 rounded-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50 text-sm sm:text-base font-medium"
                 >
                   {isSubmitting && <LoadingSpinner size="sm" color="gray" />}
                   <span>Process Payment</span>
@@ -844,7 +781,7 @@ function RentalHistory() {
       {isModalOpen && selectedRental && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-3 sm:p-4">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-            <div className="bg-gradient-to-r from-rose-500 to-pink-500 text-white px-4 sm:px-6 py-3 sm:py-4 rounded-t-xl">
+            <div className="bg-[#086cbe] text-white px-4 sm:px-6 py-3 sm:py-4 rounded-t-xl">
               <div className="flex justify-between items-center">
                 <h3 className="text-lg sm:text-xl font-semibold">
                   Rental Details - {selectedRental.productItems.length} Products
@@ -908,7 +845,7 @@ function RentalHistory() {
                         ? hasBalance
                           ? 'bg-red-50 border-red-400'
                           : 'bg-green-50 border-green-400'
-                        : 'bg-blue-50 border-blue-400'
+                        : 'bg-blue-50 border-[#086cbe]'
                         }`}>
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
                           <div>
@@ -1015,90 +952,7 @@ function RentalHistory() {
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
-      {isDeleteModalOpen && rentalToDelete && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-3 sm:p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
-            <div className="bg-gradient-to-r from-red-500 to-rose-500 text-white px-4 sm:px-6 py-3 sm:py-4 rounded-t-xl">
-              <div className="flex justify-between items-center">
-                <h3 className="text-lg sm:text-xl font-semibold">Delete Rental Record</h3>
-                <button
-                  onClick={closeDeleteModal}
-                  className="text-white hover:bg-white hover:bg-opacity-20 p-1 rounded transition-colors"
-                >
-                  <FiX className="w-5 h-5 sm:w-6 sm:h-6" />
-                </button>
-              </div>
-            </div>
 
-            <div className="p-4 sm:p-6">
-              {/* Warning Message */}
-              <div className="flex items-center gap-3 mb-4 p-3 sm:p-4 bg-red-50 border border-red-200 rounded-lg">
-                <FiTrash2 className="w-5 h-5 sm:w-6 sm:h-6 text-red-600 flex-shrink-0" />
-                <div>
-                  <p className="text-red-800 font-medium text-sm sm:text-base">Are you sure you want to delete this rental?</p>
-                  <p className="text-red-600 text-xs sm:text-sm mt-1">This action cannot be undone.</p>
-                </div>
-              </div>
-
-              {/* Rental Details */}
-              <div className="bg-gray-50 p-3 sm:p-4 rounded-lg mb-4 sm:mb-6">
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <p className="text-xs sm:text-sm text-gray-600">Customer</p>
-                    <p className="font-medium text-sm sm:text-base">{rentalToDelete.customerName}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs sm:text-sm text-gray-600">Products</p>
-                    <p className="font-medium text-sm sm:text-base">{rentalToDelete.productItems.length} items</p>
-                  </div>
-                  <div>
-                    <p className="text-xs sm:text-sm text-gray-600">Total Amount</p>
-                    <p className="font-medium text-sm sm:text-base">₹{rentalToDelete.totalAmount}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs sm:text-sm text-gray-600">Status</p>
-                    <p className="font-medium capitalize text-sm sm:text-base">{rentalToDelete.status.replace('_', ' ')}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Warning if there's outstanding balance */}
-              {rentalToDelete.balanceAmount > 0 && (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 sm:p-4 mb-4 sm:mb-6">
-                  <div className="flex items-center gap-2">
-                    <FiAlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-600" />
-                    <p className="text-yellow-800 font-medium text-sm sm:text-base">Outstanding Balance</p>
-                  </div>
-                  <p className="text-yellow-700 text-xs sm:text-sm mt-1">
-                    This rental has an outstanding balance of <strong>₹{rentalToDelete.balanceAmount}</strong>.
-                    Deleting this record will permanently remove all payment history.
-                  </p>
-                </div>
-              )}
-
-              {/* Action Buttons */}
-              <div className="flex flex-col sm:flex-row gap-3">
-                <button
-                  type="button"
-                  onClick={closeDeleteModal}
-                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm sm:text-base"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleDeleteConfirm}
-                  disabled={isDeleting}
-                  className="flex-1 bg-gradient-to-r from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600 text-white px-4 py-2 rounded-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50 text-sm sm:text-base"
-                >
-                  {isDeleting && <LoadingSpinner size="sm" color="gray" />}
-                  {isDeleting ? 'Deleting...' : 'Delete Rental'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

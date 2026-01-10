@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
-import toast from "react-hot-toast";
+import { useDispatch } from "react-redux";
+import { showToast } from "../../store/slices/toastSlice";
+import { openDeleteModal, closeDeleteModal, setDeleteModalLoading } from "../../store/slices/uiSlice";
 import {
     FiArrowLeft,
     FiX,
@@ -20,12 +22,12 @@ import {
     FiTrash2,
     FiMessageSquare
 } from "react-icons/fi";
-import PageLoading from "../../components/commonComp/PageLoading";
 import LoadingSpinner from "../../components/commonComp/LoadingSpinner";
 import axiosInstance from "../../../axiosCreate";
 import WhatsAppBill from "../../components/WhatsAppBill";
 
 function RentalDetails({ rentalId, onBack }) {
+    const dispatch = useDispatch();
     const [rental, setRental] = useState(null);
     const [products, setProducts] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -99,7 +101,7 @@ function RentalDetails({ rentalId, onBack }) {
             setIsSubmitting(true);
 
             if (!customerEditData.customerName.trim() || !customerEditData.customerPhone.trim()) {
-                toast.error("Customer name and phone number are required");
+                dispatch(showToast({ message: "Customer name and phone number are required", type: "error" }));
                 return;
             }
 
@@ -111,9 +113,9 @@ function RentalDetails({ rentalId, onBack }) {
 
             setRental(response.data);
             setIsEditingCustomer(false);
-            toast.success("Customer information updated successfully!");
+            dispatch(showToast({ message: "Customer information updated successfully!", type: "success" }));
         } catch (error) {
-            toast.error(error.response?.data?.message || "Error updating customer information");
+            dispatch(showToast({ message: error.response?.data?.message || "Error updating customer information", type: "error" }));
             console.error("Error:", error);
         } finally {
             setIsSubmitting(false);
@@ -141,7 +143,7 @@ function RentalDetails({ rentalId, onBack }) {
                 customerAddress: response.data.customerAddress || ''
             });
         } catch (error) {
-            toast.error("Error fetching rental details");
+            dispatch(showToast({ message: "Error fetching rental details", type: "error" }));
             console.error("Error:", error);
         } finally {
             setIsLoading(false);
@@ -308,90 +310,74 @@ function RentalDetails({ rentalId, onBack }) {
     };
 
     const deleteEntireRental = async (forceDelete = false) => {
-        if (!forceDelete) {
-            const confirmed = window.confirm(
-                `⚠️ DELETE ENTIRE RENTAL - ${rental.customerName}\n\n` +
-                `This will permanently delete:\n` +
-                `• Customer: ${rental.customerName} (${rental.customerPhone})\n` +
-                `• ${rental.productItems.length} products totaling ₹${(rental.totalAmount || 0).toFixed(2)}\n` +
-                `• Total Paid: ₹${(rental.totalPaid || 0).toFixed(2)}\n` +
-                `• All ${(rental.transactions || []).length} transactions\n` +
-                `• All ${(rental.payments || []).length} payment records\n\n` +
-                `⚠️ This action CANNOT be undone!\n\n` +
-                `Are you absolutely sure?`
-            );
+        const executeDelete = async (reason) => {
+            try {
+                dispatch(setDeleteModalLoading(true));
 
-            if (!confirmed) return;
-        }
+                const requestData = {
+                    reason: reason.trim() || "No reason provided",
+                    forceDelete: Boolean(forceDelete)
+                };
+
+                const response = await axiosInstance.delete(
+                    `/api/rentals/${rentalId}/delete-rental`,
+                    { data: requestData }
+                );
+
+                const summary = response.data.deletionSummary;
+                dispatch(showToast({
+                    message: `Rental deleted successfully! Customer: ${summary.customerName}`,
+                    type: "success"
+                }));
+                dispatch(closeDeleteModal());
+
+                setTimeout(() => {
+                    onBack();
+                }, 2000);
+
+            } catch (error) {
+                console.error('❌ Delete error:', error);
+
+                if (error.response?.status === 400 && error.response?.data?.hasPendingPayments) {
+                    dispatch(closeDeleteModal());
+                    // Re-open with force delete option
+                    setTimeout(() => {
+                        dispatch(openDeleteModal({
+                            title: "RENTAL HAS PAYMENTS!",
+                            message: `This rental has ₹${error.response.data.totalPaid.toFixed(2)} in payments. Are you sure you want to FORCE DELETE?`,
+                            confirmText: "Force Delete",
+                            onConfirm: () => deleteEntireRental(true)
+                        }));
+                    }, 500);
+                    return;
+                }
+
+                dispatch(showToast({
+                    message: error.response?.data?.message || "Error deleting rental",
+                    type: "error"
+                }));
+                dispatch(setDeleteModalLoading(false));
+            }
+        };
 
         const reason = prompt(
             forceDelete
                 ? "FORCE DELETE - Provide reason for force deleting this rental with payments:"
                 : "Please provide a reason for deleting this rental:",
-            forceDelete
-                ? "Force delete with payments - admin decision"
-                : "Added by mistake / Duplicate entry"
+            "Confirmed by admin"
         );
 
         if (reason === null) return;
 
-        try {
-            setIsSubmitting(true);
-
-            const requestData = {
-                reason: reason.trim() || "No reason provided",
-                forceDelete: Boolean(forceDelete)
-            };
-
-            console.log('🗑️ Sending delete request:', requestData);
-
-            const response = await axiosInstance.delete(
-                `/api/rentals/${rentalId}/delete-rental`,
-                {
-                    data: requestData
-                }
-            );
-
-            const summary = response.data.deletionSummary;
-            toast.success(
-                `Rental deleted successfully!\n\n` +
-                `Customer: ${summary.customerName}\n` +
-                `Products returned: ${summary.totalProducts}\n` +
-                `${summary.totalPaid > 0 ? `⚠️ Payments deleted: ₹${summary.totalPaid.toFixed(2)}` : ''}`,
-                { duration: 8000 }
-            );
-
-            setTimeout(() => {
-                onBack();
-            }, 2000);
-
-        } catch (error) {
-            console.error('❌ Delete error:', error);
-
-            if (error.response?.status === 400 && error.response?.data?.hasPendingPayments) {
-                const errorData = error.response.data;
-
-                const forceConfirm = window.confirm(
-                    `⚠️ RENTAL HAS PAYMENTS!\n\n` +
-                    `This rental has ₹${errorData.totalPaid.toFixed(2)} in payments.\n\n` +
-                    `Options:\n` +
-                    `• Click CANCEL to process refunds first (recommended)\n` +
-                    `• Click OK to FORCE DELETE anyway (⚠️ WARNING: This will permanently delete all payment records!)\n\n` +
-                    `Do you want to FORCE DELETE this rental and permanently delete all payments?`
-                );
-
-                if (forceConfirm) {
-                    deleteEntireRental(true);
-                }
-                return;
-            }
-
-            toast.error(
-                error.response?.data?.message ||
-                "Error deleting rental. Please try again."
-            );
-        } finally {
-            setIsSubmitting(false);
+        if (forceDelete) {
+            await executeDelete(reason);
+        } else {
+            dispatch(openDeleteModal({
+                title: "Delete Entire Rental",
+                message: `Are you sure you want to delete the rental for ${rental.customerName}? This action cannot be undone.`,
+                confirmText: "Delete Rental",
+                onConfirm: () => executeDelete(reason)
+            }));
         }
     };
 
@@ -444,7 +430,7 @@ function RentalDetails({ rentalId, onBack }) {
                     );
 
                     if (validProducts.length === 0) {
-                        toast.error('Please add at least one valid product');
+                        dispatch(showToast({ message: 'Please add at least one valid product', type: 'error' }));
                         return;
                     }
 
@@ -452,7 +438,7 @@ function RentalDetails({ rentalId, onBack }) {
                     const uniqueProductIds = [...new Set(productIds)];
 
                     if (productIds.length !== uniqueProductIds.length) {
-                        toast.error('Cannot add duplicate products in the same operation');
+                        dispatch(showToast({ message: 'Cannot add duplicate products in the same operation', type: 'error' }));
                         return;
                     }
 
@@ -506,19 +492,19 @@ function RentalDetails({ rentalId, onBack }) {
                 }
                 message += ` = Total: ₹${totalReduction.toFixed(2)} processed successfully!`;
 
-                toast.success(message, { duration: 4000 });
+                dispatch(showToast({ message, type: "success" }));
             }
             else if (modalType === 'add-products-bulk') {
-                toast.success(`Successfully added ${payload.products.length} products to rental!`, { duration: 4000 });
+                dispatch(showToast({ message: `Successfully added ${payload.products.length} products to rental!`, type: "success" }));
             }
             else {
-                toast.success(`${modalType.replace('-', ' ')} processed successfully!`);
+                dispatch(showToast({ message: `${modalType.replace('-', ' ')} processed successfully!`, type: "success" }));
             }
 
             closeModal();
             fetchRentalDetails();
         } catch (error) {
-            toast.error(error.response?.data?.message || `Error processing ${modalType.replace('-', ' ')}`);
+            dispatch(showToast({ message: error.response?.data?.message || `Error processing ${modalType.replace('-', ' ')}`, type: "error" }));
             console.error("Error:", error);
         } finally {
             setIsSubmitting(false);
@@ -828,7 +814,7 @@ function RentalDetails({ rentalId, onBack }) {
                     </div>
                     <div className="text-right w-full sm:w-auto mt-2 sm:mt-0">
                         <span className={`font-bold text-lg ${isRefund ? 'text-red-600' : 'text-green-600'}`}>
-                           ₹{activity.amount.toFixed(2)}
+                            ₹{activity.amount.toFixed(2)}
                         </span>
                     </div>
                 </div>
@@ -867,9 +853,9 @@ function RentalDetails({ rentalId, onBack }) {
             );
 
             setRental(response.data.rental);
-            toast.success(response.data.message, { duration: 5000 });
+            dispatch(showToast({ message: response.data.message, type: "success" }));
         } catch (error) {
-            toast.error(error.response?.data?.message || "Error deleting product");
+            dispatch(showToast({ message: error.response?.data?.message || "Error deleting product", type: "error" }));
             console.error("Error:", error);
         } finally {
             setIsSubmitting(false);
@@ -898,10 +884,10 @@ function RentalDetails({ rentalId, onBack }) {
 
         return (
             <div key={index} className="bg-gray-50 p-4 sm:p-8 rounded-lg shadow-xl border border-[#eddbdb]">
-                <div className="flex flex-col lg:flex-row justify-between items-start mb-4 space-y-4 lg:space-y-0">
+                <div className="flex md:mt-5 flex-col lg:flex-row justify-between items-start mb-4 space-y-4 lg:space-y-0">
                     <div className="flex-1 w-full">
                         <div className="flex flex-wrap items-center gap-2 mb-2">
-                            <h4 className="text-lg font-semibold text-gray-800 uppercase break-words">{productItem.productName}</h4>
+                            <h4 className="text-lg lg:text-3xl font-bold text-gray-800 uppercase break-words">{productItem.productName}</h4>
                             {isFullyPaid && (
                                 <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs font-medium flex items-center gap-1 whitespace-nowrap">
                                     <FiCheck className="w-3 h-3" />
@@ -955,7 +941,7 @@ function RentalDetails({ rentalId, onBack }) {
                                 className="cursor-pointer bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm transition-colors flex items-center gap-1 flex-1 sm:flex-none justify-center"
                             >
                                 <FiPlus className="w-3 h-3" />
-                                Add More
+                                Add <span className="md:block hidden">More</span>
                             </button>
 
                             {!isFullyPaid && (
@@ -1006,16 +992,16 @@ function RentalDetails({ rentalId, onBack }) {
                     <h5 className="text-base font-semibold text-gray-700 mb-3">Payment Summary</h5>
                     <div className="grid grid-cols-3 gap-2 sm:gap-4 text-sm">
                         <div className="text-center p-2 bg-gray-50 rounded">
-                            <div className="text-gray-600 text-xs sm:text-sm font-medium">Total Amount</div>
-                            <div className="font-bold text-sm sm:text-lg text-purple-600">₹{liveAmount.toFixed(2)}</div>
+                            <div className="text-gray-600 text-xs sm:text-sm lg:text-lg font-medium">Total Amount</div>
+                            <div className="font-bold text-sm sm:text-lg lg:text-3xl text-[#086cbe]">₹{liveAmount.toFixed(2)}</div>
                         </div>
                         <div className="text-center p-2 bg-gray-50 rounded">
-                            <div className="text-gray-600 text-xs sm:text-sm font-medium">Paid Amount</div>
-                            <div className="font-bold text-sm sm:text-lg text-green-600">₹{paidAmount.toFixed(2)}</div>
+                            <div className="text-gray-600 text-xs sm:text-sm lg:text-lg font-medium">Paid Amount</div>
+                            <div className="font-bold text-sm sm:text-lg lg:text-3xl text-green-600">₹{paidAmount.toFixed(2)}</div>
                         </div>
                         <div className="text-center p-2 bg-gray-50 rounded">
-                            <div className="text-gray-600 text-xs sm:text-sm font-medium">Balance</div>
-                            <div className={`font-bold text-sm sm:text-lg ${isFullyPaid ? 'text-green-600' : 'text-red-600'}`}>
+                            <div className="text-gray-600 text-xs sm:text-sm lg:text-lg font-medium">Balance</div>
+                            <div className={`font-bold text-sm sm:text-lg lg:text-3xl ${isFullyPaid ? 'text-green-600' : 'text-red-600'}`}>
                                 ₹{productBalance.toFixed(2)}
                             </div>
                         </div>
@@ -1059,18 +1045,15 @@ function RentalDetails({ rentalId, onBack }) {
         );
     };
 
-    if (isLoading) {
-        return <PageLoading message="Loading Rental Details..." />;
-    }
 
     if (!rental) {
         return (
-            <div className="p-4 sm:p-6 bg-gradient-to-br from-blue-50 to-indigo-50 min-h-screen">
+            <div className="p-4 sm:p-6 bg-gradient-to-br from-blue-50 to-white min-h-screen">
                 <div className="bg-white rounded-xl shadow-lg p-6 sm:p-8 text-center">
                     <h2 className="text-xl font-semibold text-gray-800 mb-4">Rental Not Found</h2>
                     <button
                         onClick={onBack}
-                        className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg transition-colors"
+                        className="bg-[#086cbe] hover:bg-[#0757a8] text-white px-6 py-2 rounded-lg transition-colors"
                     >
                         Back to List
                     </button>
@@ -1094,7 +1077,7 @@ function RentalDetails({ rentalId, onBack }) {
     };
 
     return (
-        <div className="p-4 sm:p-6 bg-gradient-to-br from-rose-50 to-pink-50 min-h-screen">
+        <div className="p-4 sm:p-6 bg-white min-h-screen">
             {/* Header */}
             <div className="mb-6 sm:mb-8">
                 <div className="flex items-center gap-3 sm:gap-4 mb-4">
@@ -1105,10 +1088,10 @@ function RentalDetails({ rentalId, onBack }) {
                         <FiArrowLeft className="w-5 h-5 text-gray-600" />
                     </button>
                     <div className="min-w-0 flex-1">
-                        <h2 className="text-2xl sm:text-3xl font-bold text-[#b86969] break-words">
+                        <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-black break-words">
                             Rental Details
                         </h2>
-                        <p className="text-sm sm:text-base text-gray-600 break-words">
+                        <p className="text-sm sm:text-base lg:text-xl text-gray-600 break-words">
                             <span className="uppercase font-bold">{rental.customerName}</span>'s rental management
                         </p>
                     </div>
@@ -1118,12 +1101,12 @@ function RentalDetails({ rentalId, onBack }) {
             {/* Customer Information Card */}
             <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 mb-6">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 space-y-3 sm:space-y-0">
-                    <h3 className="text-lg font-semibold text-gray-800">Customer Information</h3>
+                    <h3 className="text-lg lg:text-2xl font-bold text-gray-800">Customer Information</h3>
                     <div className="flex flex-wrap gap-1 w-full sm:w-auto">
                         {!isEditingCustomer && (
                             <button
                                 onClick={startEditingCustomer}
-                                className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm transition-colors flex items-center gap-1 flex-1 sm:flex-none justify-center"
+                                className="bg-[#086cbe] hover:bg-[#0757a8] text-white px-3 py-1 rounded text-sm transition-colors flex items-center gap-1 flex-1 sm:flex-none justify-center"
                             >
                                 <FiEdit className="w-3 h-3" />
                                 Edit
@@ -1240,8 +1223,8 @@ function RentalDetails({ rentalId, onBack }) {
                                 <FiUser className="w-5 h-5 text-blue-600" />
                             </div>
                             <div className="min-w-0 flex-1">
-                                <p className="text-sm text-gray-600">Customer Name</p>
-                                <p className="font-semibold uppercase break-words">{rental.customerName}</p>
+                                <p className="text-sm lg:text-lg text-gray-600">Customer Name</p>
+                                <p className="font-semibold lg:text-xl uppercase break-words">{rental.customerName}</p>
                             </div>
                         </div>
                         <div className="flex items-center gap-3">
@@ -1249,18 +1232,18 @@ function RentalDetails({ rentalId, onBack }) {
                                 <FiPhone className="w-5 h-5 text-green-600" />
                             </div>
                             <div className="min-w-0 flex-1">
-                                <p className="text-sm text-gray-600">Phone Number</p>
-                                <p className="font-semibold break-words">{rental.customerPhone || 'Not provided'}</p>
+                                <p className="text-sm lg:text-lg text-gray-600">Phone Number</p>
+                                <p className="font-semibold lg:text-xl break-words">{rental.customerPhone || 'Not provided'}</p>
                             </div>
                         </div>
                         {rental.customerAddress && (
                             <div className="md:col-span-2 flex items-start gap-3">
-                                <div className="bg-purple-100 p-2 rounded-full flex-shrink-0">
-                                    <FiUser className="w-5 h-5 text-purple-600" />
+                                <div className="bg-blue-50 p-2 rounded-full flex-shrink-0">
+                                    <FiUser className="w-5 h-5 text-[#086cbe]" />
                                 </div>
                                 <div className="min-w-0 flex-1">
-                                    <p className="text-sm text-gray-600">Address</p>
-                                    <p className="font-semibold break-words">{rental.customerAddress}</p>
+                                    <p className="text-sm lg:text-lg text-gray-600">Address</p>
+                                    <p className="font-semibold lg:text-xl break-words">{rental.customerAddress}</p>
                                 </div>
                             </div>
                         )}
@@ -1277,8 +1260,8 @@ function RentalDetails({ rentalId, onBack }) {
                                 <FiPackage className="w-5 h-5 text-blue-600" />
                             </div>
                             <div className="min-w-0 flex-1">
-                                <p className="text-xs text-gray-600">Active Products</p>
-                                <p className="text-lg font-bold text-gray-900">
+                                <p className="text-xs lg:text-base text-gray-600">Active Products</p>
+                                <p className="text-lg lg:text-3xl font-bold text-gray-900">
                                     {(rental.productItems || []).filter(item => item.currentQuantity > 0).length}
                                 </p>
                             </div>
@@ -1287,12 +1270,12 @@ function RentalDetails({ rentalId, onBack }) {
 
                     <div className="bg-white rounded-xl shadow-lg p-4 px-6 sm:px-10">
                         <div className="flex items-center gap-3">
-                            <div className="bg-indigo-100 p-2 rounded-full flex-shrink-0">
-                                <FiDollarSign className="w-5 h-5 text-indigo-600" />
+                            <div className="bg-blue-50 p-2 rounded-full flex-shrink-0">
+                                <FiDollarSign className="w-5 h-5 text-[#086cbe]" />
                             </div>
                             <div className="min-w-0 flex-1">
-                                <p className="text-xs text-gray-600">Total Rental Amount</p>
-                                <p className="text-lg font-bold text-indigo-600 break-words">
+                                <p className="text-xs lg:text-base text-gray-600">Total Rental Amount</p>
+                                <p className="text-lg lg:text-3xl font-bold text-[#086cbe] break-words">
                                     ₹{calculateTotalRentalAmount().toFixed(2)}
                                 </p>
                             </div>
@@ -1305,8 +1288,8 @@ function RentalDetails({ rentalId, onBack }) {
                                 <FiDollarSign className="w-5 h-5 text-red-600" />
                             </div>
                             <div className="min-w-0 flex-1">
-                                <p className="text-xs text-gray-600">Total Balance</p>
-                                <p className="text-lg font-bold text-red-600 break-words">
+                                <p className="text-xs lg:text-base text-gray-600">Total Balance</p>
+                                <p className="text-lg lg:text-3xl font-bold text-red-600 break-words">
                                     ₹{calculateTotalBalance().toFixed(2)}
                                 </p>
                             </div>
@@ -1344,7 +1327,7 @@ function RentalDetails({ rentalId, onBack }) {
                     <button
                         onClick={() => openModal('general-payment')}
                         disabled={calculateTotalBalance() <= 0}
-                        className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 disabled:bg-gray-300 text-white px-4 sm:px-6 py-3 rounded-lg transition-all flex items-center gap-2 justify-center flex-1 sm:flex-none"
+                        className="bg-[#086cbe] hover:bg-[#0757a8] disabled:bg-gray-300 text-white px-4 sm:px-6 py-3 rounded-lg transition-all flex items-center gap-2 justify-center flex-1 sm:flex-none"
                     >
                         <FiDollarSign className="w-5 h-5" />
                         <span className="break-words text-sm sm:text-base">Payment & Discount (Balance: ₹{calculateTotalBalance().toFixed(2)})</span>
@@ -1352,7 +1335,7 @@ function RentalDetails({ rentalId, onBack }) {
 
                     <button
                         onClick={() => setShowWhatsAppBill(true)}
-                        className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white px-4 sm:px-6 py-3 rounded-lg transition-all flex items-center gap-2 justify-center flex-1 sm:flex-none"
+                        className="bg-[#086cbe] hover:bg-[#0757a8] text-white px-4 sm:px-6 py-3 rounded-lg transition-all flex items-center gap-2 justify-center flex-1 sm:flex-none"
                     >
                         <FiMessageSquare className="w-5 h-5" />
                         <span className="whitespace-nowrap text-sm sm:text-base">Send Bill to WhatsApp</span>
@@ -1390,11 +1373,11 @@ function RentalDetails({ rentalId, onBack }) {
                                 {/* Multiple Products Modal Content */}
                                 {modalType === 'add-products-bulk' && (
                                     <>
-                                        <div className="mb-4 p-3 bg-purple-50 rounded-lg">
-                                            <p className="text-sm text-purple-800 break-words">
+                                        <div className="mb-4 p-3 bg-blue-50 rounded-lg">
+                                            <p className="text-sm text-blue-800 break-words">
                                                 Adding multiple products to <strong>{rental.customerName}'s</strong> rental.
                                             </p>
-                                            <p className="text-sm text-purple-600 mt-1">
+                                            <p className="text-sm text-[#086cbe] mt-1">
                                                 You can add multiple products with individual quantities and dates.
                                             </p>
                                         </div>
@@ -1934,7 +1917,7 @@ function RentalDetails({ rentalId, onBack }) {
                                     <button
                                         type="submit"
                                         disabled={isSubmitting}
-                                        className="flex-1 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white px-4 py-2 rounded-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                                        className="flex-1 bg-[#086cbe] hover:bg-[#0757a8] text-white px-4 py-2 rounded-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                                     >
                                         {isSubmitting && <LoadingSpinner size="sm" color="gray" />}
                                         <span className="break-words">
