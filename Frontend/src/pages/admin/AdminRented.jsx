@@ -193,7 +193,12 @@ function AdminRented() {
             </div>
 
             {/* Rentals List - Fixed Responsive Cards */}
-            {filteredRentals.length === 0 ? (
+            {isLoading ? (
+                <div className="flex flex-col items-center justify-center py-12 bg-white rounded-xl shadow-md border border-gray-200">
+                    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#086cbe] mb-4"></div>
+                    <p className="text-gray-500 font-medium">Loading rentals...</p>
+                </div>
+            ) : filteredRentals.length === 0 ? (
                 <div className="bg-white rounded-xl shadow-md border border-gray-200">
                     <EmptyState
                         icon={searchCustomer || searchProduct ? FiSearch : FiPackage}
