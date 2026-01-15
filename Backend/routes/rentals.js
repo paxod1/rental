@@ -54,9 +54,11 @@ const calculateRentalAmounts = (rental) => {
     console.log(`\n🔄 Processing Product: ${productItem.productName}`);
     console.log(`   📦 Current Quantity: ${productItem.currentQuantity}`);
 
-    const targetProductId = productItem.productId._id ?
-      productItem.productId._id.toString() :
-      productItem.productId.toString();
+    const targetProductId = productItem.productId
+      ? (productItem.productId._id
+        ? productItem.productId._id.toString()
+        : productItem.productId.toString())
+      : null;
 
     // Calculate daily rate
     let dailyRate = 0;
@@ -372,17 +374,24 @@ router.get("/all-history", async (req, res) => {
         .reduce((sum, payment) => sum + (payment.amount || 0), 0);
 
       // Calculate product-level discounts
+      // Calculate product-level discounts
       const productDiscounts = rental.productItems.map(item => {
+        // Safe access to productId (handle case where populate failed/product deleted)
+        const productIdStr = item.productId
+          ? (item.productId._id || item.productId).toString()
+          : null;
+
         const productDiscount = rental.payments
           .filter(payment =>
             payment.type === 'discount' &&
             payment.productId &&
-            payment.productId.toString() === (item.productId._id || item.productId).toString()
+            productIdStr &&
+            payment.productId.toString() === productIdStr
           )
           .reduce((sum, payment) => sum + (payment.amount || 0), 0);
 
         return {
-          productId: item.productId._id || item.productId,
+          productId: item.productId ? (item.productId._id || item.productId) : null,
           productName: item.productName,
           discount: productDiscount
         };
@@ -1362,8 +1371,8 @@ router.put("/:id/general-payment", async (req, res) => {
       return res.status(400).json({ message: "Please provide payment or discount amount" });
     }
 
-    const rental = await Rental.findById(req.params.id)
-      .populate("productItems.productId", "name rate rateType");
+    // ✅ Fix: Do NOT populate to ensure we keep the productId even if product is deleted
+    const rental = await Rental.findById(req.params.id);
 
     if (!rental) {
       return res.status(404).json({ message: "Rental not found" });
@@ -1378,8 +1387,8 @@ router.put("/:id/general-payment", async (req, res) => {
     const productsWithBalance = rental.productItems
       .map((item, originalIndex) => ({
         productItem: item,
-        productId: item.productId._id,
-        productName: item.productName || item.productId.name,
+        productId: item.productId, // Raw ObjectId
+        productName: item.productName || (item.productId && item.productId.name) || "Unknown Product",
         currentBalance: item.balanceAmount,
         originalIndex
       }))

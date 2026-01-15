@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const Product = require("../models/Product");
+const Rental = require("../models/Rental");
 
 // @desc    Get all products
 // @route   GET /api/products
@@ -12,7 +13,7 @@ router.get("/", async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 
-  
+
 });
 
 // @desc    Add a new product
@@ -83,6 +84,22 @@ router.put("/:id", async (req, res) => {
 // @route   DELETE /api/products/:id
 router.delete("/:id", async (req, res) => {
   try {
+    // Check if product is in any active rental
+    const activeRental = await Rental.findOne({
+      "productItems": {
+        $elemMatch: {
+          productId: req.params.id,
+          currentQuantity: { $gt: 0 }
+        }
+      }
+    });
+
+    if (activeRental) {
+      return res.status(400).json({
+        message: "Cannot delete product. It is currently in an ongoing rental."
+      });
+    }
+
     const product = await Product.findByIdAndDelete(req.params.id);
 
     if (!product) {

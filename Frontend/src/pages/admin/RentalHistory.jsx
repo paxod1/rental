@@ -19,12 +19,16 @@ import {
   FiTrash2,
   FiPhone,
   FiMapPin,
-  FiDownload
+  FiDownload,
+  FiMessageSquare
 } from "react-icons/fi";
 import EmptyState from "../../components/commonComp/EmptyState";
 import LoadingSpinner from "../../components/commonComp/LoadingSpinner";
 import axiosInstance from "../../../axiosCreate";
 import Pagination from "../../components/global/Pagination";
+import WhatsAppBill from "../../components/WhatsAppBill";
+import CustomDropdown from "../../components/commonComp/CustomDropdown";
+import { getPageAfterDelete } from "../../utils/paginationHelpers";
 
 function RentalHistory() {
   const dispatch = useDispatch();
@@ -43,7 +47,10 @@ function RentalHistory() {
   const [rentalToDelete, setRentalToDelete] = useState(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false);
+  const [selectedRentalForWhatsApp, setSelectedRentalForWhatsApp] = useState(null);
 
   // Enhanced payment data with discount support (same as RentalDetails)
   const [paymentData, setPaymentData] = useState({
@@ -137,6 +144,16 @@ function RentalHistory() {
     setPaymentData({ ...paymentData, [e.target.name]: e.target.value });
   };
 
+  const openWhatsAppModal = (rental) => {
+    setSelectedRentalForWhatsApp(rental);
+    setIsWhatsAppModalOpen(true);
+  };
+
+  const closeWhatsAppModal = () => {
+    setIsWhatsAppModalOpen(false);
+    setSelectedRentalForWhatsApp(null);
+  };
+
   // Enhanced payment submit function (same as RentalDetails general-payment)
   const handlePaymentSubmit = async (e) => {
     e.preventDefault();
@@ -200,7 +217,17 @@ function RentalHistory() {
 
     setIsDeleting(true);
     try {
+      // Calculate the page to navigate to after deletion
+      // For server-side pagination, we use totalRentals from the server
+      const newPage = getPageAfterDelete(currentPage, totalRentals, 5); // 5 is the limit per page
+
       await axiosInstance.delete(`/api/rentals/${rentalToDelete._id}`);
+
+      // Update page before fetching if needed
+      if (newPage !== currentPage) {
+        setCurrentPage(newPage);
+      }
+
       dispatch(showToast({ message: "Rental record deleted successfully!", type: "success" }));
       closeDeleteModal();
       fetchRentalHistory(false);
@@ -470,6 +497,13 @@ function RentalHistory() {
                   {/* Action Buttons */}
                   <div className="flex gap-2">
                     <button
+                      onClick={() => openWhatsAppModal(rental)}
+                      className="bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded text-xs flex items-center justify-center gap-1"
+                    >
+                      <FiMessageSquare className="w-3 h-3" />
+                      <span className="hidden sm:inline">WhatsApp</span>
+                    </button>
+                    <button
                       onClick={() => openModal(rental)}
                       className="flex-1 bg-[#086cbe] hover:bg-[#0757a8] text-white px-3 py-2 rounded text-xs flex items-center justify-center gap-1"
                     >
@@ -634,6 +668,13 @@ function RentalHistory() {
                       <td className="px-6 py-4 whitespace-nowrap text-center">
                         <div className="flex items-center justify-center gap-2">
                           <button
+                            onClick={() => openWhatsAppModal(rental)}
+                            className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm flex items-center gap-1"
+                            title="Send Bill to WhatsApp"
+                          >
+                            <FiMessageSquare className="w-4 h-4" />
+                          </button>
+                          <button
                             onClick={() => openModal(rental)}
                             className="bg-[#086cbe] hover:bg-[#0757a8] text-white px-3 py-1 rounded text-sm flex items-center gap-1"
                           >
@@ -747,16 +788,16 @@ function RentalHistory() {
                   <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
                     Payment Type
                   </label>
-                  <select
-                    name="paymentType"
+                  <CustomDropdown
+                    options={[
+                      { value: 'general_payment', label: 'General Payment' },
+                      { value: 'partial_payment', label: 'Partial Payment' },
+                      { value: 'full_payment', label: 'Full Payment' }
+                    ]}
                     value={paymentData.paymentType}
-                    onChange={handlePaymentChange}
-                    className="w-full px-3 py-2 sm:px-4 sm:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-sm sm:text-base"
-                  >
-                    <option value="general_payment">General Payment</option>
-                    <option value="partial_payment">Partial Payment</option>
-                    <option value="full_payment">Full Payment</option>
-                  </select>
+                    onChange={(value) => setPaymentData({ ...paymentData, paymentType: value })}
+                    disabled={false}
+                  />
                 </div>
 
                 {/* Notes - Mobile: Stacked, Desktop: Side by side */}
@@ -936,13 +977,17 @@ function RentalHistory() {
                             <p className="text-xs sm:text-sm font-medium text-gray-600">Financials</p>
                             <div className="text-sm sm:text-base">
                               <p>Amt: ₹{item.amount || 0}</p>
-                              {selectedRental.discountInfo?.productDiscounts?.find(d =>
-                                (d.productId._id || d.productId) === (item.productId?._id || item.productId)
-                              )?.discount > 0 && (
+                              {selectedRental.discountInfo?.productDiscounts?.find(d => {
+                                const dId = d.productId ? (d.productId._id || d.productId).toString() : null;
+                                const iId = item.productId ? (item.productId._id || item.productId).toString() : null;
+                                return dId && iId && dId === iId;
+                              })?.discount > 0 && (
                                   <p className="text-orange-600 text-xs">
-                                    Disc: -₹{selectedRental.discountInfo.productDiscounts.find(d =>
-                                      (d.productId._id || d.productId) === (item.productId?._id || item.productId)
-                                    ).discount}
+                                    Disc: -₹{selectedRental.discountInfo.productDiscounts.find(d => {
+                                      const dId = d.productId ? (d.productId._id || d.productId).toString() : null;
+                                      const iId = item.productId ? (item.productId._id || item.productId).toString() : null;
+                                      return dId && iId && dId === iId;
+                                    })?.discount}
                                   </p>
                                 )}
                             </div>
@@ -1095,6 +1140,12 @@ function RentalHistory() {
           </div>
         </div>
       )}
+      {/* WhatsApp Modal */}
+      <WhatsAppBill
+        rental={selectedRentalForWhatsApp}
+        isOpen={isWhatsAppModalOpen}
+        onClose={closeWhatsAppModal}
+      />
     </div>
   );
 }
