@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+html, body {
+  background-color: #ffffff;
+  color: #000000;
+}
+
+
 :root {
   --primary-color: #086cbe;
   --primary-light: rgba(8, 108, 190, 0.1);
