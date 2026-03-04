@@ -1,4 +1,4 @@
-const CACHE_NAME = 'edasserikkudiyil-rentals-v4';
+const CACHE_NAME = 'edasserikkudiyil-rentals-v5';
 const urlsToCache = [
     '/manifest.json'
 ];
@@ -18,7 +18,10 @@ self.addEventListener('install', event => {
 self.addEventListener('fetch', event => {
     // Never cache index.html or root to prevent stale script issues
     const url = new URL(event.request.url);
-    if (url.pathname === '/' || url.pathname === '/index.html' || url.pathname === '/login') {
+    const path = url.pathname;
+
+    // Explicitly bypass cache for entry points
+    if (path === '/' || path === '/index.html' || path === '/login' || path.startsWith('/login')) {
         return event.respondWith(fetch(event.request));
     }
 

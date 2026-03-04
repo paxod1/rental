@@ -2,71 +2,64 @@
 <html lang="en">
 
 <head>
+  <script>
+    // Global recovery function
+    window.handleFatalError = function (reason) {
+      console.warn('RECOVERY TRIGGERED: ' + reason);
+      try {
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistrations().then(function (regs) {
+            for (let r of regs) { r.unregister(); }
+          }).catch(function () { });
+        }
+        localStorage.clear();
+        sessionStorage.clear();
+        const cookies = document.cookie.split(";");
+        for (let i = 0; i < cookies.length; i++) {
+          const cookie = cookies[i];
+          const eqPos = cookie.indexOf("=");
+          const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim();
+          document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";
+        }
+      } catch (e) { console.error('Cleanup error', e); }
+
+      const loginUrl = '/login?recovered=true&t=' + Date.now();
+      if (window.location.pathname !== '/login') {
+        window.location.href = loginUrl;
+      } else if (reason !== 'healthcheck') {
+        window.location.reload();
+      }
+    };
+
+    // Health check and early error listeners
+    (function () {
+      window.addEventListener('error', function (e) {
+        if (e.target && e.target.tagName === 'SCRIPT') {
+          window.handleFatalError('Script Fail: ' + e.target.src);
+        }
+      }, true);
+
+      window.onerror = function (msg, url) {
+        if (msg.includes('MIME') || (url && url.includes('.js'))) {
+          window.handleFatalError('JS Error: ' + msg);
+        }
+        return false;
+      };
+
+      setTimeout(function () {
+        const root = document.getElementById('root');
+        if (root && !root.hasChildNodes()) {
+          window.handleFatalError('healthcheck');
+        }
+      }, 3000);
+    })();
+  </script>
   <meta charset="UTF-8" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <link rel="icon" type="image/svg+xml" href="/generated-image (1).png" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script>
-    // Robust Fail-safe to prevent blank screen
-    (function () {
-      function handleFatalError(reason) {
-        console.warn('RECOVERY TRIGGERED: ' + reason);
-
-        try {
-          // 1. Unregister all service workers immediately
-          if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.getRegistrations().then(function (registrations) {
-              for (let r of registrations) { r.unregister(); }
-            }).catch(function () { });
-          }
-
-          // 2. Clear all browser data
-          localStorage.clear();
-          sessionStorage.clear();
-          const cookies = document.cookie.split(";");
-          for (let i = 0; i < cookies.length; i++) {
-            const cookie = cookies[i];
-            const eqPos = cookie.indexOf("=");
-            const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim();
-            document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";
-          }
-        } catch (e) { console.error('Cleanup error', e); }
-
-        // 3. Force redirect to login with a cache-busting flag
-        const loginUrl = '/login?recovered=true&t=' + Date.now();
-        if (window.location.pathname !== '/login') {
-          window.location.href = loginUrl;
-        } else if (reason !== 'healthcheck') {
-          window.location.reload();
-        }
-      }
-
-      // Catch script load failures early
-      window.addEventListener('error', function (e) {
-        if (e.target && e.target.tagName === 'SCRIPT') {
-          handleFatalError('Script Fail: ' + e.target.src);
-        }
-      }, true);
-
-      // Catch the specific "MIME type" error and other JS errors
-      window.onerror = function (msg, url) {
-        if (msg.includes('MIME') || (url && url.includes('.js'))) {
-          handleFatalError('JS Error: ' + msg);
-        }
-        return false;
-      };
-
-      // 3-second Health Check: Faster recovery if nothing renders
-      setTimeout(function () {
-        const root = document.getElementById('root');
-        if (root && !root.hasChildNodes()) {
-          handleFatalError('healthcheck');
-        }
-      }, 3000);
-    })();
-  </script>
   <meta name="theme-color" content="#086cbe" />
   <link rel="manifest" href="/manifest.json?v=2" />
   <link rel="apple-touch-icon" href="/r-icon-192.png" />

@@ -39,16 +39,11 @@ export const AuthProvider = ({ children }) => {
             setUser(parsedUser);
             setIsAuthenticated(true);
           } else {
-            setTimeout(() => {
-              clearAuthData();
-            }, 4000)
-
+            clearAuthData();
           }
         } catch (verifyError) {
           if (verifyError.response?.status === 401) {
-            setTimeout(() => {
-              clearAuthData();
-            }, 4000)
+            clearAuthData();
           } else {
             // Keep auth data on network errors
             try {
@@ -56,9 +51,7 @@ export const AuthProvider = ({ children }) => {
               setUser(parsedUser);
               setIsAuthenticated(true);
             } catch {
-              setTimeout(() => {
-                clearAuthData();
-              }, 4000)
+              clearAuthData();
             }
           }
         }
