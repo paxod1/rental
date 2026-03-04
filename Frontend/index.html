@@ -9,33 +9,64 @@
   <link rel="icon" type="image/svg+xml" href="/generated-image (1).png" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <script>
-    // Fail-safe to prevent blank screen due to script loading errors or MIME issues
-    window.onerror = function(msg, url, lineNo, columnNo, error) {
-      if (url && url.includes('.js') || msg.includes('MIME type')) {
-        console.error('Fatal script error detected, clearing storage and redirecting to login...');
-        
-        // Clear all cookies
+    // Enhanced Fail-safe to prevent blank screen
+    (function () {
+      function handleFatalError(reason) {
+        console.error('Fatal error detected (' + reason + '), clearing storage and redirecting...');
+
+        // 1. Unregister all service workers
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistrations().then(function (registrations) {
+            for (let registration of registrations) { registration.unregister(); }
+          }).catch(function () { });
+        }
+
+        // 2. Clear all cookies
         const cookies = document.cookie.split(";");
         for (let i = 0; i < cookies.length; i++) {
-            const cookie = cookies[i];
-            const eqPos = cookie.indexOf("=");
-            const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim();
-            document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";
+          const cookie = cookies[i];
+          const eqPos = cookie.indexOf("=");
+          const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim();
+          document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";
         }
-        
-        // Clear storage
+
+        // 3. Clear storage
         localStorage.clear();
         sessionStorage.clear();
-        
-        // Redirect to login to force a clean slate
+
+        // 4. Redirect to login to force a clean slate
         if (window.location.pathname !== '/login') {
           window.location.href = '/login';
+        } else if (reason !== 'healthcheck') {
+          window.location.reload();
         }
       }
-      return false;
-    };
 
-    window.onunhandledrejection = function(event) {
+      // Listen for script loading errors (capturing phase for <script> failures)
+      window.addEventListener('error', function (event) {
+        if (event.target.tagName === 'SCRIPT') {
+          handleFatalError('Script load fail: ' + event.target.src);
+        }
+      }, true);
+
+      // Catch global JS errors
+      window.onerror = function (msg, url) {
+        if (msg.includes('MIME type') || (url && url.includes('.js'))) {
+          handleFatalError(msg);
+        }
+        return false;
+      };
+
+      // 5-second Health Check: If root is still empty after 5s, something failed silently
+      setTimeout(function () {
+        const root = document.getElementById('root');
+        if (root && !root.hasChildNodes()) {
+          handleFatalError('healthcheck');
+        }
+      }, 5000);
+    })();
+
+    window.onunhandledrejection = function (event) {
       console.warn('Unhandled promise rejection:', event.reason);
     };
   </script>

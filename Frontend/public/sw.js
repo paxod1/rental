@@ -1,7 +1,5 @@
-const CACHE_NAME = 'edasserikkudiyil-rentals-v2';
+const CACHE_NAME = 'edasserikkudiyil-rentals-v3';
 const urlsToCache = [
-    '/',
-    '/index.html',
     '/manifest.json'
 ];
 
