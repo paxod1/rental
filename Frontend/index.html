@@ -8,6 +8,37 @@
   <meta http-equiv="Expires" content="0" />
   <link rel="icon" type="image/svg+xml" href="/generated-image (1).png" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script>
+    // Fail-safe to prevent blank screen due to script loading errors or MIME issues
+    window.onerror = function(msg, url, lineNo, columnNo, error) {
+      if (url && url.includes('.js') || msg.includes('MIME type')) {
+        console.error('Fatal script error detected, clearing storage and redirecting to login...');
+        
+        // Clear all cookies
+        const cookies = document.cookie.split(";");
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i];
+            const eqPos = cookie.indexOf("=");
+            const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim();
+            document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";
+        }
+        
+        // Clear storage
+        localStorage.clear();
+        sessionStorage.clear();
+        
+        // Redirect to login to force a clean slate
+        if (window.location.pathname !== '/login') {
+          window.location.href = '/login';
+        }
+      }
+      return false;
+    };
+
+    window.onunhandledrejection = function(event) {
+      console.warn('Unhandled promise rejection:', event.reason);
+    };
+  </script>
   <meta name="theme-color" content="#086cbe" />
   <link rel="manifest" href="/manifest.json?v=2" />
   <link rel="apple-touch-icon" href="/r-icon-192.png" />

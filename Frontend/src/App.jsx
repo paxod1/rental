@@ -15,45 +15,48 @@ import GlobalToast from "./components/global/GlobalToast";
 import GlobalDeleteModal from "./components/global/GlobalDeleteModal";
 import InitialPageLoader from "./components/global/InitialPageLoader";
 import PwaInstallPrompt from "./components/global/PwaInstallPrompt";
+import ErrorBoundary from "./components/global/ErrorBoundary";
 
 function App() {
   const isGlobalLoading = useSelector((state) => state.ui.isGlobalLoading);
 
   return (
-    <AuthProvider>
-      <Router>
-        <Routes>
-          {/* Public route */}
-          <Route path="/login" element={<Login />} />
+    <ErrorBoundary>
+      <AuthProvider>
+        <Router>
+          <Routes>
+            {/* Public route */}
+            <Route path="/login" element={<Login />} />
 
-          {/* Protected admin routes */}
-          <Route path="/" element={
-            <ProtectedRoute>
-              <AdminLayout />
-            </ProtectedRoute>
-          }>
-            <Route index element={<AdminHome />} />
-            <Route path="Admin-products" element={<AdminProducts />} />
-            <Route path="Admin-Rented" element={<AdminRented />} />
-            <Route path="Rental-History" element={<RentalHistory />} />
-          </Route>
+            {/* Protected admin routes */}
+            <Route path="/" element={
+              <ProtectedRoute>
+                <AdminLayout />
+              </ProtectedRoute>
+            }>
+              <Route index element={<AdminHome />} />
+              <Route path="Admin-products" element={<AdminProducts />} />
+              <Route path="Admin-Rented" element={<AdminRented />} />
+              <Route path="Rental-History" element={<RentalHistory />} />
+            </Route>
 
-          {/* Catch all route */}
-          <Route path="*" element={
-            <ProtectedRoute>
-              <AdminHome />
-            </ProtectedRoute>
-          } />
-        </Routes>
+            {/* Catch all route */}
+            <Route path="*" element={
+              <ProtectedRoute>
+                <AdminHome />
+              </ProtectedRoute>
+            } />
+          </Routes>
 
-        {/* Global Components */}
-        {isGlobalLoading && <InitialPageLoader />}
-        <Toaster />
-        <GlobalToast />
-        <GlobalDeleteModal />
-        <PwaInstallPrompt />
-      </Router>
-    </AuthProvider>
+          {/* Global Components */}
+          {isGlobalLoading && <InitialPageLoader />}
+          <Toaster />
+          <GlobalToast />
+          <GlobalDeleteModal />
+          <PwaInstallPrompt />
+        </Router>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }
 
