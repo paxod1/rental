@@ -9,66 +9,63 @@
   <link rel="icon" type="image/svg+xml" href="/generated-image (1).png" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <script>
-    // Enhanced Fail-safe to prevent blank screen
+    // Robust Fail-safe to prevent blank screen
     (function () {
       function handleFatalError(reason) {
-        console.error('Fatal error detected (' + reason + '), clearing storage and redirecting...');
+        console.warn('RECOVERY TRIGGERED: ' + reason);
 
-        // 1. Unregister all service workers
-        if ('serviceWorker' in navigator) {
-          navigator.serviceWorker.getRegistrations().then(function (registrations) {
-            for (let registration of registrations) { registration.unregister(); }
-          }).catch(function () { });
-        }
+        try {
+          // 1. Unregister all service workers immediately
+          if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function (registrations) {
+              for (let r of registrations) { r.unregister(); }
+            }).catch(function () { });
+          }
 
-        // 2. Clear all cookies
-        const cookies = document.cookie.split(";");
-        for (let i = 0; i < cookies.length; i++) {
-          const cookie = cookies[i];
-          const eqPos = cookie.indexOf("=");
-          const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim();
-          document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";
-        }
+          // 2. Clear all browser data
+          localStorage.clear();
+          sessionStorage.clear();
+          const cookies = document.cookie.split(";");
+          for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i];
+            const eqPos = cookie.indexOf("=");
+            const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim();
+            document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";
+          }
+        } catch (e) { console.error('Cleanup error', e); }
 
-        // 3. Clear storage
-        localStorage.clear();
-        sessionStorage.clear();
-
-        // 4. Redirect to login to force a clean slate
+        // 3. Force redirect to login with a cache-busting flag
+        const loginUrl = '/login?recovered=true&t=' + Date.now();
         if (window.location.pathname !== '/login') {
-          window.location.href = '/login';
+          window.location.href = loginUrl;
         } else if (reason !== 'healthcheck') {
           window.location.reload();
         }
       }
 
-      // Listen for script loading errors (capturing phase for <script> failures)
-      window.addEventListener('error', function (event) {
-        if (event.target.tagName === 'SCRIPT') {
-          handleFatalError('Script load fail: ' + event.target.src);
+      // Catch script load failures early
+      window.addEventListener('error', function (e) {
+        if (e.target && e.target.tagName === 'SCRIPT') {
+          handleFatalError('Script Fail: ' + e.target.src);
         }
       }, true);
 
-      // Catch global JS errors
+      // Catch the specific "MIME type" error and other JS errors
       window.onerror = function (msg, url) {
-        if (msg.includes('MIME type') || (url && url.includes('.js'))) {
-          handleFatalError(msg);
+        if (msg.includes('MIME') || (url && url.includes('.js'))) {
+          handleFatalError('JS Error: ' + msg);
         }
         return false;
       };
 
-      // 5-second Health Check: If root is still empty after 5s, something failed silently
+      // 3-second Health Check: Faster recovery if nothing renders
       setTimeout(function () {
         const root = document.getElementById('root');
         if (root && !root.hasChildNodes()) {
           handleFatalError('healthcheck');
         }
-      }, 5000);
+      }, 3000);
     })();
-
-    window.onunhandledrejection = function (event) {
-      console.warn('Unhandled promise rejection:', event.reason);
-    };
   </script>
   <meta name="theme-color" content="#086cbe" />
   <link rel="manifest" href="/manifest.json?v=2" />
