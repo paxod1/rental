@@ -17,6 +17,8 @@ import InitialPageLoader from "./components/global/InitialPageLoader";
 import PwaInstallPrompt from "./components/global/PwaInstallPrompt";
 import ErrorBoundary from "./components/global/ErrorBoundary";
 
+
+
 function App() {
   const isGlobalLoading = useSelector((state) => state.ui.isGlobalLoading);
 
