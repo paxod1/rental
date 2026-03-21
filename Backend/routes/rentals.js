@@ -233,7 +233,9 @@ const calculateRentalAmounts = (rental) => {
 
   const netPaidAmount = totalPaidAmount - totalRefunds;
 
-  rental.totalAmount = Math.round(calculatedTotalAmount * 100) / 100;
+  const totalServiceCharge = (rental.serviceCharges || []).reduce((sum, charge) => sum + (charge.amount || 0), 0);
+
+  rental.totalAmount = Math.round((calculatedTotalAmount + totalServiceCharge) * 100) / 100;
   rental.totalPaid = Math.round(netPaidAmount * 100) / 100;
   rental.balanceAmount = Math.max(0, (rental.totalAmount - totalDiscountAmount) - rental.totalPaid);
 
@@ -1485,6 +1487,51 @@ router.put("/:id/general-payment", async (req, res) => {
 
   } catch (error) {
     console.error("❌ Error in general-payment:", error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// ADD SERVICE CHARGE ROUTE
+router.put('/:id/service-charge', async (req, res) => {
+  try {
+    const { serviceChargeName, serviceChargeAmount, serviceChargeDate } = req.body;
+    
+    if (!serviceChargeName || !serviceChargeAmount) {
+      return res.status(400).json({ message: "Service name and amount are required" });
+    }
+    
+    const rental = await Rental.findById(req.params.id)
+      .populate('productItems.productId', 'name rate rateType');
+      
+    if (!rental) {
+      return res.status(404).json({ message: "Rental not found" });
+    }
+
+    if (!rental.serviceCharges) {
+      rental.serviceCharges = [];
+    }
+    
+    rental.serviceCharges.push({
+      type: 'service',
+      name: serviceChargeName,
+      amount: parseFloat(serviceChargeAmount) || 0,
+      date: serviceChargeDate ? new Date(serviceChargeDate) : new Date()
+    });
+
+    // Calculate amounts manually
+    calculateRentalAmounts(rental);
+
+    await rental.save();
+
+    const updatedRental = await Rental.findById(rental._id)
+      .populate('productItems.productId', 'name rate rateType');
+
+    res.json({
+      rental: updatedRental,
+      message: "Service charge added successfully"
+    });
+  } catch (error) {
+    console.error('❌ Error updating service charge:', error);
     res.status(500).json({ message: error.message });
   }
 });

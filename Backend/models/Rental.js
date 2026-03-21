@@ -67,6 +67,13 @@ const paymentSchema = new mongoose.Schema({
   notes: { type: String }
 });
 
+const serviceChargeSchema = new mongoose.Schema({
+  type: { type: String, default: 'service' },
+  name: { type: String, required: true },
+  amount: { type: Number, required: true },
+  date: { type: Date, default: Date.now }
+});
+
 const rentalSchema = new mongoose.Schema(
   {
     customerName: { type: String, required: true },
@@ -84,6 +91,7 @@ const rentalSchema = new mongoose.Schema(
     totalAmount: { type: Number, default: 0 },
     totalPaid: { type: Number, default: 0 },
     balanceAmount: { type: Number, default: 0 },
+    serviceCharges: [serviceChargeSchema],
     notes: { type: String },
   },
   { timestamps: true }

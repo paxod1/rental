@@ -59,6 +59,9 @@ function RentalDetails({ rentalId, onBack }) {
         paymentDate: new Date().toISOString().split('T')[0],
         discountAmount: '0',
         discountNotes: '',
+        serviceChargeName: '',
+        serviceChargeAmount: '',
+        serviceChargeDate: new Date().toISOString().split('T')[0],
         multipleProducts: [
             {
                 id: Date.now(),
@@ -281,6 +284,9 @@ function RentalDetails({ rentalId, onBack }) {
             paymentDate: new Date().toISOString().split('T')[0],
             discountAmount: '0',
             discountNotes: '',
+            serviceChargeName: 'Transport, Labour',
+            serviceChargeAmount: '',
+            serviceChargeDate: new Date().toISOString().split('T')[0],
             multipleProducts: [
                 {
                     id: Date.now(),
@@ -301,6 +307,14 @@ function RentalDetails({ rentalId, onBack }) {
             setFormData(prev => ({
                 ...prev,
                 productId: productItem.productId._id || productItem.productId
+            }));
+        }
+        if (type === 'add-service-charge') {
+            setFormData(prev => ({
+                ...prev,
+                serviceChargeName: 'Transport, Labour',
+                serviceChargeAmount: '',
+                serviceChargeDate: new Date().toISOString().split('T')[0]
             }));
         }
         setIsModalOpen(true);
@@ -480,6 +494,15 @@ function RentalDetails({ rentalId, onBack }) {
                         days: formData.newProductDays ? parseInt(formData.newProductDays) : null,
                         notes: formData.notes,
                         startDate: formData.addProductDate
+                    };
+                    break;
+
+                case 'add-service-charge':
+                    endpoint = `/api/rentals/${rentalId}/service-charge`;
+                    payload = {
+                        serviceChargeName: formData.serviceChargeName,
+                        serviceChargeAmount: formData.serviceChargeAmount,
+                        serviceChargeDate: formData.serviceChargeDate
                     };
                     break;
 
@@ -1097,17 +1120,42 @@ function RentalDetails({ rentalId, onBack }) {
     }
 
     const calculateTotalRentalAmount = () => {
-        if (!rental || !rental.productItems) return 0;
-        return rental.productItems.reduce((total, productItem) => {
-            return total + calculateLiveAmountForProduct(productItem);
-        }, 0);
+        if (!rental) return 0;
+        let total = 0;
+        if (rental.productItems) {
+            total += rental.productItems.reduce((sum, item) => sum + calculateLiveAmountForProduct(item), 0);
+        }
+        if (rental.serviceCharges) {
+            total += rental.serviceCharges.reduce((sum, charge) => sum + (charge.amount || 0), 0);
+        }
+        return total;
     };
 
     const calculateTotalBalance = () => {
-        if (!rental || !rental.productItems) return 0;
-        return rental.productItems.reduce((total, productItem) => {
-            return total + calculateProductBalance(productItem);
-        }, 0);
+        if (!rental) return 0;
+        let total = 0;
+        if (rental.productItems) {
+            total += rental.productItems.reduce((sum, item) => sum + calculateProductBalance(item), 0);
+        }
+        if (rental.serviceCharges) {
+            // Include service charges in the global balance constraint
+            total += rental.serviceCharges.reduce((sum, charge) => sum + (charge.amount || 0), 0);
+        }
+        
+        // Global payments and discounts independently reduce the overall balance overflow
+        if (rental.payments) {
+            const globalReductions = rental.payments
+                .filter(p => !p.productId && p.type !== 'refund')
+                .reduce((sum, p) => sum + (p.amount || 0), 0);
+            
+            const globalRefunds = rental.payments
+                .filter(p => !p.productId && p.type === 'refund')
+                .reduce((sum, p) => sum + (p.amount || 0), 0);
+                
+            total -= (globalReductions - globalRefunds);
+        }
+        
+        return Math.max(0, total);
     };
 
     return (
@@ -1338,6 +1386,13 @@ function RentalDetails({ rentalId, onBack }) {
                     <h3 className="text-lg font-semibold text-gray-800">Rented Products</h3>
                     <div className="flex gap-2 w-full sm:w-auto">
                         <button
+                            onClick={() => openModal('add-service-charge')}
+                            className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2 flex-1 sm:flex-none justify-center"
+                        >
+                            <FiPlus className="w-4 h-4" />
+                            Add Service Charge
+                        </button>
+                        <button
                             onClick={() => openModal('add-products-bulk')}
                             className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2 flex-1 sm:flex-none justify-center"
                         >
@@ -1353,6 +1408,52 @@ function RentalDetails({ rentalId, onBack }) {
                     )}
                 </div>
             </div>
+
+            {/* Service Charges Section */}
+            {(rental.serviceCharges && rental.serviceCharges.length > 0) && (
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6 mb-6">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-6">Service Charges</h3>
+                    <div className="grid gap-4 sm:gap-6">
+                        {rental.serviceCharges.map((charge, index) => (
+                            <div key={`service-charge-${index}`} className="bg-gray-50 p-4 sm:p-8 rounded-lg shadow-sm border border-gray-200 hover:border-[#086cbe] transition-colors cursor-pointer">
+                                <div className="flex md:mt-5 flex-col lg:flex-row justify-between items-start mb-4 space-y-4 lg:space-y-0">
+                                    <div className="flex-1 w-full">
+                                        <div className="flex flex-wrap items-center gap-2 mb-2">
+                                            <h4 className="text-lg lg:text-3xl font-bold text-gray-800 uppercase break-words">
+                                                {charge.name}
+                                            </h4>
+                                            <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs font-medium flex items-center gap-1 whitespace-nowrap">
+                                                <FiCheck className="w-3 h-3" /> Service
+                                            </span>
+                                        </div>
+                                        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2 mt-3 text-sm">
+                                            <div className="bg-white p-2 rounded">
+                                                <span className="text-gray-600 text-xs block sm:inline">Date Added</span>
+                                                <span className="ml-0 sm:ml-2 font-semibold text-blue-600 block sm:inline">
+                                                    {new Date(charge.date).toLocaleDateString()}
+                                                </span>
+                                            </div>
+                                            <div className="bg-white p-2 rounded">
+                                                <span className="text-gray-600 text-xs block sm:inline">Applied Amount</span>
+                                                <span className="ml-0 sm:ml-2 font-semibold block sm:inline">
+                                                    ₹{(charge.amount || 0).toFixed(2)}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="flex flex-col gap-2 w-full lg:w-auto lg:ml-4">
+                                        <div className="text-right space-y-1 w-full sm:w-auto mt-2 sm:mt-0">
+                                            <span className="font-bold text-lg text-green-600 block whitespace-nowrap">
+                                                ₹{(charge.amount || 0).toFixed(2)}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             {/* General Actions */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6 mb-6">
@@ -1678,6 +1779,58 @@ function RentalDetails({ rentalId, onBack }) {
                                                     value={formData.addProductDate}
                                                     onChange={handleChange}
                                                     max={new Date().toISOString().split('T')[0]}
+                                                    required
+                                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
+                                                />
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
+
+                                {/* Service Charge Modal Content */}
+                                {modalType === 'add-service-charge' && (
+                                    <>
+                                        <div className="mb-4">
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                Service Name (e.g., Transport, Labour)
+                                            </label>
+                                            <input
+                                                type="text"
+                                                name="serviceChargeName"
+                                                value={formData.serviceChargeName}
+                                                onChange={handleChange}
+                                                required
+                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
+                                                placeholder="Enter service name..."
+                                            />
+                                        </div>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                    Amount (₹)
+                                                </label>
+                                                <input
+                                                    type="number"
+                                                    name="serviceChargeAmount"
+                                                    value={formData.serviceChargeAmount}
+                                                    onChange={handleChange}
+                                                    step="0.01"
+                                                    min="0"
+                                                    required
+                                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
+                                                    placeholder="Enter amount"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                    <FiCalendar className="w-4 h-4 inline mr-1" />
+                                                    Date
+                                                </label>
+                                                <input
+                                                    type="date"
+                                                    name="serviceChargeDate"
+                                                    value={formData.serviceChargeDate}
+                                                    onChange={handleChange}
                                                     required
                                                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
                                                 />

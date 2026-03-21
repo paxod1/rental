@@ -190,16 +190,27 @@ Balance: ${formatCurrency(productBalance)}`;
 *BILL CALCULATION SUMMARY*
 Total Products Amount: ${formatCurrency(totalProductsAmount)}`;
 
+        const serviceCharges = rental.serviceCharges || [];
+        const totalServiceCharge = serviceCharges.reduce((sum, charge) => sum + (charge.amount || 0), 0);
+
+        if (totalServiceCharge > 0) {
+            billText += `\n\n*SERVICE CHARGES*`;
+            serviceCharges.forEach((charge, index) => {
+                const chargeDate = formatDate(charge.date);
+                billText += `\n${index + 1}. ${chargeDate}: ${charge.name} - ${formatCurrency(charge.amount || 0)}`;
+            });
+            billText += `\nTotal Service Charge: ${formatCurrency(totalServiceCharge)}`;
+        }
+
+        billText += `\n\nTotal Amount: ${formatCurrency(subtotal)}`;
+
         if (totalDiscount > 0) {
-            billText += `
-Discount: -${formatCurrency(totalDiscount)}
+            billText += `\nDiscount: -${formatCurrency(totalDiscount)}
 *Net Amount:* ${formatCurrency(netAmount)}`;
         }
 
-        billText += `
-Total Paid: ${formatCurrency(totalPaid)}
+        billText += `\nTotal Paid: ${formatCurrency(totalPaid)}
 *BALANCE DUE:* ${formatCurrency(balance)}`;
-
 
         // Payment status
         let statusText = balance > 0 ? 'PENDING PAYMENT' : 'FULLY PAID';
@@ -329,8 +340,22 @@ ${index + 1}. ${product.productName}
    Amount: ${formatCurrency(product.amount || 0)}`;
         });
 
+        const serviceCharges = rental.serviceCharges || [];
+        const totalServiceCharge = serviceCharges.reduce((sum, charge) => sum + (charge.amount || 0), 0);
+
         billText += `
 *AMOUNT SUMMARY:*
+Products Total: ${formatCurrency(subtotal - totalServiceCharge)}`;
+
+        if (totalServiceCharge > 0) {
+            billText += `\nService Charges:`;
+            serviceCharges.forEach((charge) => {
+                billText += `\n- ${charge.name}: ${formatCurrency(charge.amount || 0)}`;
+            });
+            billText += `\nTotal Service Charge: ${formatCurrency(totalServiceCharge)}`;
+        }
+
+        billText += `
 Subtotal: ${formatCurrency(subtotal)}`;
 
         if (totalDiscount > 0) {
@@ -373,6 +398,20 @@ Date: ${formatDate(new Date())}
             billText += `
 ${product.productName} - ${formatCurrency(product.amount || 0)}`;
         });
+
+        const serviceCharges = rental.serviceCharges || [];
+        const totalServiceCharge = serviceCharges.reduce((sum, charge) => sum + (charge.amount || 0), 0);
+
+        billText += `
+Products Total: ${formatCurrency(totalAmount - totalServiceCharge)}`;
+
+        if (totalServiceCharge > 0) {
+            billText += `\nService Charges:`;
+            serviceCharges.forEach((charge) => {
+                billText += `\n${charge.name} - ${formatCurrency(charge.amount || 0)}`;
+            });
+            billText += `\nService Charges Total: ${formatCurrency(totalServiceCharge)}`;
+        }
 
         billText += `
 Total: ${formatCurrency(totalAmount)}`;
