@@ -1,14 +1,20 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import html2pdf from 'html2pdf.js';
-import { FiDownload, FiPrinter } from 'react-icons/fi';
+import { FiDownload, FiPrinter, FiMessageSquare } from 'react-icons/fi';
+import toast from 'react-hot-toast';
+import LoadingSpinner from './commonComp/LoadingSpinner';
 
-const PrintableInvoice = ({ rental }) => {
+const PrintableInvoice = ({ rental, customerPhone }) => {
     const componentRef = useRef();
+    const [isDownloading, setIsDownloading] = useState(false);
+    const [isSharing, setIsSharing] = useState(false);
 
     if (!rental) return null;
 
     const formatDate = (date) => new Date(date).toLocaleDateString('en-IN');
     const formatCurrency = (amount) => `₹${amount?.toFixed(2) || '0.00'}`;
+    
+    const effectivePhone = customerPhone || rental.customerPhone;
 
     // Totals
     const subtotal = rental.totalAmount || 0;
@@ -25,22 +31,81 @@ const PrintableInvoice = ({ rental }) => {
     const invoiceNo = `INV-${rental._id?.slice(-6)?.toUpperCase() || '000000'}`;
     const invoiceDate = formatDate(new Date());
 
+    // Common PDF Generation Options
+    const getPdfOptions = (filename) => ({
+        margin: [10, 10, 10, 10], // top, left, bottom, right in mm
+        filename: filename,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { 
+            scale: 2, 
+            useCORS: true,
+            windowWidth: 794, // 190mm in pixels at 96dpi is ~718, 210mm is ~794
+        },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    });
+
     // Generate PDF
-    const handleDownloadPdf = () => {
-        const element = componentRef.current;
-        const rentDate = rental.startDate ? new Date(rental.startDate).toLocaleDateString('en-GB').replace(/\//g, '-') : 'NoDate';
-        const opt = {
-            margin: [10, 10, 10, 10], // top, left, bottom, right in mm
-            filename: `${rental.customerName.replace(/[^a-z0-9]/gi, '_')}_Rental_${rentDate}.pdf`,
-            image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { 
-                scale: 2, 
-                useCORS: true,
-                windowWidth: 794, // 190mm in pixels at 96dpi is ~718, 210mm is ~794
-            },
-            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-        };
-        html2pdf().set(opt).from(element).save();
+    const handleDownloadPdf = async () => {
+        try {
+            setIsDownloading(true);
+            const element = componentRef.current;
+            const rentDate = rental.startDate ? new Date(rental.startDate).toLocaleDateString('en-GB').replace(/\//g, '-') : 'NoDate';
+            const filename = `${rental.customerName.replace(/[^a-z0-9]/gi, '_')}_Rental_${rentDate}.pdf`;
+            
+            await html2pdf().set(getPdfOptions(filename)).from(element).save();
+        } catch (error) {
+            console.error('PDF Download failed:', error);
+            toast.error('Failed to download PDF');
+        } finally {
+            setIsDownloading(false);
+        }
+    };
+
+    // Share via WhatsApp
+    const handleSharePdf = async () => {
+        try {
+            setIsSharing(true);
+            const element = componentRef.current;
+            const rentDate = rental.startDate ? new Date(rental.startDate).toLocaleDateString('en-GB').replace(/\//g, '-') : 'NoDate';
+            const filename = `${rental.customerName.replace(/[^a-z0-9]/gi, '_')}_Rental_${rentDate}.pdf`;
+            
+            // Generate PDF blob
+            const pdfBlob = await html2pdf().set(getPdfOptions(filename)).from(element).output('blob');
+            const file = new File([pdfBlob], filename, { type: 'application/pdf' });
+
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                await navigator.share({
+                    files: [file],
+                    title: 'Rental Invoice',
+                    text: `Please find the attached invoice from EDASSERIKKUDIYIL RENTALS for ${rental.customerName}.`
+                });
+            } else {
+                toast.success('Sharing not supported on this device. Downloading & opening WhatsApp...');
+                
+                // Fallback: Download
+                const url = window.URL.createObjectURL(pdfBlob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.setAttribute('download', filename);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+
+                // Open WhatsApp
+                if (effectivePhone) {
+                    const cleanPhone = effectivePhone.replace(/\D/g, '');
+                    const message = encodeURIComponent(`Hello ${rental.customerName}, I've shared your rental invoice. Please find the downloaded file: ${filename}`);
+                    window.open(`https://wa.me/91${cleanPhone}?text=${message}`, '_blank');
+                } else {
+                    window.open('https://web.whatsapp.com/', '_blank');
+                }
+            }
+        } catch (error) {
+            console.error('Sharing failed:', error);
+            toast.error('Failed to share PDF');
+        } finally {
+            setIsSharing(false);
+        }
     };
 
     // Native Print
@@ -89,17 +154,34 @@ const PrintableInvoice = ({ rental }) => {
                 <div className="flex flex-col gap-2">
                     <button
                         onClick={handlePrint}
-                        className="w-full flex items-center justify-center gap-2 bg-gray-800 hover:bg-gray-900 text-white px-4 py-2 rounded-lg transition-colors text-sm font-medium shadow-sm"
+                        className="w-full flex items-center justify-center gap-2 bg-gray-800 hover:bg-gray-900 text-white px-4 py-2 rounded-lg transition-colors text-sm font-medium shadow-sm active:scale-95"
                     >
                         <FiPrinter className="w-4 h-4" />
                         Print Bill
                     </button>
                     <button
                         onClick={handleDownloadPdf}
-                        className="w-full flex items-center justify-center gap-2 bg-[#086cbe] hover:bg-[#0757a8] text-white px-4 py-2 rounded-lg transition-colors text-sm font-medium shadow-sm"
+                        disabled={isDownloading}
+                        className="w-full flex items-center justify-center gap-2 bg-[#086cbe] hover:bg-[#0757a8] disabled:bg-blue-300 text-white px-4 py-2 rounded-lg transition-colors text-sm font-medium shadow-sm active:scale-95"
                     >
-                        <FiDownload className="w-4 h-4" />
+                        {isDownloading ? (
+                            <LoadingSpinner size="sm" color="white" />
+                        ) : (
+                            <FiDownload className="w-4 h-4" />
+                        )}
                         Download PDF
+                    </button>
+                    <button
+                        onClick={handleSharePdf}
+                        disabled={isSharing}
+                        className="w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 disabled:bg-green-300 text-white px-4 py-2 rounded-lg transition-colors text-sm font-medium shadow-sm active:scale-95"
+                    >
+                        {isSharing ? (
+                            <LoadingSpinner size="sm" color="white" />
+                        ) : (
+                            <FiMessageSquare className="w-4 h-4" />
+                        )}
+                        Send PDF to WhatsApp
                     </button>
                 </div>
             </div>

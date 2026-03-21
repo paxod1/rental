@@ -565,16 +565,7 @@ EDASSERIKKUDIYIL RENTALS
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         {/* Left Panel - Controls */}
                         <div className="space-y-6">
-                            {/* WhatsApp Info */}
-                            <div className="bg-blue-50 rounded-lg p-4">
-                                <div className="flex items-center gap-2 mb-2">
-                                    <FiSmartphone className="w-5 h-5 text-blue-600" />
-                                    <span className="font-medium text-blue-800">Free WhatsApp Integration</span>
-                                </div>
-                                <p className="text-blue-700 text-sm">
-                                    Opens WhatsApp on your phone with the bill pre-filled. Just tap send!
-                                </p>
-                            </div>
+                     
 
                             {/* Phone Number Section */}
                             <div className="bg-gray-50 rounded-lg p-4">
@@ -633,16 +624,7 @@ EDASSERIKKUDIYIL RENTALS
                                 )}
                             </div>
 
-                            {/* Discount Summary */}
-                            {getTotalDiscounts() > 0 && (
-                                <div className="bg-yellow-50 rounded-lg p-4">
-                                    <h5 className="font-medium text-yellow-800 mb-2">💸 Discount Applied:</h5>
-                                    <div className="text-sm text-yellow-700 space-y-1">
-                                        <p>• Total Discounts: ₹{getTotalDiscounts().toFixed(2)}</p>
-                                        <p>• Customer saves ₹{getTotalDiscounts().toFixed(2)}</p>
-                                    </div>
-                                </div>
-                            )}
+                         
 
                             {/* Action Buttons */}
                             <div className="space-y-3">
@@ -655,26 +637,12 @@ EDASSERIKKUDIYIL RENTALS
                                     📱 Open WhatsApp & Send
                                 </button>
 
-                                <button
-                                    onClick={simulateMobileWhatsApp}
-                                    disabled={!phoneNumber || !validatePhoneNumber(phoneNumber) || !billPreview}
-                                    className="w-full bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white px-6 py-2 rounded-lg transition-colors flex items-center justify-center gap-2"
-                                >
-                                    <FiSmartphone className="w-4 h-4" />
-                                    Mobile WhatsApp (Direct)
-                                </button>
+                              
 
-                                <button
-                                    onClick={copyBillText}
-                                    disabled={!billPreview}
-                                    className="w-full bg-gray-500 hover:bg-gray-600 disabled:bg-gray-300 text-white px-6 py-2 rounded-lg transition-colors"
-                                >
-                                    📋 Copy Bill Text
-                                </button>
 
                                 {/* Printable PDF Generator */}
                                 <div className="pt-2">
-                                    <PrintableInvoice rental={rental} />
+                                    <PrintableInvoice rental={rental} customerPhone={phoneNumber} />
                                 </div>
                             </div>
 
