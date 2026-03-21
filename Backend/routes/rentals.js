@@ -1466,6 +1466,26 @@ router.put("/:id/general-payment", async (req, res) => {
       }
     }
 
+    if (paymentAmt > 0) {
+      rental.payments.push({
+        amount: paymentAmt,
+        type: paymentType || "general_payment",
+        date: dateToSave,
+        notes: notes || `General payment: ₹${paymentAmt.toFixed(2)}`
+      });
+      console.log(`   💰 Applied remaining ₹${paymentAmt} as general payment`);
+    }
+
+    if (discountAmt > 0) {
+      rental.payments.push({
+        amount: discountAmt,
+        type: "discount",
+        date: dateToSave,
+        notes: discountNotes || `General discount: ₹${discountAmt.toFixed(2)}`
+      });
+      console.log(`   🎁 Applied remaining ₹${discountAmt} as general discount`);
+    }
+
     // ✅ CRITICAL: Calculate amounts manually after adding payments
     calculateRentalAmounts(rental);
 
@@ -2235,25 +2255,25 @@ router.put("/:id/close-all-rentals", async (req, res) => {
         }
       }
 
-      // If there's still payment remaining (overpayment), create a refund or note
+      // If there's still payment remaining, apply as general payment (e.g. for service charges)
       if (remainingPayment > 0) {
-        console.log(`   ⚠️  Overpayment detected: ₹${remainingPayment}`);
+        console.log(`   ⚠️  Applying leftover payment to global balance: ₹${remainingPayment}`);
 
-        // Option 1: Create a refund entry
         rental.payments.push({
           amount: remainingPayment,
-          type: 'refund',
+          type: paymentMethod || 'full_payment',
           date: new Date(),
-          notes: `Overpayment refund from bulk close`
+          notes: paymentNotes || `Bulk close payment for remaining balance`
         });
 
+        closeSummary.totalPaymentApplied += remainingPayment;
         closeSummary.paymentsApplied.push({
-          type: 'refund',
+          type: 'payment',
           amount: remainingPayment,
-          description: `Overpayment refund`
+          description: `General payment applied`
         });
 
-        console.log(`   💰 Created refund entry for overpayment`);
+        console.log(`   💰 Applied remaining ₹${remainingPayment} as general payment`);
       }
     }
 
