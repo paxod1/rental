@@ -56,6 +56,7 @@ function RentalDetails({ rentalId, onBack }) {
         returnDate: new Date().toISOString().split('T')[0],
         addProductDate: new Date().toISOString().split('T')[0],
         addMoreDate: new Date().toISOString().split('T')[0],
+        paymentDate: new Date().toISOString().split('T')[0],
         discountAmount: '0',
         discountNotes: '',
         multipleProducts: [
@@ -277,6 +278,7 @@ function RentalDetails({ rentalId, onBack }) {
             returnDate: new Date().toISOString().split('T')[0],
             addProductDate: new Date().toISOString().split('T')[0],
             addMoreDate: new Date().toISOString().split('T')[0],
+            paymentDate: new Date().toISOString().split('T')[0],
             discountAmount: '0',
             discountNotes: '',
             multipleProducts: [
@@ -399,7 +401,8 @@ function RentalDetails({ rentalId, onBack }) {
                         discountAmount: formData.discountAmount ? parseFloat(formData.discountAmount) : null,
                         paymentType: formData.paymentType,
                         notes: formData.notes,
-                        discountNotes: formData.discountNotes
+                        discountNotes: formData.discountNotes,
+                        paymentDate: formData.paymentDate
                     };
                     break;
 
@@ -486,7 +489,8 @@ function RentalDetails({ rentalId, onBack }) {
                         productId: formData.productId,
                         amount: parseFloat(formData.amount),
                         paymentType: formData.paymentType,
-                        notes: formData.notes
+                        notes: formData.notes,
+                        paymentDate: formData.paymentDate
                     };
                     break;
 
@@ -1879,6 +1883,22 @@ function RentalDetails({ rentalId, onBack }) {
 
                                         <div className="mb-4">
                                             <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                <FiCalendar className="w-4 h-4 inline mr-1" />
+                                                Payment Date <span className="text-red-500">*</span>
+                                            </label>
+                                            <input
+                                                type="date"
+                                                name="paymentDate"
+                                                value={formData.paymentDate}
+                                                onChange={handleChange}
+                                                max={new Date().toISOString().split('T')[0]}
+                                                required
+                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-sm sm:text-base"
+                                            />
+                                        </div>
+
+                                        <div className="mb-4">
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
                                                 Payment Type
                                             </label>
                                             <select
@@ -2057,6 +2077,22 @@ function RentalDetails({ rentalId, onBack }) {
                                                 required
                                                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
                                                 placeholder="Enter payment amount"
+                                            />
+                                        </div>
+
+                                        <div className="mb-4">
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                <FiCalendar className="w-4 h-4 inline mr-1" />
+                                                Payment Date <span className="text-red-500">*</span>
+                                            </label>
+                                            <input
+                                                type="date"
+                                                name="paymentDate"
+                                                value={formData.paymentDate}
+                                                onChange={handleChange}
+                                                max={new Date().toISOString().split('T')[0]}
+                                                required
+                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
                                             />
                                         </div>
 

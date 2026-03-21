@@ -1216,7 +1216,8 @@ router.put("/:id/add-rental", async (req, res) => {
 // PRODUCT PAYMENT ROUTE - WITH MANUAL CALCULATION
 router.put("/:id/product-payment", async (req, res) => {
   try {
-    const { productId, amount, paymentType, notes } = req.body;
+    const { productId, amount, paymentType, notes, paymentDate } = req.body;
+    const dateToSave = paymentDate ? new Date(paymentDate) : new Date();
 
     if (!productId || !amount || amount <= 0) {
       return res.status(400).json({
@@ -1261,7 +1262,7 @@ router.put("/:id/product-payment", async (req, res) => {
       type: paymentType || 'product_payment',
       productId: productId,
       productName: productItem.productName,
-      date: new Date(),
+      date: dateToSave,
       notes: notes || `Payment for ${productItem.productName}`
     });
 
@@ -1356,7 +1357,8 @@ router.put("/:id/product-full-payment", async (req, res) => {
 // GENERAL PAYMENT ROUTE - WITH MANUAL CALCULATION
 router.put("/:id/general-payment", async (req, res) => {
   try {
-    const { amount, discountAmount, paymentType, notes, discountNotes } = req.body;
+    const { amount, discountAmount, paymentType, notes, discountNotes, paymentDate } = req.body;
+    const dateToSave = paymentDate ? new Date(paymentDate) : new Date();
 
     if ((!amount || amount <= 0) && (!discountAmount || discountAmount <= 0)) {
       return res.status(400).json({ message: "Please provide payment or discount amount" });
@@ -1405,7 +1407,7 @@ router.put("/:id/general-payment", async (req, res) => {
             type: "discount",
             productId: product.productId,
             productName: product.productName,
-            date: new Date(),
+            date: dateToSave,
             notes: discountNotes || `Discount: ₹${discountForProduct.toFixed(2)} for ${product.productName}`
           });
 
@@ -1438,7 +1440,7 @@ router.put("/:id/general-payment", async (req, res) => {
             type: paymentType || "general_payment",
             productId: product.productId,
             productName: product.productName,
-            date: new Date(),
+            date: dateToSave,
             notes: notes || `Payment: ₹${paymentForProduct.toFixed(2)} for ${product.productName}`
           });
 
