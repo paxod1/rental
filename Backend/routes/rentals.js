@@ -309,12 +309,7 @@ router.get("/all-history", async (req, res) => {
         query.status = 'completed';
         break;
       case 'pending_payment':
-        query = {
-          $or: [
-            { status: 'returned_pending_payment' },
-            { balanceAmount: { $gt: 0 } }
-          ]
-        };
+        query.status = 'returned_pending_payment';
         break;
       case 'active':
         query.status = 'active';
@@ -324,8 +319,8 @@ router.get("/all-history", async (req, res) => {
         break;
       case 'all':
       default:
-        // Include all statuses except cancelled if you want
-        query.status = { $in: ['active', 'completed', 'partially_returned', 'returned_pending_payment'] };
+        // Only show finished rentals (fully returned) in history by default
+        query.status = { $in: ['completed', 'returned_pending_payment'] };
         break;
     }
 

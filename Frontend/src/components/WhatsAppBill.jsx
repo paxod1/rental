@@ -175,13 +175,13 @@ Balance: ${formatCurrency(productBalance)}`;
             billText += `\n*Discount Applied:* ${formatCurrency(totalDiscount)}`;
 
             // Show discount breakdown
-            const discountPayments = rental.payments?.filter(p => p.discountAmount && p.discountAmount > 0) || [];
-            if (discountPayments.length > 0) {
-                discountPayments.forEach((discount, index) => {
+            const discountBreakdown = getDiscountBreakdown();
+            if (discountBreakdown.length > 0) {
+                discountBreakdown.forEach((discount, index) => {
                     const discDate = formatDate(discount.date);
-                    billText += `\n  - ${discDate}: ${formatCurrency(discount.discountAmount)}`;
-                    if (discount.discountNotes) {
-                        billText += ` (${discount.discountNotes})`;
+                    billText += `\n  - ${discDate}: ${formatCurrency(discount.amount)}`;
+                    if (discount.notes) {
+                        billText += ` (${discount.notes})`;
                     }
                 });
             }
@@ -437,8 +437,11 @@ EDASSERIKKUDIYIL RENTALS
     // Helper functions for discounts
     const getTotalDiscounts = () => {
         if (!rental || !rental.payments) return 0;
-        return rental.payments.reduce((total, payment) => {
-            return total + (payment.discountAmount || 0);
+        return rental.payments.reduce((total, p) => {
+            if (p.type === 'discount') {
+                return total + (p.amount || 0);
+            }
+            return total + (p.discountAmount || 0);
         }, 0);
     };
 
@@ -446,11 +449,11 @@ EDASSERIKKUDIYIL RENTALS
     const getDiscountBreakdown = () => {
         if (!rental || !rental.payments) return [];
         return rental.payments
-            .filter(payment => payment.discountAmount && payment.discountAmount > 0)
-            .map(payment => ({
-                date: payment.date,
-                amount: payment.discountAmount,
-                notes: payment.discountNotes || payment.notes
+            .filter(p => (p.type === 'discount' || (p.discountAmount && p.discountAmount > 0)))
+            .map(p => ({
+                date: p.date || p.paymentDate,
+                amount: p.type === 'discount' ? p.amount : p.discountAmount,
+                notes: p.discountNotes || p.notes || 'Discount Applied'
             }));
     };
 
