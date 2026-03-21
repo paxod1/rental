@@ -1390,7 +1390,7 @@ function RentalDetails({ rentalId, onBack }) {
                             className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2 flex-1 sm:flex-none justify-center"
                         >
                             <FiPlus className="w-4 h-4" />
-                            Add Service Charge
+                            Add Service
                         </button>
                         <button
                             onClick={() => openModal('add-products-bulk')}
