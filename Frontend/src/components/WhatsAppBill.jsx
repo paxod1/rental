@@ -11,6 +11,7 @@ import {
     FiExternalLink,
     FiSmartphone
 } from 'react-icons/fi';
+import PrintableInvoice from './PrintableInvoice';
 
 const WhatsAppBill = ({ rental, isOpen, onClose }) => {
     const [phoneNumber, setPhoneNumber] = useState('');
@@ -667,6 +668,11 @@ EDASSERIKKUDIYIL RENTALS
                                 >
                                     📋 Copy Bill Text
                                 </button>
+
+                                {/* Printable PDF Generator */}
+                                <div className="pt-2">
+                                    <PrintableInvoice rental={rental} />
+                                </div>
                             </div>
 
                             {/* Instructions */}
@@ -750,6 +756,7 @@ Available Formats:
                                     📋 Copy Text
                                 </button>
                             </div>
+
                         </div>
                     </div>
                 </div>
