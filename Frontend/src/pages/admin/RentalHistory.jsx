@@ -25,6 +25,8 @@ import EmptyState from "../../components/commonComp/EmptyState";
 import LoadingSpinner from "../../components/commonComp/LoadingSpinner";
 import axiosInstance from "../../../axiosCreate";
 import Pagination from "../../components/global/Pagination";
+import { FaWhatsapp } from "react-icons/fa";
+import WhatsAppBill from "../../components/WhatsAppBill";
 
 function RentalHistory() {
   const dispatch = useDispatch();
@@ -44,6 +46,9 @@ function RentalHistory() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  
+  const [billModalRental, setBillModalRental] = useState(null);
+  const [showWhatsAppBill, setShowWhatsAppBill] = useState(false);
 
   // Enhanced payment data with discount support (same as RentalDetails)
   const [paymentData, setPaymentData] = useState({
@@ -107,6 +112,16 @@ function RentalHistory() {
   const closeModal = () => {
     setIsModalOpen(false);
     setSelectedRental(null);
+  };
+
+  const openWhatsAppBill = (rental) => {
+    setBillModalRental(rental);
+    setShowWhatsAppBill(true);
+  };
+
+  const closeWhatsAppBill = () => {
+    setShowWhatsAppBill(false);
+    setBillModalRental(null);
   };
 
   const openPaymentModal = (rental) => {
@@ -476,6 +491,13 @@ function RentalHistory() {
                       <FiEye className="w-3 h-3" />
                       View
                     </button>
+                    <button
+                      onClick={() => openWhatsAppBill(rental)}
+                      className="flex-1 bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded text-xs flex items-center justify-center gap-1"
+                    >
+                      <FaWhatsapp className="w-3 h-3" />
+                      Bill
+                    </button>
                     {(rental.paymentSummary?.balanceAmount || rental.balanceAmount) > 0 && (
                       <button
                         onClick={() => openPaymentModal(rental)}
@@ -639,6 +661,13 @@ function RentalHistory() {
                           >
                             <FiEye className="w-4 h-4" />
                             View
+                          </button>
+                          <button
+                            onClick={() => openWhatsAppBill(rental)}
+                            className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm flex items-center gap-1"
+                          >
+                            <FaWhatsapp className="w-4 h-4" />
+                            Bill
                           </button>
                           {(rental.paymentSummary?.balanceAmount || rental.balanceAmount) > 0 && (
                             <button
@@ -1095,6 +1124,12 @@ function RentalHistory() {
           </div>
         </div>
       )}
+
+      <WhatsAppBill 
+          isOpen={showWhatsAppBill} 
+          onClose={closeWhatsAppBill} 
+          rental={billModalRental}
+      />
     </div>
   );
 }
