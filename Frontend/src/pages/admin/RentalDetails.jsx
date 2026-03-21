@@ -2297,13 +2297,14 @@ function RentalDetails({ rentalId, onBack }) {
                                     >
                                         {isSubmitting && <LoadingSpinner size="sm" color="gray" />}
                                         <span className="break-words">
-                                            {modalType === 'close-all-rentals' && 'Close All Rentals'}
-                                            {modalType === 'add-products-bulk' && 'Add All Products'}
-                                            {modalType === 'add-product' && 'Add Product'}
-                                            {modalType === 'general-payment' && 'Process Payment'}
-                                            {modalType === 'return' && 'Process Return'}
-                                            {modalType === 'add-rental' && 'Add Quantity'}
-                                            {modalType === 'payment' && 'Add Payment'}
+                                            {modalType === 'close-all-rentals' && (isSubmitting ? 'Closing...' : 'Close All Rentals')}
+                                            {modalType === 'add-products-bulk' && (isSubmitting ? 'Adding...' : 'Add All Products')}
+                                            {modalType === 'add-product' && (isSubmitting ? 'Adding...' : 'Add Product')}
+                                            {modalType === 'general-payment' && (isSubmitting ? 'Processing...' : 'Process Payment')}
+                                            {modalType === 'return' && (isSubmitting ? 'Processing...' : 'Process Return')}
+                                            {modalType === 'add-rental' && (isSubmitting ? 'Adding...' : 'Add Quantity')}
+                                            {modalType === 'payment' && (isSubmitting ? 'Adding...' : 'Add Payment')}
+                                            {modalType === 'add-service-charge' && (isSubmitting ? 'Adding...' : 'Add Service Charge')}
                                         </span>
                                     </button>
                                 </div>

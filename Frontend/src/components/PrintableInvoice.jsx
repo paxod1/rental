@@ -33,7 +33,11 @@ const PrintableInvoice = ({ rental }) => {
             margin: [10, 10, 10, 10], // top, left, bottom, right in mm
             filename: `${rental.customerName.replace(/[^a-z0-9]/gi, '_')}_Rental_${rentDate}.pdf`,
             image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2, useCORS: true },
+            html2canvas: { 
+                scale: 2, 
+                useCORS: true,
+                windowWidth: 794, // 190mm in pixels at 96dpi is ~718, 210mm is ~794
+            },
             jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
         };
         html2pdf().set(opt).from(element).save();
@@ -42,15 +46,39 @@ const PrintableInvoice = ({ rental }) => {
     // Native Print
     const handlePrint = () => {
         const printContent = componentRef.current;
-        const originalContents = document.body.innerHTML;
+        const iframe = document.createElement('iframe');
+        iframe.style.position = 'fixed';
+        iframe.style.right = '0';
+        iframe.style.bottom = '0';
+        iframe.style.width = '0';
+        iframe.style.height = '0';
+        iframe.style.border = '0';
+        document.body.appendChild(iframe);
+
+        const doc = iframe.contentWindow.document;
         
-        // Hide everything else and show only print content
-        document.body.innerHTML = printContent.innerHTML;
-        window.print();
+        // Copy all head contents (styles, links) to the iframe
+        doc.head.innerHTML = document.head.innerHTML;
         
-        // Restore original content
-        document.body.innerHTML = originalContents;
-        window.location.reload(); // Quick explicit reload to restore React state bindings disconnected by innerHTML swap
+        // Add specific print styles to ensure A4 fit
+        const style = doc.createElement('style');
+        style.textContent = `
+            @page { size: A4; margin: 10mm; }
+            body { margin: 0; padding: 0; }
+            .print-container { width: 100% !important; margin: 0 !important; padding: 0 !important; }
+        `;
+        doc.head.appendChild(style);
+
+        doc.body.innerHTML = `<div class="print-container">${printContent.innerHTML}</div>`;
+
+        // Wait for images/styles to load then print
+        iframe.contentWindow.focus();
+        setTimeout(() => {
+            iframe.contentWindow.print();
+            setTimeout(() => {
+                document.body.removeChild(iframe);
+            }, 1000);
+        }, 500);
     };
 
     return (
@@ -78,11 +106,21 @@ const PrintableInvoice = ({ rental }) => {
 
             {/* Hidden Printable Container */}
             <div className="hidden">
-                <div ref={componentRef} className="bg-white p-8 w-[210mm] min-h-[297mm] mx-auto" style={{ boxSizing: 'border-box', color: '#1f2937', fontFamily: 'Arial, sans-serif' }}>
+                <div 
+                    ref={componentRef} 
+                    className="bg-white p-8 mx-auto" 
+                    style={{ 
+                        boxSizing: 'border-box', 
+                        color: '#1f2937', 
+                        fontFamily: 'Arial, sans-serif',
+                        width: '190mm', // Standard content width for A4 with 10mm margins
+                        minHeight: 'auto', // Remove forced full page height
+                    }}
+                >
                     {/* Header */}
                     <div className="flex justify-between items-start mb-12" style={{ marginBottom: '3rem' }}>
                         <div>
-                            <h1 className="text-2xl font-bold mb-1" style={{ color: '#111827', margin: 0 }}>EDASSERIKKUDIYIL RENTALS PVT LTD</h1>
+                            <h1 className="text-xl font-bold mb-1" style={{ color: '#111827', margin: 0 }}>EDASSERIKKUDIYIL RENTALS PVT LTD</h1>
                             <p className="text-sm" style={{ color: '#4b5563', margin: 0 }}>Mammattikkanam, Idukki</p>
                             <p className="text-sm" style={{ color: '#4b5563', margin: 0 }}>Kerala, India</p>
                         </div>
@@ -108,15 +146,15 @@ const PrintableInvoice = ({ rental }) => {
                     </div>
 
                     {/* Table */}
-                    <table className="w-full mb-8 text-sm" style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '2rem' }}>
+                    <table className="w-full mb-8 text-sm" style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '2rem', tableLayout: 'fixed' }}>
                         <thead>
                             <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
-                                <th className="py-3 text-left font-bold" style={{ padding: '0.75rem 0', textAlign: 'left', color: '#374151' }}>#</th>
+                                <th className="py-3 text-left font-bold" style={{ padding: '0.75rem 0', textAlign: 'left', color: '#374151', width: '30px' }}>#</th>
                                 <th className="py-3 text-left font-bold" style={{ padding: '0.75rem 0', textAlign: 'left', color: '#374151' }}>Item Name</th>
-                                <th className="py-3 text-left font-bold" style={{ padding: '0.75rem 0', textAlign: 'left', color: '#374151' }}>Type</th>
-                                <th className="py-3 text-right font-bold" style={{ padding: '0.75rem 0', textAlign: 'right', color: '#374151' }}>Qty</th>
-                                <th className="py-3 text-right font-bold" style={{ padding: '0.75rem 0', textAlign: 'right', color: '#374151' }}>Rate</th>
-                                <th className="py-3 text-right font-bold" style={{ padding: '0.75rem 0', textAlign: 'right', color: '#111827' }}>Amount</th>
+                                <th className="py-3 text-left font-bold" style={{ padding: '0.75rem 0', textAlign: 'left', color: '#374151', width: '100px' }}>Type</th>
+                                <th className="py-3 text-right font-bold" style={{ padding: '0.75rem 0', textAlign: 'right', color: '#374151', width: '60px' }}>Qty</th>
+                                <th className="py-3 text-right font-bold" style={{ padding: '0.75rem 0', textAlign: 'right', color: '#374151', width: '100px' }}>Rate</th>
+                                <th className="py-3 text-right font-bold" style={{ padding: '0.75rem 0', textAlign: 'right', color: '#111827', width: '100px' }}>Amount</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -124,7 +162,7 @@ const PrintableInvoice = ({ rental }) => {
                             {rental.productItems?.map((item, index) => (
                                 <tr key={`prod-${index}`} style={{ borderBottom: '1px solid #f3f4f6' }}>
                                     <td className="py-4 text-gray-500" style={{ padding: '1rem 0', color: '#6b7280' }}>{index + 1}</td>
-                                    <td className="py-4 font-medium" style={{ padding: '1rem 0', color: '#111827', fontWeight: 500, textTransform: 'capitalize' }}>{item.productName || item.productId?.name}</td>
+                                    <td className="py-4 font-medium" style={{ padding: '1rem 0', color: '#111827', fontWeight: 500, textTransform: 'capitalize', wordBreak: 'break-word' }}>{item.productName || item.productId?.name}</td>
                                     <td className="py-4" style={{ padding: '1rem 0', color: '#4b5563' }}>PRODUCT</td>
                                     <td className="py-4 text-right" style={{ padding: '1rem 0', textAlign: 'right', color: '#4b5563' }}>{item.quantity}</td>
                                     <td className="py-4 text-right" style={{ padding: '1rem 0', textAlign: 'right', color: '#4b5563' }}>{formatCurrency(item.rate)}/{item.rateType}</td>
@@ -135,8 +173,8 @@ const PrintableInvoice = ({ rental }) => {
                             {rental.serviceCharges?.map((charge, index) => (
                                 <tr key={`serv-${index}`} style={{ borderBottom: '1px solid #f3f4f6' }}>
                                     <td className="py-4" style={{ padding: '1rem 0', color: '#6b7280' }}>{(rental.productItems?.length || 0) + index + 1}</td>
-                                    <td className="py-4 font-medium" style={{ padding: '1rem 0', color: '#111827', fontWeight: 500, textTransform: 'capitalize' }}>{charge.name}</td>
-                                    <td className="py-4" style={{ padding: '1rem 0', color: '#4b5563' }}>SERVICE CHARGE</td>
+                                    <td className="py-4 font-medium" style={{ padding: '1rem 0', color: '#111827', fontWeight: 500, textTransform: 'capitalize', wordBreak: 'break-word' }}>{charge.name}</td>
+                                    <td className="py-4" style={{ padding: '1rem 0', color: '#4b5563' }}>SERVICE</td>
                                     <td className="py-4 text-right" style={{ padding: '1rem 0', textAlign: 'right', color: '#4b5563' }}>-</td>
                                     <td className="py-4 text-right" style={{ padding: '1rem 0', textAlign: 'right', color: '#4b5563' }}>-</td>
                                     <td className="py-4 text-right font-medium" style={{ padding: '1rem 0', textAlign: 'right', color: '#111827', fontWeight: 500 }}>{formatCurrency(charge.amount)}</td>
