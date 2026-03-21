@@ -76,7 +76,8 @@ const WhatsAppBill = ({ rental, isOpen, onClose }) => {
         let totalProductsPaid = 0;
         let totalProductsBalance = 0;
 
-        rental.productItems.forEach((product, index) => {
+        (rental.productItems || []).forEach((product, index) => {
+            if (!product) return;
             const productBalance = calculateProductBalance(product);
             const paidAmount = (product.amount || 0) - productBalance;
 
@@ -85,9 +86,9 @@ const WhatsAppBill = ({ rental, isOpen, onClose }) => {
             totalProductsBalance += productBalance;
 
             billText += `\n
-*${index + 1}. ${product.productName.toUpperCase()}*
-Rate: ${formatCurrency(product.rate)}/${product.rateType}
-Quantity: ${product.quantity} units (Current: ${product.currentQuantity} units)
+*${index + 1}. ${(product.productName || 'Unnamed Product').toUpperCase()}*
+Rate: ${formatCurrency(product.rate)}/${product.rateType || 'unit'}
+Quantity: ${product.quantity || 0} units (Current: ${product.currentQuantity || 0} units)
 Amount: ${formatCurrency(product.amount || 0)}
 Paid: ${formatCurrency(paidAmount)}
 Balance: ${formatCurrency(productBalance)}`;
@@ -110,9 +111,11 @@ Balance: ${formatCurrency(productBalance)}`;
             billText += `\n*Returns Made:*`;
             returnTransactions.forEach((returnTx, index) => {
                 const returnDate = formatDate(returnTx.date);
-                const product = rental.productItems.find(item =>
-                    (item.productId._id || item.productId).toString() === returnTx.productId.toString()
-                );
+                const product = (rental.productItems || []).find(item => {
+                    const itemId = (item?.productId?._id || item?.productId || '').toString();
+                    const txProductId = (returnTx?.productId?._id || returnTx?.productId || '').toString();
+                    return itemId === txProductId;
+                });
                 const productName = product ? product.productName : 'Unknown Product';
 
                 // Check if return amount was paid
@@ -132,9 +135,11 @@ Balance: ${formatCurrency(productBalance)}`;
             billText += `\n*Additional Rentals:*`;
             additionalRentals.forEach((addTx, index) => {
                 const addDate = formatDate(addTx.date);
-                const product = rental.productItems.find(item =>
-                    (item.productId._id || item.productId).toString() === addTx.productId.toString()
-                );
+                const product = (rental.productItems || []).find(item => {
+                    const itemId = (item?.productId?._id || item?.productId || '').toString();
+                    const txProductId = (addTx?.productId?._id || addTx?.productId || '').toString();
+                    return itemId === txProductId;
+                });
                 const productName = product ? product.productName : 'Unknown Product';
 
                 billText += `\n${index + 1}. ${addDate}: +${addTx.quantity} units of ${productName}`;
@@ -154,12 +159,14 @@ Balance: ${formatCurrency(productBalance)}`;
 
                     // Add product name if specific payment
                     if (payment.productId) {
-                        const product = rental.productItems.find(item =>
-                            (item.productId._id || item.productId).toString() === payment.productId.toString()
-                        );
+                        const product = (rental.productItems || []).find(item => {
+                            const itemId = (item?.productId?._id || item?.productId || '').toString();
+                            const payProductId = (payment?.productId?._id || payment?.productId || '').toString();
+                            return itemId === payProductId;
+                        });
                         if (product) {
                             paymentInfo += `
-                         for ${product.productName} `;
+                         for ${product.productName || 'Product'} `;
                         }
                     }
 
@@ -253,11 +260,12 @@ We appreciate your business and look forward to serving you again.`;
         // Otherwise calculate from transactions
         if (!rental || !rental.transactions) return productItem.amount || 0;
 
-        const productId = productItem.productId._id || productItem.productId;
+        const productId = (productItem.productId?._id || productItem.productId || '').toString();
 
-        const productPayments = rental.payments?.filter(payment =>
-            payment.productId && payment.productId.toString() === productId.toString()
-        ) || [];
+        const productPayments = (rental.payments || []).filter(payment => {
+            const payProductId = (payment?.productId?._id || payment?.productId || '').toString();
+            return payProductId === productId && productId !== '';
+        });
 
         const totalPaid = productPayments.reduce((sum, payment) => sum + (payment.amount || 0), 0);
 
@@ -274,16 +282,18 @@ We appreciate your business and look forward to serving you again.`;
         const transactions = rental.transactions || [];
         transactions.forEach(transaction => {
             // Find product name for transaction
-            const productItem = rental.productItems.find(item =>
-                (item.productId._id || item.productId).toString() === transaction.productId?.toString()
-            );
+            const productItem = (rental.productItems || []).find(item => {
+                const itemId = (item?.productId?._id || item?.productId || '').toString();
+                const txProductId = (transaction?.productId?._id || transaction?.productId || '').toString();
+                return itemId === txProductId && itemId !== '';
+            });
 
             activities.push({
                 ...transaction,
                 activityType: 'transaction',
                 productName: productItem ? productItem.productName : 'Unknown Product',
                 date: transaction.date,
-                displayDate: new Date(transaction.date).toLocaleDateString(),
+                displayDate: transaction.date ? new Date(transaction.date).toLocaleDateString() : 'N/A',
                 rate: productItem ? productItem.rate : 0
             });
         });
@@ -292,9 +302,11 @@ We appreciate your business and look forward to serving you again.`;
         const payments = rental.payments || [];
         payments.forEach(payment => {
             // Find product name for payment if applicable
-            const productItem = payment.productId ? rental.productItems.find(item =>
-                (item.productId._id || item.productId).toString() === payment.productId.toString()
-            ) : null;
+            const productItem = payment.productId ? (rental.productItems || []).find(item => {
+                const itemId = (item?.productId?._id || item?.productId || '').toString();
+                const payProductId = (payment?.productId?._id || payment?.productId || '').toString();
+                return itemId === payProductId && itemId !== '';
+            }) : null;
 
             activities.push({
                 ...payment,
@@ -548,9 +560,7 @@ EDASSERIKKUDIYIL RENTALS
                         <div>
                             <h3 className="text-xl font-semibold">Send Bill via WhatsApp</h3>
                             <p className="text-green-100 text-sm">Customer: {rental?.customerName}</p>
-                            {getTotalDiscounts() > 0 && (
-                                <p className="text-green-100 text-xs">💸 Includes ₹{getTotalDiscounts().toFixed(2)} discount</p>
-                            )}
+                          
                         </div>
                     </div>
                     <button
@@ -646,20 +656,6 @@ EDASSERIKKUDIYIL RENTALS
                                 </div>
                             </div>
 
-                            {/* Instructions */}
-                            <div className="bg-green-50 rounded-lg p-4">
-                                <h5 className="font-medium text-green-800 mb-2">🚀 How It Works:</h5>
-                                <ul className="text-sm text-green-700 space-y-1">
-                                    <li>1. Enter customer's phone number</li>
-                                    <li>2. Choose bill format and generate</li>
-                                    <li>3. Click "Open WhatsApp & Send"</li>
-                                    <li>4. WhatsApp opens with bill pre-filled</li>
-                                    <li>5. Review and tap send button</li>
-                                    {getTotalDiscounts() > 0 && (
-                                        <li>• ✅ Discounts automatically included</li>
-                                    )}
-                                </ul>
-                            </div>
                         </div>
 
                         {/* Right Panel - Bill Preview */}
