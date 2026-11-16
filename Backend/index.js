@@ -47,7 +47,8 @@ app.use(cors({
   origin: [
     'http://localhost:5173',
     'http://localhost:3000',
-    'https://rental-xi-eight.vercel.app'
+    'https://rental-xi-eight.vercel.app',
+      'https://rental-henna-alpha.vercel.app'
   ],
   credentials: true
 }));
